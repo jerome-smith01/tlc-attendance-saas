@@ -12,6 +12,7 @@ export function Login() {
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
   const [error,    setError]    = useState('');
+  const [message,  setMessage]  = useState('');
   const [loading,  setLoading]  = useState(false);
 
   // If already logged in, bounce to dashboard immediately
@@ -20,13 +21,14 @@ export function Login() {
   }, [session, navigate]);
 
   // Clear error as soon as the user starts correcting their input
-  const handleEmailChange    = (e) => { setError(''); setEmail(e.target.value); };
-  const handlePasswordChange = (e) => { setError(''); setPassword(e.target.value); };
+  const handleEmailChange    = (e) => { setError(''); setMessage(''); setEmail(e.target.value); };
+  const handlePasswordChange = (e) => { setError(''); setMessage(''); setPassword(e.target.value); };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setMessage('');
 
     const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
 
@@ -39,6 +41,28 @@ export function Login() {
       setLoading(false);
     }
     // On success: onAuthStateChange → AuthContext updates session → useEffect above redirects
+  };
+
+  const handleResetPassword = async () => {
+    if (!email) {
+      setError('Please enter your email address to reset your password.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    setMessage('');
+    
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/complete-profile`,
+    });
+    
+    if (error) {
+      console.error('[TLC Login] Reset password error:', error.message);
+      setError('Failed to send reset email. Please try again.');
+    } else {
+      setMessage('Password reset email sent! Check your inbox.');
+    }
+    setLoading(false);
   };
 
   return (
@@ -89,6 +113,11 @@ export function Login() {
               {error}
             </div>
           )}
+          {message && (
+            <div className="login-message" role="status" style={{ color: 'var(--color-success)', marginBottom: '1rem', fontSize: '0.875rem' }}>
+              {message}
+            </div>
+          )}
 
           <button
             type="submit"
@@ -99,6 +128,17 @@ export function Login() {
               ? <><span className="spinner" /> Signing in…</>
               : 'Sign In'}
           </button>
+
+          <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+            <button 
+              type="button" 
+              onClick={handleResetPassword}
+              disabled={loading}
+              style={{ background: 'none', border: 'none', color: 'var(--color-primary)', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.875rem' }}
+            >
+              Forgot Password?
+            </button>
+          </div>
         </form>
       </div>
     </div>

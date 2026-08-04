@@ -5,14 +5,14 @@
 
 /* ── Light Theme (Default) ── */
 :root {
-  --background:          #e4e4e7;
-  --bg-gradient:         linear-gradient(to top right, #e4e4e7, #ffffff);
+  --background:          #f4f4f5;
+  --bg-gradient:         #f4f4f5;
   --foreground:          #0f172a;
-  --muted:               #f1f5f9;
-  --muted-foreground:    #334155;
+  --muted:               #e4e4e7;
+  --muted-foreground:    #475569;
   --primary-foreground:  #ffffff;
-  --glass-bg:            rgba(255, 255, 255, 0.4);
-  --glass-border:        rgba(255, 255, 255, 0.3);
+  --glass-bg:            rgba(255, 255, 255, 0.7);
+  --glass-border:        rgba(224, 224, 227, 0.8);
 
   /* TLC-specific accents */
   --color-primary:       #0284c7;    /* sky-600 — CTA buttons, links */
@@ -47,15 +47,15 @@
 
 /* ── Dark Theme ── */
 .dark {
-  --background:          #18181b;
-  --bg-gradient:         linear-gradient(to top right, #18181b, #3f3f46);
+  --background:          #121214;
+  --bg-gradient:         #121214;
   --foreground:          #ffffff;
   --color-primary:       #60a5fa;    /* blue-400 — brighter on dark bg */
   --color-primary-hover: #93c5fd;    /* blue-300 */
   --muted:               #1e293b;
   --muted-foreground:    #94a3b8;
   --primary-foreground:  #000000;
-  --glass-bg:            rgba(255, 255, 255, 0.03);
+  --glass-bg:            rgba(30, 41, 59, 0.5);
   --glass-border:        rgba(255, 255, 255, 0.1);
 }
 
@@ -85,25 +85,13 @@ html, body, #root { height: 100%; }
   clip: rect(0,0,0,0); white-space: nowrap; border: 0;
 }
 
-/* ── Animated Title Gradient (from jerome-portfolio .app-title) ── */
+/* ── Title Style ── */
 .app-title {
   font-family: var(--font-display);
   font-size: clamp(1.5rem, 5vw, 2.5rem);
   font-weight: 800;
   letter-spacing: -0.02em;
-  background: linear-gradient(270deg,
-    #a78bfa, #60a5fa, #34d399, #fbbf24, #f472b6, #818cf8, #a78bfa);
-  background-size: 400% 400%;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  animation: titleColorFlow 45s ease infinite;
-}
-
-@keyframes titleColorFlow {
-  0%   { background-position: 0% 50%; }
-  50%  { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  color: var(--foreground);
 }
 
 /* ── Button: Primary Action (ported .btn-action, re-colored for TLC) ── */

@@ -67,7 +67,7 @@ After discussing the tradeoffs of Flutter, React Native, and React SPA, we've de
 | :--- | :--- | :--- | :--- | :--- |
 | 1 | Database & Supabase Schema | Complete | `Claude Opus 4.6 (Thinking)` | None |
 | 2 | Frontend Foundation & Auth | Complete | `Gemini 3.1 Pro (High)` | Phase 1 |
-| 3 | Dashboard & Roster Management | Pending | `Gemini 3.1 Pro (High)` | Phase 2 |
+| 3 | Dashboard & Roster Management | Complete | `Gemini 3.1 Pro (High)` | Phase 2 |
 | 4 | Scanner Implementation | Pending | `Claude Sonnet 4.6 (Thinking)` | Phase 3 |
 | 5 | Chrome Extension | Pending | `Gemini 3.1 Pro (High)` | Phase 1, 4 |
 | 6 | Cloudflare Pages Deployment | Pending | `Gemini 3.1 Pro (Low)` | Phase 2 |
@@ -276,6 +276,8 @@ supabase.auth.onAuthStateChange((event, session) => {
 - [ ] Invite a second user by email; confirm they receive a Supabase invite email
 - [ ] Second user logs in; can only see SC-0110 data
 
+*Reference: Follows workflow outlined in `C:\Users\Jerom\My Apps\ai_skills\01.creating_new_features.md`*
+
 ---
 
 ### Phase 4: Scanner Implementation
@@ -308,6 +310,8 @@ function handleScan(id) {
 - [ ] Hold badge in view for 5+ seconds; no duplicate scan is recorded
 - [ ] Scan an unknown badge; "Unknown Member" state is shown clearly
 - [ ] Check Supabase `scans` table; row exists with correct `session_id` and `status = Pending`
+
+*Reference: Follows workflow outlined in `C:\Users\Jerom\My Apps\ai_skills\01.creating_new_features.md`*
 
 ---
 
@@ -344,6 +348,7 @@ chrome.storage.local.get('supabase_session', ({ supabase_session }) => {
 - [ ] Click Sync; member names populate from Supabase `Approved` scans
 - [ ] Log out from popup; Sync button becomes disabled/inert
 
+*Reference: Follows workflow outlined in `C:\Users\Jerom\My Apps\ai_skills\01.creating_new_features.md`*
 ---
 
 ### Phase 6: Cloudflare Pages Deployment
@@ -370,6 +375,7 @@ chrome.storage.local.get('supabase_session', ({ supabase_session }) => {
 - [ ] Supabase auth redirect works (no CORS or cookie errors in DevTools)
 - [ ] HTTPS is active (automatic via Cloudflare)
 
+*Reference: Follows workflow outlined in `C:\Users\Jerom\My Apps\ai_skills\01.creating_new_features.md`*
 ---
 
 ## Architecture Doc Updates
@@ -380,6 +386,7 @@ chrome.storage.local.get('supabase_session', ({ supabase_session }) => {
 | `docs/architecture/` | Phase 1 | Contains `00_overview.md` through `04_scan_lifecycle.md` (Schema, RLS, QR payload, Scan lifecycle) |
 | `docs/auth_flow.md` | Phase 2 | Supabase JWT lifecycle across web app + extension |
 | `docs/hosting.md` | Phase 6 | Cloudflare Pages setup steps |
+
 
 ---
 

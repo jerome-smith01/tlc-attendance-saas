@@ -2,20 +2,9 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Login } from './pages/Login';
+import { CompleteProfile } from './pages/CompleteProfile';
 
-const Dashboard = () => {
-  const { signOut, user } = useAuth();
-  return (
-    <div style={{ padding: '2rem', color: 'var(--foreground)', display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'flex-start' }}>
-      <h1>Dashboard</h1>
-      <p>Logged in as: {user?.email}</p>
-      <p>Coming in Phase 3.</p>
-      <button className="btn-primary" style={{ width: 'auto' }} onClick={signOut}>
-        Sign Out
-      </button>
-    </div>
-  );
-};
+import { Dashboard } from './pages/Dashboard';
 
 const Scanner = () => (
   <div style={{ padding: '2rem', color: 'var(--foreground)' }}>
@@ -33,6 +22,9 @@ export default function App() {
           <Route path="/login" element={<Login />} />
 
           {/* Protected */}
+          <Route path="/complete-profile" element={
+            <ProtectedRoute><CompleteProfile /></ProtectedRoute>
+          } />
           <Route path="/dashboard" element={
             <ProtectedRoute><Dashboard /></ProtectedRoute>
           } />
