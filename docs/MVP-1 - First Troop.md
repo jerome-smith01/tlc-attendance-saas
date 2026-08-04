@@ -65,8 +65,8 @@ After discussing the tradeoffs of Flutter, React Native, and React SPA, we've de
 
 | Phase | Description | Status | Model | Dependencies |
 | :--- | :--- | :--- | :--- | :--- |
-| 1 | Database & Supabase Schema | Pending | `Claude Opus 4.6 (Thinking)` | None |
-| 2 | Frontend Foundation & Auth | Pending | `Gemini 3.1 Pro (High)` | Phase 1 |
+| 1 | Database & Supabase Schema | Complete | `Claude Opus 4.6 (Thinking)` | None |
+| 2 | Frontend Foundation & Auth | Complete | `Gemini 3.1 Pro (High)` | Phase 1 |
 | 3 | Dashboard & Roster Management | Pending | `Gemini 3.1 Pro (High)` | Phase 2 |
 | 4 | Scanner Implementation | Pending | `Claude Sonnet 4.6 (Thinking)` | Phase 3 |
 | 5 | Chrome Extension | Pending | `Gemini 3.1 Pro (High)` | Phase 1, 4 |
@@ -377,7 +377,7 @@ chrome.storage.local.get('supabase_session', ({ supabase_session }) => {
 
 | Doc | Created In | Content |
 | :--- | :--- | :--- |
-| `docs/architecture.md` | Phase 1 | Schema diagram, RLS policy rationale |
+| `docs/architecture/` | Phase 1 | Contains `00_overview.md` through `04_scan_lifecycle.md` (Schema, RLS, QR payload, Scan lifecycle) |
 | `docs/auth_flow.md` | Phase 2 | Supabase JWT lifecycle across web app + extension |
 | `docs/hosting.md` | Phase 6 | Cloudflare Pages setup steps |
 

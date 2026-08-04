@@ -1,0 +1,110 @@
+/* Login page — tokens only, no hardcoded colors */
+
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-md);
+  position: relative;
+  background: var(--bg-gradient);
+  background-attachment: fixed;
+}
+
+.login-theme-toggle {
+  position: fixed;
+  top: var(--spacing-md);
+  right: var(--spacing-md);
+  z-index: 10;
+}
+
+.login-card {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 20px 25px -5px rgba(0,0,0,0.15), 0 10px 10px -5px rgba(0,0,0,0.08);
+  animation: fadeSlideUp 0.3s ease both;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+/* Placeholder logo — bright green square */
+.login-logo {
+  width: 48px;
+  height: 48px;
+  background: #22c55e;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.login-title {
+  font-size: clamp(1.5rem, 5vw, 2rem);
+  text-align: center;
+  margin: 0;
+}
+
+.login-subtitle {
+  color: var(--muted-foreground);
+  font-size: 0.9rem;
+  margin-top: calc(-1 * var(--spacing-sm));
+  text-align: center;
+}
+
+/* Form */
+.login-card form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.login-field input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: var(--muted);
+  color: var(--foreground);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  font-family: var(--font-sans);
+  outline: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.login-field input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary), transparent 75%);
+}
+
+.login-field input::placeholder {
+  color: var(--muted-foreground);
+}
+
+.login-field input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Error */
+.login-error {
+  color: var(--color-error);
+  font-size: 0.875rem;
+  padding: 0.5rem 0.75rem;
+  background: color-mix(in srgb, var(--color-error), transparent 85%);
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--color-error), transparent 70%);
+  text-align: center;
+}
+
+/* Submit button overrides (btn-primary is in global.css) */
+.login-submit {
+  margin-top: var(--spacing-sm);
+  gap: var(--spacing-sm);
+}

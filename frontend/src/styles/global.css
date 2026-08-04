@@ -1,0 +1,350 @@
+/* === TLC Attendance — Global CSS ===
+   Ported from jerome-portfolio/src/styles/
+   Do not edit tokens here without updating the source.
+*/
+
+/* ── Light Theme (Default) ── */
+:root {
+  --background:          #e4e4e7;
+  --bg-gradient:         linear-gradient(to top right, #e4e4e7, #ffffff);
+  --foreground:          #0f172a;
+  --muted:               #f1f5f9;
+  --muted-foreground:    #334155;
+  --primary-foreground:  #ffffff;
+  --glass-bg:            rgba(255, 255, 255, 0.4);
+  --glass-border:        rgba(255, 255, 255, 0.3);
+
+  /* TLC-specific accents */
+  --color-primary:       #0284c7;    /* sky-600 — CTA buttons, links */
+  --color-primary-hover: #0369a1;    /* sky-700 */
+  --color-success:       #22c55e;    /* green-500 — scan success, logo placeholder */
+  --color-error:         #ef4444;    /* red-500 */
+  --color-warning:       #f59e0b;    /* amber-500 */
+
+  /* Spacing scale */
+  --spacing-xs:  4px;
+  --spacing-sm:  8px;
+  --spacing-md:  16px;
+  --spacing-lg:  24px;
+  --spacing-xl:  40px;
+  --spacing-2xl: 64px;
+
+  /* Border radius */
+  --radius-sm:   6px;
+  --radius-md:   12px;
+  --radius-lg:   20px;
+  --radius-pill: 9999px;
+
+  /* Typography */
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-display: 'Outfit', sans-serif;
+
+  /* Transitions (matching jerome-portfolio conventions) */
+  --transition-fast:   150ms ease;
+  --transition-normal: 250ms ease;
+  --transition-slow:   400ms ease;
+}
+
+/* ── Dark Theme ── */
+.dark {
+  --background:          #18181b;
+  --bg-gradient:         linear-gradient(to top right, #18181b, #3f3f46);
+  --foreground:          #ffffff;
+  --color-primary:       #60a5fa;    /* blue-400 — brighter on dark bg */
+  --color-primary-hover: #93c5fd;    /* blue-300 */
+  --muted:               #1e293b;
+  --muted-foreground:    #94a3b8;
+  --primary-foreground:  #000000;
+  --glass-bg:            rgba(255, 255, 255, 0.03);
+  --glass-border:        rgba(255, 255, 255, 0.1);
+}
+
+/* ── Reset + Base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  background-color: var(--background);
+}
+
+body {
+  background: var(--bg-gradient);
+  background-attachment: fixed;
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  transition: background 0.8s ease, color 0.8s ease;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+html, body, #root { height: 100%; }
+
+/* ── Utility ── */
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+
+/* ── Animated Title Gradient (from jerome-portfolio .app-title) ── */
+.app-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 5vw, 2.5rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  background: linear-gradient(270deg,
+    #a78bfa, #60a5fa, #34d399, #fbbf24, #f472b6, #818cf8, #a78bfa);
+  background-size: 400% 400%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: titleColorFlow 45s ease infinite;
+}
+
+@keyframes titleColorFlow {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ── Button: Primary Action (ported .btn-action, re-colored for TLC) ── */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  background-color: var(--color-primary);
+  color: #ffffff;
+  font-size: 0.875rem;
+  font-weight: 700;
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+  transition: all var(--transition-fast);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  width: 100%;
+}
+
+.btn-primary:hover {
+  background-color: var(--color-primary-hover);
+  box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Button: Green Action (verbatim from jerome-portfolio/src/styles/components.css) ── */
+.btn-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 1.5rem;
+    background-color: #22c55e !important;
+    color: white;
+    font-size: 0.875rem;
+    font-weight: 700;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    transition-property: all;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 200ms;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.btn-action:hover {
+    background-color: #16a34a !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.btn-action-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    background-color: #22c55e !important;
+    color: white;
+    font-weight: 700;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    transition: all 200ms;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.btn-action-icon:hover {
+    background-color: #16a34a !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* ── Modal (verbatim from jerome-portfolio/src/styles/global.css) ── */
+.app-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    overflow-y: auto;
+}
+
+html.dark .app-modal-overlay,
+[data-theme='dark'] .app-modal-overlay {
+    background-color: rgba(0, 0, 0, 0.85);
+}
+
+.app-modal-content {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 1rem;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    width: 100%;
+    margin: 0 auto;
+    max-width: 42rem;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    animation: modalSlideIn 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+
+.app-modal-content.closing {
+    animation: modalSlideOut 0.7s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+@keyframes modalSlideIn {
+    0%   { transform: scale(0.95); opacity: 0; }
+    100% { transform: scale(1);    opacity: 1; }
+}
+
+@keyframes modalSlideOut {
+    0%   { transform: scale(1);    opacity: 1; }
+    100% { transform: scale(0.95); opacity: 0; }
+}
+
+html.dark .app-modal-content,
+[data-theme='dark'] .app-modal-content {
+    background-color: rgba(15, 23, 41, 0.95);
+    border: 1px solid rgba(6, 182, 212, 0.4);
+    box-shadow: 0 0 20px rgba(6, 182, 212, 0.15), 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    scrollbar-color: rgba(6, 182, 212, 0.3) transparent;
+}
+
+.app-modal-content::-webkit-scrollbar       { width: 8px; }
+.app-modal-content::-webkit-scrollbar-track { background: transparent; }
+.app-modal-content::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 4px;
+}
+
+html.dark .app-modal-content::-webkit-scrollbar-thumb,
+[data-theme='dark'] .app-modal-content::-webkit-scrollbar-thumb {
+    background-color: rgba(6, 182, 212, 0.3);
+}
+
+.app-modal-body {
+    padding: 2rem;
+    color: #1e293b;
+}
+
+html.dark .app-modal-body,
+[data-theme='dark'] .app-modal-body {
+    color: #e2e8f0;
+}
+
+.app-modal-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0284c7;
+    margin-bottom: 1rem;
+}
+
+html.dark .app-modal-title,
+[data-theme='dark'] .app-modal-title {
+    color: #38bdf8;
+}
+
+.app-modal-intro {
+    margin-bottom: 0.5rem;
+    line-height: 1.6;
+}
+
+.modal-support {
+    font-size: 0.9rem;
+    color: var(--muted-foreground);
+    margin-bottom: 2rem;
+}
+
+.support-link {
+    color: #0284c7;
+    text-decoration: underline;
+}
+
+html.dark .support-link,
+[data-theme='dark'] .support-link {
+    color: #38bdf8;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: center;
+    margin-top: 1rem;
+}
+
+.lets-go-btn {
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: white;
+    padding: 0.75rem 3rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    font-size: 1.1rem;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(34, 197, 94, 0.3);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.lets-go-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(34, 197, 94, 0.4);
+}
+
+/* ── Global Button Press ── */
+button:active, .btn-primary:active, .btn-action:active {
+  transform: scale(0.96) !important;
+  transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* ── Fade-slide-up (used by Login card) ── */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Spinner ── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.spinner {
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}
