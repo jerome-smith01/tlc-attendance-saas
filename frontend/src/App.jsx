@@ -1,41 +1,40 @@
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider } from './context/AuthContext';
+import { TroopProvider } from './context/TroopContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { SidebarLayout } from './components/SidebarLayout';
 import { Login } from './pages/Login';
 import { CompleteProfile } from './pages/CompleteProfile';
-
 import { Dashboard } from './pages/Dashboard';
-
-const Scanner = () => (
-  <div style={{ padding: '2rem', color: 'var(--foreground)' }}>
-    <h1>Scanner</h1>
-    <p>Coming in Phase 4.</p>
-  </div>
-);
+import { Scanner } from './pages/Scanner';
+import { Roster } from './pages/Roster';
+import { Sessions } from './pages/Sessions';
+import { Billing } from './pages/Billing';
 
 export default function App() {
   return (
     <AuthProvider>
-      <HashRouter>
-        <Routes>
-          {/* Public */}
-          <Route path="/login" element={<Login />} />
+      <TroopProvider>
+        <HashRouter>
+          <Routes>
+            {/* Public */}
+            <Route path="/login" element={<Login />} />
 
-          {/* Protected */}
-          <Route path="/complete-profile" element={
-            <ProtectedRoute><CompleteProfile /></ProtectedRoute>
-          } />
-          <Route path="/dashboard" element={
-            <ProtectedRoute><Dashboard /></ProtectedRoute>
-          } />
-          <Route path="/scanner" element={
-            <ProtectedRoute><Scanner /></ProtectedRoute>
-          } />
+            {/* Protected with Sidebar Layout */}
+            <Route element={<ProtectedRoute><SidebarLayout /></ProtectedRoute>}>
+              <Route path="/complete-profile" element={<CompleteProfile />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/scanner" element={<Scanner />} />
+              <Route path="/roster" element={<Roster />} />
+              <Route path="/sessions" element={<Sessions />} />
+              <Route path="/billing" element={<Billing />} />
+            </Route>
 
-          {/* Default — redirect root to login; AuthContext will bounce to dashboard if logged in */}
-          <Route path="*" element={<Navigate to="/login" replace />} />
-        </Routes>
-      </HashRouter>
+            {/* Default — redirect root to login; AuthContext will bounce to dashboard if logged in */}
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
+        </HashRouter>
+      </TroopProvider>
     </AuthProvider>
   );
 }

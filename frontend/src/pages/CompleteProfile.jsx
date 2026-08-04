@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
-import { ThemeToggle } from '../components/ThemeToggle';
 import './Login.css'; // Reusing Login.css for consistent card styling
 
 export function CompleteProfile() {
@@ -15,18 +14,44 @@ export function CompleteProfile() {
   const [confirmPassword, setConfirmPassword] = useState('');
   
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [fetchingInfo, setFetchingInfo] = useState(true);
 
   useEffect(() => {
-    // If user is not logged in at all, redirect to login
     if (!session) {
       navigate('/login', { replace: true });
     }
   }, [session, navigate]);
 
+  useEffect(() => {
+    async function loadProfile() {
+      if (!user) return;
+      try {
+        const { data, error } = await supabase
+          .from('roster')
+          .select('first_name, last_initial')
+          .eq('user_id', user.id)
+          .limit(1)
+          .maybeSingle();
+
+        if (data) {
+          setFirstName(data.first_name || '');
+          setLastInitial(data.last_initial || '');
+        }
+      } catch (err) {
+        console.error("Error loading profile", err);
+      } finally {
+        setFetchingInfo(false);
+      }
+    }
+    loadProfile();
+  }, [user]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
 
     if (password && password !== confirmPassword) {
       setError('Passwords do not match.');
@@ -47,10 +72,10 @@ export function CompleteProfile() {
         if (authError) throw authError;
       }
 
-      // 2. Fetch the user's troop affiliations to create their roster entries
+      // 2. Fetch the user's troop affiliations
       const { data: troopUsers, error: tuError } = await supabase
         .from('troop_users')
-        .select('troop_id, role')
+        .select('troop_id, role, onboarding_completed')
         .eq('user_id', user.id);
 
       if (tuError) throw tuError;
@@ -59,35 +84,59 @@ export function CompleteProfile() {
         throw new Error('You do not belong to any troops. Please ask an admin for an invite.');
       }
 
-      // 3. Create a roster entry for each troop the user belongs to
+      // 3. Update or create a roster entry for each troop the user belongs to
       for (const tu of troopUsers) {
-        const { error: rosterError } = await supabase
+        const { data: existingRoster } = await supabase
           .from('roster')
-          .insert({
-            troop_id: tu.troop_id,
-            user_id: user.id,
-            first_name: firstName,
-            last_initial: lastInitial.charAt(0).toUpperCase(),
-            role: tu.role,
-            email: user.email
-          });
-        
-        // Ignore unique constraint violations (if they already have a profile for this troop)
-        if (rosterError && rosterError.code !== '23505') {
-          throw rosterError;
+          .select('id')
+          .eq('troop_id', tu.troop_id)
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (existingRoster) {
+          const { error: updateError } = await supabase
+            .from('roster')
+            .update({
+              first_name: firstName,
+              last_initial: lastInitial.charAt(0).toUpperCase()
+            })
+            .eq('id', existingRoster.id);
+          if (updateError) throw updateError;
+        } else {
+          const { error: insertError } = await supabase
+            .from('roster')
+            .insert({
+              troop_id: tu.troop_id,
+              user_id: user.id,
+              first_name: firstName,
+              last_initial: lastInitial.charAt(0).toUpperCase(),
+              role: tu.role,
+              email: user.email
+            });
+          if (insertError) throw insertError;
         }
       }
 
-      // 4. Mark onboarding as completed for this user in all troops
-      const { error: updateError } = await supabase
-        .from('troop_users')
-        .update({ onboarding_completed: true })
-        .eq('user_id', user.id);
-      
-      if (updateError) throw updateError;
+      const needsOnboarding = troopUsers.some(tu => !tu.onboarding_completed);
 
-      // Redirect to dashboard upon success
-      navigate('/dashboard', { replace: true });
+      // 4. Mark onboarding as completed for this user in all troops
+      if (needsOnboarding) {
+        const { error: updateError } = await supabase
+          .from('troop_users')
+          .update({ onboarding_completed: true })
+          .eq('user_id', user.id);
+        
+        if (updateError) throw updateError;
+        
+        // Force reload to update TroopContext
+        window.location.href = '#/dashboard';
+        window.location.reload();
+      } else {
+        setSuccess('Profile updated successfully.');
+        setPassword('');
+        setConfirmPassword('');
+      }
+
     } catch (err) {
       console.error('[Complete Profile] Error:', err);
       setError(err.message || 'An error occurred while updating your profile.');
@@ -96,22 +145,18 @@ export function CompleteProfile() {
     }
   };
 
-  if (!session) return null; // Avoid flashing the form while redirecting
+  if (!session || fetchingInfo) return <div style={{ padding: '2rem' }}>Loading profile...</div>;
 
   return (
     <div className="login-page">
-      <div className="login-theme-toggle">
-        <ThemeToggle />
-      </div>
-
-      <div className="login-card" style={{ maxWidth: '500px' }}>
-        <h1 className="app-title login-title">Complete Profile</h1>
-        <p className="login-subtitle">Set up your account details to continue</p>
+      <div className="login-card" style={{ maxWidth: '500px', width: '100%' }}>
+        <h1 className="app-title login-title">My Profile</h1>
+        <p className="login-subtitle">Update your personal details and password</p>
 
         <form onSubmit={handleSubmit} noValidate>
           <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
             <div className="login-field" style={{ flex: 1, marginBottom: 0 }}>
-              <label htmlFor="first-name" className="sr-only">First Name</label>
+              <label htmlFor="first-name" style={{ marginBottom: '0.5rem', display: 'block' }}>First Name</label>
               <input
                 id="first-name"
                 type="text"
@@ -124,7 +169,7 @@ export function CompleteProfile() {
             </div>
 
             <div className="login-field" style={{ width: '120px', marginBottom: 0 }}>
-              <label htmlFor="last-initial" className="sr-only">Last Initial</label>
+              <label htmlFor="last-initial" style={{ marginBottom: '0.5rem', display: 'block' }}>Last Initial</label>
               <input
                 id="last-initial"
                 type="text"
@@ -138,12 +183,15 @@ export function CompleteProfile() {
             </div>
           </div>
 
+          <hr style={{ margin: '1.5rem 0', borderColor: 'var(--border-color)' }} />
+          <h3 style={{ marginBottom: '1rem' }}>Change Password</h3>
+
           <div className="login-field">
-            <label htmlFor="new-password" className="sr-only">New Password</label>
+            <label htmlFor="new-password" style={{ marginBottom: '0.5rem', display: 'block' }}>New Password</label>
             <input
               id="new-password"
               type="password"
-              placeholder="New Password (optional if already set)"
+              placeholder="Leave blank to keep existing password"
               value={password}
               onChange={e => setPassword(e.target.value)}
               disabled={loading}
@@ -151,7 +199,7 @@ export function CompleteProfile() {
           </div>
 
           <div className="login-field">
-            <label htmlFor="confirm-password" className="sr-only">Confirm Password</label>
+            <label htmlFor="confirm-password" style={{ marginBottom: '0.5rem', display: 'block' }}>Confirm New Password</label>
             <input
               id="confirm-password"
               type="password"
@@ -168,12 +216,18 @@ export function CompleteProfile() {
             </div>
           )}
 
+          {success && (
+            <div style={{ padding: '0.75rem', backgroundColor: '#d4edda', color: '#155724', borderRadius: '4px', marginBottom: '1rem' }}>
+              {success}
+            </div>
+          )}
+
           <button
             type="submit"
             className="btn-primary login-submit"
             disabled={loading || !firstName || !lastInitial}
           >
-            {loading ? <><span className="spinner" /> Saving…</> : 'Save & Continue'}
+            {loading ? <><span className="spinner" /> Saving…</> : 'Save Changes'}
           </button>
         </form>
       </div>
