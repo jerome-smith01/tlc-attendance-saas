@@ -1,7 +1,7 @@
 # Project Architecture Overview
 
 ## Project Purpose
-TLC Attendance is a SaaS attendance tracker for Trail Life USA troops. MVP-1 is a single-troop deployment for SC-0110.
+TLC Attendance is a SaaS attendance tracker for Trail Life USA troops. MVP-1 is a single-troop deployment for SC-0110, but the schema and architecture are designed for future multi-tenancy.
 
 ## Core Tech Stack
 
@@ -12,7 +12,7 @@ TLC Attendance is a SaaS attendance tracker for Trail Life USA troops. MVP-1 is 
 | Auth | Supabase Email/Password | JWT-based, `supabase-js` client |
 | Hosting | Cloudflare Pages | `tlc.goodplusfast.com` |
 | QR Scanning | `html5-qrcode` | Live continuous feed, no tap-to-capture |
-| Chrome Extension | Manifest V3 | Syncs approved scans to `traillifeconnect.com` |
+| Chrome Extension | Manifest V3 (Vite + @crxjs) | Syncs approved scans to `traillifeconnect.com` |
 
 ## System Diagram
 
@@ -28,32 +28,52 @@ graph LR
 ## Architectural Rules
 - RLS is enforced on every table from day one. No exceptions.
 - All data access is scoped through `troop_users` via `auth.uid()`.
-- COPPA compliance: only `first_name` + `last_initial` stored (no full names, no emails for youth).
+- COPPA compliance: only `first_name` + `last_initial` stored for youth. Adult leaders additionally store `email` in the roster.
 - Schema supports multi-tenancy even though MVP-1 only exercises one troop.
 - The dedicated Supabase project (`tlc-attendance`) is fully isolated from the `goodplusfast.com` project.
+- `global_admins` is a system-level bypass table for platform owner access (not a troop-level role).
 
-## Frontend Architecture (Phase 2)
+## Frontend Architecture
 
-### Project Structure (`frontend/`)
+### Project Structure (`frontend/src/`)
 | Path | Purpose |
 |:---|:---|
-| `src/styles/global.css` | Global design tokens and CSS reset. Single source of truth for all visual styles. Ported from `jerome-portfolio` for consistency. |
-| `src/hooks/useTheme.js` | Dark/light theme engine. Defaults to OS preference; persists choice in `localStorage` under key `tlc-theme`. |
-| `src/lib/supabaseClient.js` | Singleton Supabase client. Security-hardened: generic error in production, detailed error in dev only. |
-| `src/context/AuthContext.jsx` | Global auth state provider. Exposes `session`, `user`, `loading`, `signOut()`. |
-| `src/components/ProtectedRoute.jsx` | Route guard. Blocks render during auth load; silently redirects unauthenticated users to `/login`. |
-| `src/components/AppSpinner.jsx` | Full-screen branded loading state shown while session resolves. |
-| `src/components/ThemeToggle.jsx` | Sun/moon icon button wired to `useTheme`. |
-| `src/pages/Login.jsx` | Email/password login form. Clears errors on input; shows generic error to user; logs detailed error to console only. |
+| `styles/global.css` | Global design tokens and CSS reset. Single source of truth. Ported from `jerome-portfolio`. |
+| `main.jsx` | App entry point. Renders `<App />` into `#root`. |
+| `App.jsx` | Routing root: `HashRouter` + all routes. Wraps protected routes in `<ProtectedRoute><SidebarLayout>`. |
+| `lib/supabaseClient.js` | Singleton Supabase client. Generic error in production, detailed in dev only. |
+| `context/AuthContext.jsx` | Global auth state provider. Exposes `session`, `user`, `loading`, `signOut()`. |
+| `context/TroopContext.jsx` | Troop context. Fetches all troops a user belongs to, exposes `troops[]`, `selectedTroopId`, `setSelectedTroopId`, `isGlobalAdmin`. Persists selection in `localStorage` under `tlc_last_troop_id`. |
+| `components/ProtectedRoute.jsx` | Route guard. Blocks render during auth load; redirects unauthenticated users to `/login`. |
+| `components/SidebarLayout.jsx` | App shell. Contains the sidebar nav, top header with troop switcher dropdown, and `ThemeToggle`. Renders `<Outlet/>` for page content. |
+| `components/AppSpinner.jsx` | Full-screen branded loading state. |
+| `components/ThemeToggle.jsx` | Sun/moon icon button wired to `useTheme`. |
+| `components/RosterList.jsx` | Roster display, add, edit, delete, and CSV import. |
+| `components/InviteUser.jsx` | Admin form to invite users by email to the troop. |
+| `components/SessionSelector.jsx` | Dropdown for selecting or creating a session before scanning. |
+| `hooks/useTheme.js` | Dark/light theme engine. Defaults to OS preference; persists in `localStorage` under `tlc-theme`. |
+| `hooks/useScanLogic.js` | Core scan processing: 3-second cooldown, roster lookup by `tlc_id`/`member_id`, backfill, Supabase write. |
+| `pages/Login.jsx` | Email/password login. Clears errors on input; shows generic error to user; logs detailed error to console only. |
+| `pages/CompleteProfile.jsx` | Post-invite onboarding page. New users set their display name (first name + last initial) and optionally set a password. |
+| `pages/Dashboard.jsx` | Troop overview: active user count, total sessions, unsynced session warnings. |
+| `pages/Roster.jsx` | Full roster management page (wraps `RosterList`). |
+| `pages/Scanner.jsx` | Live camera feed scanner. Includes session selection, scan log, unknown member resolution modal, and admin-only approval actions. |
+| `pages/Sessions.jsx` | Session history with attendee drill-down modal. Displays `synced_by` user names. |
+| `pages/Billing.jsx` | Billing placeholder page (deferred). |
 
 ### Routing
-- Uses `HashRouter` for Cloudflare Pages static SPA compatibility (`/#/login`, `/#/dashboard`, `/#/scanner`).
-- All routes except `/login` are wrapped in `<ProtectedRoute>`.
+Uses `HashRouter` for Cloudflare Pages static SPA compatibility (`/#/login`, `/#/dashboard`, etc.).
 
-### Auth Session Lifecycle
-- On boot: `supabase.auth.getSession()` reads `localStorage` → prevents Login flash on PWA relaunch.
-- `onAuthStateChange` subscription handles all subsequent auth events (login, logout, token refresh).
-- `session = undefined` during boot; `null` = confirmed logged out; `Session` object = logged in.
+| Route | Page | Access |
+|:---|:---|:---|
+| `/login` | `Login.jsx` | Public |
+| `/complete-profile` | `CompleteProfile.jsx` | Protected (any authenticated user) |
+| `/dashboard` | `Dashboard.jsx` | Protected |
+| `/roster` | `Roster.jsx` | Protected |
+| `/sessions` | `Sessions.jsx` | Protected |
+| `/scanner` | `Scanner.jsx` | Protected |
+| `/billing` | `Billing.jsx` | Protected (deferred) |
+| `/*` | — | Redirects to `/login` |
 
 ### Design System
 - CSS custom properties defined in `global.css` under `:root` (light) and `.dark` (dark).
@@ -61,15 +81,19 @@ graph LR
 - All component styles reference tokens only — no hardcoded colors anywhere.
 
 ## Documentation Index
-- [00_overview.md](./00_overview.md) - High-level overview and rules
-- [01_database_schema.md](./01_database_schema.md) - Schema design and ERD
-- [02_rls_and_auth.md](./02_rls_and_auth.md) - Roles and Row Level Security
-- [03_qr_payload.md](./03_qr_payload.md) - QR parsing and lookup logic
-- [04_scan_lifecycle.md](./04_scan_lifecycle.md) - Scan status flow and sync
-- [../auth_flow.md](../auth_flow.md) - Supabase JWT lifecycle, AuthContext state, PWA behavior, Extension auth preview
+- [00_overview.md](./00_overview.md) — High-level overview, rules, and frontend architecture
+- [01_database_schema.md](./01_database_schema.md) — Schema design, ERD, and migration history
+- [02_rls_and_auth.md](./02_rls_and_auth.md) — Roles, RLS policies, and UI/UX access rules
+- [03_qr_payload.md](./03_qr_payload.md) — QR parsing, lookup logic, and Chrome Extension DOM integration
+- [04_scan_lifecycle.md](./04_scan_lifecycle.md) — Scan status flow, session lifecycle, purge logic, and sync
+- [05_frontend_patterns.md](./05_frontend_patterns.md) — Key frontend patterns: auth, troop context, scan logic
+- [06_chrome_extension.md](./06_chrome_extension.md) — Chrome Extension architecture, auth, and sync mechanics
+- [../auth_flow.md](../auth_flow.md) — Supabase JWT lifecycle, AuthContext, PWA behavior
+- [../hosting.md](../hosting.md) — Cloudflare Pages deployment and environment config
 
 ## Deferred Features
-- Multi-tenancy UX
+- Multi-tenancy UX (schema ready)
 - Stripe billing integration
 - Demo mode
-- Onboarding walkthrough
+- Role-based onboarding walkthrough
+- Chrome Web Store submission
