@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TLC Attendance Login</title>
+  <style>
+    body { font-family: sans-serif; padding: 16px; min-width: 250px; }
+    .hidden { display: none; }
+    .error { color: red; margin-top: 8px; font-size: 14px; }
+    .success { color: green; margin-top: 8px; font-size: 14px; }
+    div { margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+  <h3>TLC Attendance</h3>
+  
+  <div id="login-container">
+    <div>
+      <label>Email</label><br>
+      <input type="email" id="email" required>
+    </div>
+    <div>
+      <label>Password</label><br>
+      <input type="password" id="password" required>
+    </div>
+    <button id="login-btn">Log In</button>
+  </div>
+
+  <div id="logged-in-container" class="hidden">
+    <p>Logged in as <span id="user-email"></span></p>
+    <button id="logout-btn">Log Out</button>
+  </div>
+
+  <div id="status-message"></div>
+
+  <script type="module" src="/src/popup.js"></script>
+</body>
+</html>

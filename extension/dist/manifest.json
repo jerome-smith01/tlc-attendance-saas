@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "TLC Attendance Sync",
+  "version": "1.0.0",
+  "description": "Syncs attendance from Supabase to Trail Life Connect",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://www.traillifeconnect.com/attendance*",
+    "https://*.supabase.co/*"
+  ],
+  "action": {
+    "default_popup": "index.html"
+  },
+  "background": {
+    "service_worker": "service-worker-loader.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "js": [
+        "assets/content.js-KlHW0lF-.js"
+      ],
+      "matches": [
+        "https://www.traillifeconnect.com/attendance*"
+      ]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "matches": [
+        "https://www.traillifeconnect.com/*"
+      ],
+      "resources": [
+        "assets/content.js-KlHW0lF-.js"
+      ],
+      "use_dynamic_url": false
+    }
+  ]
+}

@@ -53,14 +53,22 @@ export function Scanner() {
       .eq('session_id', session.id)
       .order('created_at', { ascending: false });
     if (!error && data) {
-      const formatted = data.map(s => ({
-        id: s.id,
-        roster_id: s.roster_id,
-        member: s.roster,
-        time: new Date(s.created_at).toLocaleTimeString(),
-        status: 'success',
-        message: 'Saved'
-      }));
+      const seen = new Set();
+      const formatted = [];
+      data.forEach(s => {
+        const key = s.roster_id || s.roster?.id || s.id;
+        if (key && !seen.has(key)) {
+          seen.add(key);
+          formatted.push({
+            id: s.id,
+            roster_id: s.roster_id,
+            member: s.roster,
+            time: new Date(s.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+            status: 'success',
+            message: 'Scanned In'
+          });
+        }
+      });
       setAttendance(formatted);
       setSelectedScans(new Set());
     }
@@ -94,13 +102,25 @@ export function Scanner() {
 
   const handleEndSession = async () => {
     if (window.confirm("Are you sure you want to end this session? No more scans can be recorded after ending.")) {
-      const { error } = await supabase.from('sessions').update({ ended_at: new Date().toISOString() }).eq('id', session.id);
+      const now = new Date().toISOString();
+      const { error } = await supabase.from('sessions').update({ ended_at: now }).eq('id', session.id);
       if (error) {
         alert("Failed to end session: " + error.message);
-      } else {
-        setSession({ ...session, ended_at: new Date().toISOString() });
-        await stopScanner();
+        return;
       }
+
+      // Approve all pending scans so they are visible to the sync extension
+      const { error: scansError } = await supabase
+        .from('scans')
+        .update({ status: 'approved' })
+        .eq('session_id', session.id)
+        .eq('status', 'pending');
+      if (scansError) {
+        alert("Session ended, but failed to approve scans: " + scansError.message);
+      }
+
+      setSession({ ...session, ended_at: now });
+      await stopScanner();
     }
   };
 
@@ -111,6 +131,20 @@ export function Scanner() {
         alert("Failed to reenable session: " + error.message);
       } else {
         setSession({ ...session, ended_at: null });
+      }
+    }
+  };
+
+  const handleResetSyncSession = async () => {
+    if (window.confirm("Are you sure you want to reset the sync status for this session? This will mark it as not synced so it can be synced again.")) {
+      const { error } = await supabase
+        .from('sessions')
+        .update({ synced_at: null, synced_by: null, purge_after: null })
+        .eq('id', session.id);
+      if (error) {
+        alert("Error resetting sync status: " + error.message);
+      } else {
+        setSession({ ...session, synced_at: null, synced_by: null, purge_after: null });
       }
     }
   };
@@ -229,17 +263,23 @@ export function Scanner() {
             playWarningSound();
           }
 
-          // Add to attendance list
-          if (result.status === 'success' && result.scanRecord) {
-            setAttendance(prev => [
-              { id: result.scanRecord.id, roster_id: result.member.id, member: result.member, time: new Date().toLocaleTimeString(), status: 'success', message: 'Saved' },
-              ...prev
-            ]);
-          } else {
-            setAttendance(prev => [
-              { id: 'temp-' + Date.now(), member: result.member, time: new Date().toLocaleTimeString(), status: result.status, message: result.message },
-              ...prev
-            ]);
+          // Add to attendance list only if it's a valid scan and not already scanned in (no duplicate rows)
+          if ((result.status === 'success' || result.status === 'offline_queued') && result.member) {
+            setAttendance(prev => {
+              const rId = result.member.id;
+              if (prev.some(item => item.roster_id === rId || item.member?.id === rId)) {
+                return prev;
+              }
+              const newEntry = {
+                id: result.scanRecord ? result.scanRecord.id : 'temp-' + Date.now(),
+                roster_id: rId,
+                member: result.member,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+                status: 'success',
+                message: result.status === 'offline_queued' ? 'Saved Offline' : 'Scanned In'
+              };
+              return [newEntry, ...prev];
+            });
           }
           
           resolve(); // Resolve immediately for known members
@@ -335,10 +375,15 @@ export function Scanner() {
     if (targetRosterId) {
       const { data } = await supabase.from('scans').insert([{ session_id: session.id, roster_id: targetRosterId, status: 'pending', scanned_by: user.id }]).select();
       if (data) {
-        setAttendance(prev => [
-          { id: data[0].id, roster_id: targetRosterId, time: new Date().toLocaleTimeString(), status: 'success', message: 'Resolved & Scanned', member: targetMember },
-          ...prev
-        ]);
+        setAttendance(prev => {
+          if (prev.some(item => item.roster_id === targetRosterId || item.member?.id === targetRosterId)) {
+            return prev;
+          }
+          return [
+            { id: data[0].id, roster_id: targetRosterId, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }), status: 'success', message: 'Scanned In', member: targetMember },
+            ...prev
+          ];
+        });
       }
     }
 
@@ -475,13 +520,22 @@ export function Scanner() {
             <div style={{ textAlign: 'center', padding: '2rem', backgroundColor: 'var(--glass-bg)', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
               <h2>This session has been ended.</h2>
               <p style={{ color: 'var(--muted-foreground)' }}>No further scans can be recorded.</p>
-              {(isGlobalAdmin || currentUserRole === 'troop_admin' || currentUserRole === 'billing_admin') && !session.synced_at && (
-                <button
-                  onClick={handleReenableSession}
-                  style={{ marginTop: '1rem', padding: '0.75rem 1.5rem', backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                >
-                  Reenable Session
-                </button>
+              {(isGlobalAdmin || currentUserRole === 'troop_admin' || currentUserRole === 'billing_admin') && (
+                session.synced_at ? (
+                  <button
+                    onClick={handleResetSyncSession}
+                    style={{ marginTop: '1rem', padding: '0.75rem 1.5rem', backgroundColor: '#eab308', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                    Reset Sync Status
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleReenableSession}
+                    style={{ marginTop: '1rem', padding: '0.75rem 1.5rem', backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                    Reenable Session
+                  </button>
+                )
               )}
             </div>
           )}
@@ -640,10 +694,10 @@ export function Scanner() {
             );
           })()}
 
-          {/* Attendance */}
+          {/* Scanned In People */}
           <div style={{ marginTop: '2rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 style={{ margin: 0 }}>Attendance ({attendance.length})</h3>
+              <h3 style={{ margin: 0 }}>Scanned In ({attendance.length})</h3>
               {(isGlobalAdmin || currentUserRole === 'troop_admin' || currentUserRole === 'billing_admin') && selectedScans.size > 0 && (
                 <button
                   onClick={handleBulkRemove}
@@ -675,7 +729,7 @@ export function Scanner() {
                 <tbody>
                   {attendance.length === 0 ? (
                     <tr>
-                      <td colSpan="4" style={{ padding: '2rem', textAlign: 'center', color: 'var(--muted-foreground)' }}>No scans yet in this session.</td>
+                      <td colSpan="4" style={{ padding: '2rem', textAlign: 'center', color: 'var(--muted-foreground)' }}>No people scanned in yet for this session.</td>
                     </tr>
                   ) : (
                     attendance.map((scan) => (

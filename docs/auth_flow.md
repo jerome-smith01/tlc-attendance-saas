@@ -20,12 +20,12 @@
 - No re-login required after closing and reopening the PWA
 - Session expires per Supabase token TTL (auto-refreshed if app is open)
 
-## 5. Chrome Extension Auth (Preview — Phase 5)
-- Extension popup will call `supabase.auth.signInWithPassword()` independently
-- JWT stored in `chrome.storage.local` (not localStorage — different security boundary)
-- Content script reads JWT from `chrome.storage.local` before showing Sync button
-- Extension and web app share the same Supabase project but manage sessions separately
-
+## 5. Chrome Extension Auth (Phase 5 Implemented)
+- The extension acts as a distinct client connecting to the same Supabase project via a Vite build (`@crxjs/vite-plugin`).
+- **Login UI**: A simple popup injected by `index.html` and `popup.js` calls `supabase.auth.signInWithPassword()`.
+- **Token Storage**: The Supabase SDK within the extension is explicitly configured to use `chrome.storage.local` instead of `localStorage`.
+- **Background Refresh**: The `background.js` service worker instantiates the Supabase client. Because it uses the official SDK, it inherits the automatic token refresh capability, keeping the session alive seamlessly.
+- **Content Script Validation**: The `content.js` script listens to `chrome.storage.onChanged` to detect when the `supabase_session` becomes active or null, enabling or disabling the "Sync" button dynamically.
 ## 6. Security Notes
 - Anon key is a *public* key (safe to bundle); it only permits operations allowed by RLS
 - Service Role key is NEVER used client-side
