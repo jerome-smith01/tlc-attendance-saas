@@ -50,7 +50,7 @@ export function Dashboard() {
   }
 
   return (
-    <div style={{ padding: '2rem', color: 'var(--foreground)', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
+    <div style={{ padding: 'clamp(1rem, 5vw, 2rem)', color: 'var(--foreground)', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
       <header style={{ marginBottom: '2rem' }}>
         <h1 style={{ color: 'var(--foreground)' }}>Dashboard</h1>
       </header>
@@ -64,10 +64,10 @@ export function Dashboard() {
         </div>
       ) : (
         <>
-          <div style={{ marginBottom: '2rem', padding: '1.5rem', backgroundColor: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}>
+          <div style={{ marginBottom: '2rem', padding: 'clamp(1rem, 4vw, 1.5rem)', backgroundColor: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}>
             <h2 style={{ marginTop: 0 }}>Troop {selectedTroop?.troop_number} Overview</h2>
             
-            <div style={{ marginTop: '1rem', display: 'flex', gap: '2rem', alignItems: 'center' }}>
+            <div style={{ marginTop: '1.25rem', display: 'flex', gap: '1rem 2rem', alignItems: 'center', flexWrap: 'wrap' }}>
               <div>
                 <strong>Active Users (Backend Access):</strong> {loadingStats ? '...' : activeUsersCount}
               </div>
@@ -75,7 +75,7 @@ export function Dashboard() {
                 <strong>Total Sessions:</strong> {loadingStats ? '...' : sessions.length}
               </div>
               
-              <div style={{ marginLeft: 'auto', display: 'flex', gap: '1rem' }}>
+              <div style={{ display: 'flex', gap: '1rem', flexShrink: 0, marginLeft: 'auto' }}>
                 <Link to="/scanner" style={{ padding: '0.75rem 1.5rem', backgroundColor: 'var(--color-primary)', color: 'white', textDecoration: 'none', borderRadius: '4px', display: 'inline-block', fontWeight: 'bold' }}>
                   Launch Scanner
                 </Link>

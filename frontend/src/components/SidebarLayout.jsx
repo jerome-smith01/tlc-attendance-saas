@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTroop } from '../context/TroopContext';
@@ -8,8 +9,10 @@ export function SidebarLayout() {
   const { troops, selectedTroopId, setSelectedTroopId, loadingTroops } = useTroop();
   const navigate = useNavigate();
   const location = useLocation();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const handleSignOut = async () => {
+    setMobileNavOpen(false);
     await signOut();
     navigate('/login');
   };
@@ -26,41 +29,48 @@ export function SidebarLayout() {
   });
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-primary)' }}>
-      {/* Sidebar */}
-      <nav style={{ 
-        width: '240px', 
-        borderRight: '1px solid var(--border-color)', 
-        padding: '1.5rem 1rem', 
-        display: 'flex', 
-        flexDirection: 'column',
-        backgroundColor: 'var(--bg-secondary)'
-      }}>
+    <div className="layout-root">
+      {/* Backdrop for mobile navigation */}
+      <div 
+        className={`nav-backdrop ${mobileNavOpen ? 'open' : ''}`} 
+        onClick={() => setMobileNavOpen(false)}
+      />
+
+      {/* Sidebar Navigation */}
+      <nav className={`sidebar ${mobileNavOpen ? 'open' : ''}`}>
+        <button 
+          className="sidebar-close-btn" 
+          onClick={() => setMobileNavOpen(false)}
+          aria-label="Close navigation menu"
+        >
+          ✕
+        </button>
+
         <h2 style={{ padding: '0 1rem', marginBottom: '2rem', color: 'var(--text-primary)' }}>TLC Attendance</h2>
         
         <div style={{ flexGrow: 1 }}>
-          <Link to="/dashboard" style={linkStyle('/dashboard')}>
+          <Link to="/dashboard" style={linkStyle('/dashboard')} onClick={() => setMobileNavOpen(false)}>
             Dashboard
           </Link>
-          <Link to="/roster" style={linkStyle('/roster')}>
+          <Link to="/roster" style={linkStyle('/roster')} onClick={() => setMobileNavOpen(false)}>
             Roster
           </Link>
-          <Link to="/sessions" style={linkStyle('/sessions')}>
+          <Link to="/sessions" style={linkStyle('/sessions')} onClick={() => setMobileNavOpen(false)}>
             Sessions
           </Link>
-          <Link to="/scanner" style={linkStyle('/scanner')}>
+          <Link to="/scanner" style={linkStyle('/scanner')} onClick={() => setMobileNavOpen(false)}>
             Scanner
           </Link>
-          <Link to="/billing" style={linkStyle('/billing')}>
+          <Link to="/billing" style={linkStyle('/billing')} onClick={() => setMobileNavOpen(false)}>
             Billing
           </Link>
-          <Link to="/complete-profile" style={linkStyle('/complete-profile')}>
+          <Link to="/complete-profile" style={linkStyle('/complete-profile')} onClick={() => setMobileNavOpen(false)}>
             Profile
           </Link>
         </div>
 
         <div style={{ padding: '1rem', borderTop: '1px solid var(--border-color)', marginTop: 'auto' }}>
-          <p style={{ margin: '0 0 1rem 0', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+          <p style={{ margin: '0 0 1rem 0', color: 'var(--text-secondary)', fontSize: '0.875rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {user?.email}
           </p>
           <button 
@@ -81,18 +91,17 @@ export function SidebarLayout() {
       </nav>
 
       {/* Main Content Area */}
-      <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+      <div className="layout-body">
         {/* Top Navbar */}
-        <header style={{ 
-          height: '64px',
-          borderBottom: '1px solid var(--border-color)',
-          backgroundColor: 'var(--bg-secondary)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'flex-end',
-          padding: '0 2rem',
-          gap: '1rem'
-        }}>
+        <header className="layout-header">
+          <button 
+            className="hamburger-btn" 
+            onClick={() => setMobileNavOpen(true)}
+            aria-label="Open navigation menu"
+          >
+            ☰
+          </button>
+
           {loadingTroops ? (
             <span style={{ color: 'var(--text-secondary)' }}>Loading context...</span>
           ) : (
@@ -115,7 +124,7 @@ export function SidebarLayout() {
         </header>
 
         {/* Page Content */}
-        <main style={{ flexGrow: 1, overflow: 'auto' }}>
+        <main className="layout-main">
           <Outlet />
         </main>
       </div>

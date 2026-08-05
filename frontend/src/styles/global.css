@@ -43,6 +43,14 @@
   --transition-fast:   150ms ease;
   --transition-normal: 250ms ease;
   --transition-slow:   400ms ease;
+
+  /* Custom variables for theme UI elements */
+  --border-color:      rgba(0, 0, 0, 0.12);
+  --bg-primary:        var(--background);
+  --bg-secondary:      #ffffff;
+  --bg-elevated:       #f8fafc;
+  --text-primary:      var(--foreground);
+  --text-secondary:    var(--muted-foreground);
 }
 
 /* ── Dark Theme ── */
@@ -57,6 +65,11 @@
   --primary-foreground:  #000000;
   --glass-bg:            rgba(30, 41, 59, 0.5);
   --glass-border:        rgba(255, 255, 255, 0.1);
+
+  /* Custom variables for theme UI elements in dark mode */
+  --border-color:      rgba(255, 255, 255, 0.1);
+  --bg-secondary:      #1a1a1f;
+  --bg-elevated:       #1e293b;
 }
 
 /* ── Reset + Base ── */
@@ -335,4 +348,116 @@ button:active, .btn-primary:active, .btn-action:active {
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
   display: inline-block;
+}
+
+/* ── Responsive Sidebar Layout ── */
+.sidebar {
+  width: 240px;
+  border-right: 1px solid var(--border-color);
+  padding: 1.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-secondary);
+  flex-shrink: 0;
+  transition: left 0.25s ease;
+}
+
+.layout-root {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--bg-primary);
+}
+
+.layout-body {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0; /* prevent flex overflow */
+}
+
+.layout-main {
+  flex-grow: 1;
+  overflow: auto;
+}
+
+.layout-header {
+  height: 64px;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 2rem;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+
+.hamburger-btn {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.5rem;
+  color: var(--foreground);
+  padding: 0.25rem;
+  margin-right: auto; /* push to left */
+}
+
+.nav-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 150;
+  backdrop-filter: blur(2px);
+}
+
+.sidebar-close-btn {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--foreground);
+  align-self: flex-end;
+  margin-bottom: 1rem;
+  padding: 0.25rem 0.5rem;
+}
+
+@media (max-width: 767px) {
+  .hamburger-btn {
+    display: block;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: -260px;
+    width: 260px;
+    height: 100vh;
+    z-index: 200;
+    padding-top: 1rem;
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
+  }
+
+  .sidebar.open {
+    left: 0;
+  }
+
+  .nav-backdrop.open {
+    display: block;
+  }
+
+  .sidebar-close-btn {
+    display: flex;
+  }
+
+  .layout-body {
+    width: 100%;
+  }
+
+  .layout-header {
+    padding: 0 1rem;
+    height: 56px;
+  }
 }
