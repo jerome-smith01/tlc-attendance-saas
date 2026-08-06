@@ -25,7 +25,7 @@ export function Roster() {
     <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
       <header style={{ marginBottom: '2rem' }}>
         <h1 style={{ color: 'var(--foreground)' }}>Roster & Invites</h1>
-        <p style={{ color: 'var(--muted-foreground)' }}>
+        <p style={{ color: 'var(--text-secondary)' }}>
           Manage members for Troop {selectedTroop?.troop_number}
         </p>
       </header>

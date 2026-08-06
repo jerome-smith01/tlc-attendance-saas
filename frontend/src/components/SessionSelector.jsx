@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { DataTable } from './common/DataTable';
 
 export function SessionSelector({ troopId, onSessionSelect }) {
   const [sessions, setSessions] = useState([]);
@@ -71,39 +72,39 @@ export function SessionSelector({ troopId, onSessionSelect }) {
   }
 
   if (loading) {
-    return <div style={{ padding: '1rem', border: '1px solid var(--glass-border)', borderRadius: '8px', backgroundColor: 'var(--glass-bg)' }}>Loading sessions...</div>;
+    return <div className="glass-card" style={{ padding: '1rem' }}>Loading sessions...</div>;
   }
 
+  const columns = [
+    { key: 'event_name', label: 'Event Name' },
+    { key: 'event_date', label: 'Date' },
+    { 
+      key: 'ended_at', 
+      label: 'Status', 
+      render: (val) => val ? <span className="badge badge-neutral">Ended</span> : <span className="badge badge-success">Active</span> 
+    }
+  ];
+
   return (
-    <div style={{ padding: '1.5rem', border: '1px solid var(--glass-border)', borderRadius: '8px', backgroundColor: 'var(--glass-bg)', marginBottom: '1.5rem' }}>
-      <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Active Session</h2>
+    <div className="glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <h2 style={{ margin: 0 }}>Select Session</h2>
+        {!isCreatingNew && (
+          <button className="btn btn-primary" onClick={() => setIsCreatingNew(true)}>
+            + New Session
+          </button>
+        )}
+      </div>
       
       {error && <div style={{ color: 'var(--color-error)', marginBottom: '1rem' }}>{error}</div>}
 
       {!isCreatingNew ? (
-        <div>
-          <select 
-            onChange={(e) => {
-              const val = e.target.value;
-              if (val === 'NEW') {
-                setIsCreatingNew(true);
-              } else if (val) {
-                const session = sessions.find(s => s.id === val);
-                if (session) onSessionSelect(session);
-              }
-            }}
-            defaultValue=""
-            style={{ padding: '0.5rem', fontSize: '1rem', width: '100%', maxWidth: '400px', marginBottom: '1rem', display: 'block' }}
-          >
-            <option value="" disabled>Select a session to start scanning...</option>
-            {sessions.map(s => (
-              <option key={s.id} value={s.id}>
-                {s.event_name} ({s.event_date}) {s.ended_at ? '(Ended)' : ''}
-              </option>
-            ))}
-            <option value="NEW">+ Create New Session</option>
-          </select>
-        </div>
+        <DataTable 
+          columns={columns}
+          data={sessions}
+          storageKey="session_selector"
+          onRowClick={(row) => onSessionSelect(row)}
+        />
       ) : (
         <form onSubmit={handleCreateSession} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '400px' }}>
           <div>
@@ -113,7 +114,7 @@ export function SessionSelector({ troopId, onSessionSelect }) {
               placeholder="e.g. Regular Meeting" 
               value={newEventName}
               onChange={(e) => setNewEventName(e.target.value)}
-              style={{ width: '100%', padding: '0.5rem' }}
+              style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--foreground)' }}
               required
             />
           </div>
@@ -123,15 +124,15 @@ export function SessionSelector({ troopId, onSessionSelect }) {
               type="date" 
               value={newEventDate}
               onChange={(e) => setNewEventDate(e.target.value)}
-              style={{ width: '100%', padding: '0.5rem' }}
+              style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--foreground)' }}
               required
             />
           </div>
           <div style={{ display: 'flex', gap: '1rem' }}>
-            <button type="submit" disabled={creating} style={{ flex: 1, padding: '0.5rem', backgroundColor: 'var(--color-primary)', color: 'white' }}>
+            <button type="submit" disabled={creating} className="btn btn-primary" style={{ flex: 1 }}>
               {creating ? 'Creating...' : 'Create Session'}
             </button>
-            <button type="button" onClick={() => setIsCreatingNew(false)} style={{ padding: '0.5rem' }}>
+            <button type="button" onClick={() => setIsCreatingNew(false)} className="btn btn-secondary">
               Cancel
             </button>
           </div>

@@ -1,6 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useTroop } from '../context/TroopContext';
+import { DataTable } from '../components/common/DataTable';
+import { Modal } from '../components/common/Modal';
+import { useConfirm } from '../components/common/ConfirmContext';
+import { useToast } from '../components/common/ToastContext';
 
 export function Sessions() {
   const { selectedTroopId, selectedTroop, isGlobalAdmin, loadingTroops } = useTroop();
@@ -11,6 +15,9 @@ export function Sessions() {
   const [sessionAttendees, setSessionAttendees] = useState([]);
   const [loadingAttendees, setLoadingAttendees] = useState(false);
   const [attendeeSearch, setAttendeeSearch] = useState('');
+
+  const confirm = useConfirm();
+  const toast = useToast();
 
   useEffect(() => {
     if (selectedTroopId) {
@@ -58,6 +65,7 @@ export function Sessions() {
       }
     } catch (err) {
       console.error('Error fetching sessions:', err);
+      toast('Error fetching sessions', 'error');
     } finally {
       setLoading(false);
     }
@@ -77,11 +85,12 @@ export function Sessions() {
       if (!error && data) {
         const seen = new Set();
         const uniqueList = [];
-        data.forEach(scan => {
+        data.forEach((scan, index) => {
           const key = scan.roster?.id || scan.id;
           if (!seen.has(key)) {
             seen.add(key);
             uniqueList.push({
+              index: index + 1,
               id: scan.id,
               name: scan.roster ? `${scan.roster.first_name} ${scan.roster.last_initial || ''}`.trim() : 'Unknown Member',
               memberId: scan.roster?.member_id || scan.roster?.tlc_id || '-',
@@ -103,59 +112,170 @@ export function Sessions() {
   };
 
   const handleDeleteSession = async (sessionId) => {
-    if (window.confirm("Are you sure you want to delete this session? This will also delete all associated scans and cannot be undone.")) {
+    if (await confirm("Are you sure you want to delete this session? This will also delete all associated scans and cannot be undone.")) {
       const { error } = await supabase.from('sessions').delete().eq('id', sessionId);
       if (error) {
-        alert("Error deleting session: " + error.message);
+        toast("Error deleting session: " + error.message, 'error');
       } else {
         setSessions(prev => prev.filter(s => s.id !== sessionId));
+        toast('Session deleted', 'success');
       }
     }
   };
 
   const handleEndSession = async (sessionId) => {
-    if (window.confirm("Are you sure you want to end this session? This will approve all pending scans so they can be synced.")) {
+    if (await confirm("Are you sure you want to end this session? This will approve all pending scans so they can be synced.")) {
       const now = new Date().toISOString();
       const { error: sessionError } = await supabase.from('sessions').update({ ended_at: now }).eq('id', sessionId);
       if (sessionError) {
-        alert("Error ending session: " + sessionError.message);
+        toast("Error ending session: " + sessionError.message, 'error');
         return;
       }
       
       const { error: scansError } = await supabase.from('scans').update({ status: 'approved' }).eq('session_id', sessionId).eq('status', 'pending');
       if (scansError) {
-        alert("Error approving scans: " + scansError.message);
+        toast("Error approving scans: " + scansError.message, 'error');
         return;
       }
 
       setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, ended_at: now } : s));
+      toast('Session ended', 'success');
     }
   };
 
   const handleReenableSession = async (sessionId) => {
-    if (window.confirm("Are you sure you want to reenable this session?")) {
+    if (await confirm("Are you sure you want to reenable this session?")) {
       const { error } = await supabase.from('sessions').update({ ended_at: null }).eq('id', sessionId);
       if (error) {
-        alert("Error reenabling session: " + error.message);
+        toast("Error reenabling session: " + error.message, 'error');
       } else {
         setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, ended_at: null } : s));
+        toast('Session reenabled', 'success');
       }
     }
   };
 
   const handleResetSyncSession = async (sessionId) => {
-    if (window.confirm("Are you sure you want to reset the sync status for this session? This will mark it as not synced so it can be synced again.")) {
+    if (await confirm("Are you sure you want to reset the sync status for this session? This will mark it as not synced so it can be synced again.")) {
       const { error } = await supabase
         .from('sessions')
         .update({ synced_at: null, synced_by: null, purge_after: null })
         .eq('id', sessionId);
       if (error) {
-        alert("Error resetting sync status: " + error.message);
+        toast("Error resetting sync status: " + error.message, 'error');
       } else {
         setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, synced_at: null, synced_by: null, purge_after: null } : s));
+        toast('Sync status reset', 'success');
       }
     }
   };
+
+  const sessionColumns = [
+    {
+      label: 'Event Name',
+      key: 'event_name',
+      render: (val, session) => (
+        <button
+          onClick={() => handleViewAttendees(session)}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'var(--color-primary)',
+            cursor: 'pointer',
+            textDecoration: 'underline',
+            font: 'inherit',
+            fontWeight: '600',
+            textAlign: 'left',
+            padding: 0
+          }}
+          title="Click to view attendees"
+        >
+          {session.event_name}
+        </button>
+      )
+    },
+    {
+      label: 'Date',
+      key: 'event_date'
+    },
+    {
+      label: 'Status',
+      key: 'status', // Virtual accessor for sorting if needed
+      render: (val, session) => {
+        if (session.synced_at) return <span className="badge badge-success">✅ Synced ({new Date(session.synced_at).toLocaleDateString()})</span>;
+        if (session.ended_at) return <span className="badge badge-error">🛑 Ended</span>;
+        return <span className="badge badge-warning">⏳ Pending Sync</span>;
+      }
+    },
+    {
+      label: 'Synced By',
+      key: 'synced_by',
+      render: (val, session) => session.synced_by ? (usersMap[session.synced_by] || ('User ' + session.synced_by.substring(0, 8) + '...')) : '-'
+    }
+  ];
+
+  if (isGlobalAdmin || selectedTroop?.currentUserRole === 'troop_admin' || selectedTroop?.currentUserRole === 'billing_admin') {
+    sessionColumns.push({
+      label: 'Actions',
+      key: 'id',
+      render: (val, session) => (
+        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+          {session.synced_at && (
+            <button
+              onClick={() => handleResetSyncSession(session.id)}
+              className="btn btn-secondary"
+              style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
+              title="Reset Sync Status"
+            >
+              Reset Sync
+            </button>
+          )}
+          {!session.synced_at && session.ended_at && (
+            <button
+              onClick={() => handleReenableSession(session.id)}
+              className="btn btn-primary"
+              style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
+              title="Reenable Session"
+            >
+              Reenable
+            </button>
+          )}
+          {!session.synced_at && !session.ended_at && (
+            <button
+              onClick={() => handleEndSession(session.id)}
+              className="btn btn-secondary"
+              style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
+              title="End Session"
+            >
+              End
+            </button>
+          )}
+          <button 
+            onClick={() => handleDeleteSession(session.id)}
+            className="btn btn-destructive"
+            style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
+            title="Delete Session"
+          >
+            Delete
+          </button>
+        </div>
+      )
+    });
+  }
+
+  const filteredAttendees = useMemo(() => {
+    return sessionAttendees.filter(a => 
+      a.name.toLowerCase().includes(attendeeSearch.toLowerCase()) || 
+      a.memberId.toLowerCase().includes(attendeeSearch.toLowerCase())
+    );
+  }, [sessionAttendees, attendeeSearch]);
+
+  const attendeeColumns = [
+    { label: '#', key: 'index' },
+    { label: 'Name', key: 'name' },
+    { label: 'Member ID', key: 'memberId' },
+    { label: 'Scan Time', key: 'time' }
+  ];
 
   if (loadingTroops) {
     return <div style={{ padding: '2rem' }}>Loading sessions...</div>;
@@ -174,7 +294,7 @@ export function Sessions() {
     <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
       <header style={{ marginBottom: '2rem' }}>
         <h1 style={{ color: 'var(--foreground)' }}>Session History</h1>
-        <p style={{ color: 'var(--muted-foreground)' }}>
+        <p style={{ color: 'var(--text-secondary)' }}>
           Manage scanning sessions for Troop {selectedTroop?.troop_number}
         </p>
       </header>
@@ -182,236 +302,66 @@ export function Sessions() {
       {loading ? (
         <p>Loading sessions...</p>
       ) : (
-        <div style={{ border: '1px solid var(--border-color)', padding: '1.5rem', borderRadius: '8px', backgroundColor: 'var(--glass-bg)' }}>
+        <div className="glass-card" style={{ padding: '1.5rem' }}>
           <p style={{ fontSize: '0.875rem', marginBottom: '1.5rem', color: 'var(--text-secondary)' }}>
             A list of past scanning sessions. Synced session data is automatically purged after 14 days.
           </p>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: '2px solid var(--border-color)', textAlign: 'left' }}>
-                <th style={{ padding: '0.75rem 0.5rem', color: 'var(--text-primary)' }}>Event Name</th>
-                <th style={{ padding: '0.75rem 0.5rem', color: 'var(--text-primary)' }}>Date</th>
-                <th style={{ padding: '0.75rem 0.5rem', color: 'var(--text-primary)' }}>Status</th>
-                <th style={{ padding: '0.75rem 0.5rem', color: 'var(--text-primary)' }}>Synced By</th>
-                {(isGlobalAdmin || selectedTroop?.currentUserRole === 'troop_admin' || selectedTroop?.currentUserRole === 'billing_admin') && (
-                  <th style={{ padding: '0.75rem 0.5rem', textAlign: 'right', color: 'var(--text-primary)' }}>Actions</th>
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {sessions.length === 0 ? (
-                <tr>
-                  <td colSpan="5" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>No sessions found.</td>
-                </tr>
-              ) : (
-                sessions.map(session => (
-                  <tr key={session.id} style={{ borderBottom: '1px solid var(--glass-border)' }}>
-                    <td style={{ padding: '1rem 0.5rem' }}>
-                      <button
-                        onClick={() => handleViewAttendees(session)}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: 'var(--color-primary, #0066cc)',
-                          cursor: 'pointer',
-                          textDecoration: 'underline',
-                          font: 'inherit',
-                          fontWeight: '600',
-                          textAlign: 'left',
-                          padding: 0
-                        }}
-                        title="Click to view attendees"
-                      >
-                        {session.event_name}
-                      </button>
-                    </td>
-                    <td style={{ padding: '1rem 0.5rem', color: 'var(--text-primary)' }}>{session.event_date}</td>
-                    <td style={{ padding: '1rem 0.5rem' }}>
-                      {session.synced_at 
-                        ? <span style={{ color: 'var(--color-success)' }}>✅ Synced ({new Date(session.synced_at).toLocaleDateString()})</span>
-                        : session.ended_at
-                        ? <span style={{ color: 'var(--color-warning)' }}>🛑 Ended</span>
-                        : <span style={{ color: 'var(--color-warning)' }}>⏳ Pending Sync</span>}
-                    </td>
-                    <td style={{ padding: '1rem 0.5rem', color: 'var(--text-secondary)' }}>
-                      {session.synced_by ? (usersMap[session.synced_by] || ('User ' + session.synced_by.substring(0, 8) + '...')) : '-'}
-                    </td>
-                    {(isGlobalAdmin || selectedTroop?.currentUserRole === 'troop_admin' || selectedTroop?.currentUserRole === 'billing_admin') && (
-                      <td style={{ padding: '1rem 0.5rem', textAlign: 'right' }}>
-                        {session.synced_at && (
-                          <button
-                            onClick={() => handleResetSyncSession(session.id)}
-                            style={{ marginRight: '0.5rem', padding: '0.4rem 0.75rem', backgroundColor: '#eab308', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}
-                            title="Reset Sync Status"
-                          >
-                            Reset Sync
-                          </button>
-                        )}
-                        {!session.synced_at && session.ended_at && (
-                          <button
-                            onClick={() => handleReenableSession(session.id)}
-                            style={{ marginRight: '0.5rem', padding: '0.4rem 0.75rem', backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}
-                            title="Reenable Session"
-                          >
-                            Reenable
-                          </button>
-                        )}
-                        {!session.synced_at && !session.ended_at && (
-                          <button
-                            onClick={() => handleEndSession(session.id)}
-                            style={{ marginRight: '0.5rem', padding: '0.4rem 0.75rem', backgroundColor: '#eab308', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}
-                            title="End Session"
-                          >
-                            End
-                          </button>
-                        )}
-                        <button 
-                          onClick={() => handleDeleteSession(session.id)}
-                          style={{ padding: '0.4rem 0.75rem', backgroundColor: 'var(--color-error)', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}
-                          title="Delete Session"
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+          <DataTable 
+            data={sessions}
+            columns={sessionColumns}
+            keyField="id"
+          />
         </div>
       )}
 
       {/* Attendee Details Modal */}
-      {selectedSessionModal && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            backgroundColor: 'rgba(0, 0, 0, 0.75)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: '1rem'
-          }}
-          onClick={() => setSelectedSessionModal(null)}
-        >
-          <div
-            style={{
-              backgroundColor: 'var(--background)',
-              border: '1px solid var(--border-color)',
-              borderRadius: '12px',
-              maxWidth: '700px',
-              width: '100%',
-              maxHeight: '85vh',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '0 12px 32px rgba(0,0,0,0.3)',
-              overflow: 'hidden'
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <h2 style={{ margin: 0, color: 'var(--foreground)', fontSize: '1.4rem' }}>{selectedSessionModal.event_name}</h2>
-                <p style={{ margin: '0.25rem 0 0 0', color: 'var(--muted-foreground)', fontSize: '0.9rem' }}>
-                  Date: {selectedSessionModal.event_date} &bull; Total Attendees: <strong>{sessionAttendees.length}</strong>
-                </p>
-              </div>
-              <button
-                onClick={() => setSelectedSessionModal(null)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  fontSize: '1.5rem',
-                  cursor: 'pointer',
-                  color: 'var(--muted-foreground)',
-                  lineHeight: 1
-                }}
-                title="Close"
-              >
-                &times;
-              </button>
-            </div>
+      <Modal
+        isOpen={!!selectedSessionModal}
+        onClose={() => setSelectedSessionModal(null)}
+        title={selectedSessionModal?.event_name || 'Session Attendees'}
+      >
+        <p style={{ margin: '0.25rem 0 1rem 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+          Date: {selectedSessionModal?.event_date} &bull; Total Attendees: <strong>{sessionAttendees.length}</strong>
+        </p>
 
-            {/* Modal Body */}
-            <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1 }}>
-              {loadingAttendees ? (
-                <p style={{ color: 'var(--text-secondary)' }}>Loading attendees...</p>
-              ) : sessionAttendees.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
-                  No attendees recorded for this session.
-                </div>
-              ) : (
-                <>
-                  <div style={{ marginBottom: '1rem' }}>
-                    <input
-                      type="text"
-                      placeholder="Search attendees..."
-                      value={attendeeSearch}
-                      onChange={e => setAttendeeSearch(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '0.6rem 1rem',
-                        borderRadius: '6px',
-                        border: '1px solid var(--border-color)',
-                        backgroundColor: 'var(--glass-bg)',
-                        color: 'var(--foreground)',
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                  </div>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '2px solid var(--border-color)', color: 'var(--text-primary)' }}>
-                        <th style={{ padding: '0.6rem 0.5rem', width: '40px' }}>#</th>
-                        <th style={{ padding: '0.6rem 0.5rem' }}>Name</th>
-                        <th style={{ padding: '0.6rem 0.5rem' }}>Member ID</th>
-                        <th style={{ padding: '0.6rem 0.5rem' }}>Scan Time</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sessionAttendees
-                        .filter(a => a.name.toLowerCase().includes(attendeeSearch.toLowerCase()) || a.memberId.toLowerCase().includes(attendeeSearch.toLowerCase()))
-                        .map((attendee, index) => (
-                          <tr key={attendee.id || index} style={{ borderBottom: '1px solid var(--glass-border)' }}>
-                            <td style={{ padding: '0.75rem 0.5rem', color: 'var(--muted-foreground)', fontSize: '0.85rem' }}>{index + 1}</td>
-                            <td style={{ padding: '0.75rem 0.5rem', fontWeight: 600, color: 'var(--text-primary)' }}>{attendee.name}</td>
-                            <td style={{ padding: '0.75rem 0.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{attendee.memberId}</td>
-                            <td style={{ padding: '0.75rem 0.5rem', color: 'var(--muted-foreground)', fontSize: '0.85rem' }}>{attendee.time}</td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                </>
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border-color)', textAlign: 'right' }}>
-              <button
-                onClick={() => setSelectedSessionModal(null)}
-                style={{
-                  padding: '0.5rem 1.25rem',
-                  backgroundColor: 'var(--color-primary, #0066cc)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontWeight: '600'
-                }}
-              >
-                Close
-              </button>
-            </div>
+        {loadingAttendees ? (
+          <p style={{ color: 'var(--text-secondary)' }}>Loading attendees...</p>
+        ) : sessionAttendees.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+            No attendees recorded for this session.
           </div>
+        ) : (
+          <>
+            <div style={{ marginBottom: '1rem' }}>
+              <input
+                type="text"
+                placeholder="Search attendees..."
+                value={attendeeSearch}
+                onChange={e => setAttendeeSearch(e.target.value)}
+                className="glass-card"
+                style={{
+                  width: '100%',
+                  padding: '0.6rem 1rem',
+                  border: '1px solid var(--border-color)',
+                  color: 'var(--foreground)',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+            <DataTable 
+              data={filteredAttendees}
+              columns={attendeeColumns}
+              keyField="id"
+            />
+          </>
+        )}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+          <button onClick={() => setSelectedSessionModal(null)} className="btn btn-secondary">
+            Close
+          </button>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }
+

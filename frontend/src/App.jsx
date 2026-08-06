@@ -3,6 +3,8 @@ import { AuthProvider } from './context/AuthContext';
 import { TroopProvider } from './context/TroopContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { SidebarLayout } from './components/SidebarLayout';
+import { ToastProvider } from './components/common/ToastContext';
+import { ConfirmProvider } from './components/common/ConfirmContext';
 import { Login } from './pages/Login';
 import { CompleteProfile } from './pages/CompleteProfile';
 import { Dashboard } from './pages/Dashboard';
@@ -15,60 +17,64 @@ export default function App() {
   return (
     <AuthProvider>
       <TroopProvider>
-        <HashRouter>
-          <Routes>
-            {/* Public */}
-            <Route path="/login" element={<Login />} />
+        <ToastProvider>
+          <ConfirmProvider>
+            <HashRouter>
+              <Routes>
+                {/* Public */}
+                <Route path="/login" element={<Login />} />
 
-            {/* Protected with Sidebar Layout */}
-            <Route element={<ProtectedRoute><SidebarLayout /></ProtectedRoute>}>
-              <Route path="/complete-profile" element={<CompleteProfile />} />
-              <Route 
-                path="/dashboard" 
-                element={
-                  <ProtectedRoute allowedRoles={['admin', 'adult_leader']}>
-                    <Dashboard />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/scanner" 
-                element={
-                  <ProtectedRoute allowedRoles={['admin', 'adult_leader', 'badge_scanner', 'scanner']}>
-                    <Scanner />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/roster" 
-                element={
-                  <ProtectedRoute allowedRoles={['admin', 'adult_leader']}>
-                    <Roster />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/sessions" 
-                element={
-                  <ProtectedRoute allowedRoles={['admin', 'adult_leader']}>
-                    <Sessions />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/billing" 
-                element={
-                  <ProtectedRoute allowedRoles={['admin', 'adult_leader']}>
-                    <Billing />
-                  </ProtectedRoute>
-                } 
-              />
-            </Route>
+                {/* Protected with Sidebar Layout */}
+                <Route element={<ProtectedRoute allowedRoles={['badge_scanner', 'troop_admin', 'billing_admin', 'global_admin']}><SidebarLayout /></ProtectedRoute>}>
+                  <Route path="/complete-profile" element={<CompleteProfile />} />
+                  <Route 
+                    path="/dashboard" 
+                    element={
+                      <ProtectedRoute allowedRoles={['troop_admin', 'billing_admin', 'global_admin']}>
+                        <Dashboard />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/scanner" 
+                    element={
+                      <ProtectedRoute allowedRoles={['badge_scanner', 'troop_admin', 'billing_admin', 'global_admin']}>
+                        <Scanner />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/roster" 
+                    element={
+                      <ProtectedRoute allowedRoles={['troop_admin', 'billing_admin', 'global_admin']}>
+                        <Roster />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/sessions" 
+                    element={
+                      <ProtectedRoute allowedRoles={['troop_admin', 'billing_admin', 'global_admin']}>
+                        <Sessions />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/billing" 
+                    element={
+                      <ProtectedRoute allowedRoles={['billing_admin', 'global_admin']}>
+                        <Billing />
+                      </ProtectedRoute>
+                    } 
+                  />
+                </Route>
 
-            {/* Default — redirect root to login; AuthContext will bounce to dashboard if logged in */}
+                {/* Default — redirect root to login; AuthContext will bounce to dashboard if logged in */}
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </HashRouter>
+          </ConfirmProvider>
+        </ToastProvider>
       </TroopProvider>
     </AuthProvider>
   );

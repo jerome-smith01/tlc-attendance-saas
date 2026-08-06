@@ -1,6 +1,9 @@
 # UI Redesign Action Plan
 
-Reference: `C:\Users\Jerom\My Apps\ai_skills\01.creating_new_features.md`
+Reference for planning and executing: `C:\Users\Jerom\My Apps\ai_skills\01.creating_new_features.md`
+Architecture docs: `C:\Users\Jerom\My Apps\tlc_attendance_saas\docs\architecture`
+  - Review these for the detailed planning
+  - Maintain these as we go
 
 ## 1. Confirming Requirements
 
@@ -40,9 +43,12 @@ You want to completely overhaul the UI/UX of the TLC Attendance app to match a n
 
 ### Phase 2: Role-Based Routing & Global Components
 - **File Changes**:
-  - `Modify` `src/App.jsx` - Update routing logic.
+  - `Modify` `src/App.jsx` - Update routing logic and whitelist `scanner`/`badge_scanner` roles.
   - `Modify` `src/components/SidebarLayout.jsx` - Filter nav by role and implement the Troop Switcher as a custom styled dropdown in the header.
-- **Key Pattern**: React Router v6 `<Route element={<ProtectedRoute allowedRoles={['...']} />}>`. Ensure `badge_scanner` skips sidebar entirely. Custom styling for dropdown replacing standard `<select>`.
+  - `Modify` `src/components/ProtectedRoute.jsx` - Support flexible matching for admin/leader role variations (`troop_admin`, `global_admin`, `billing_admin`, `adult_leader`, `owner`) and fallback paths.
+  - `New` `supabase/migrations/008_complete_onboarding_rpc.sql` - `complete_user_onboarding()` RPC function for non-admin onboarding under RLS.
+  - `Modify` `src/pages/CompleteProfile.jsx` - Execute `complete_user_onboarding` RPC on submit.
+- **Key Pattern**: React Router v6 `<Route element={<ProtectedRoute allowedRoles={['...']} />}>`. Flexible role matching helper (`isAdminOrLeader`). Custom styling for dropdown replacing standard `<select>`.
 - **Recommended Model**: Gemini 3.1 Pro (Low) - *Routine logical integration of access control into existing routes.*
 - **Manual Verification**: Login as a `badge_scanner` and attempt to navigate to `/dashboard` via URL; verify redirection back to `/scanner`. Verify Troop Switcher is a custom dropdown in the header.
 
@@ -57,7 +63,7 @@ You want to completely overhaul the UI/UX of the TLC Attendance app to match a n
 - **File Changes**:
   - `Modify` `src/pages/Scanner.jsx`
 - **Key Pattern**: Flexbox/Grid layouts for the collapsible inline table (`grid-template-rows: 1fr to 0fr`). Merging existing hooks (`useScanLogic`) with new JSX structure.
-  - **Photo**: Implement as a hidden file input wrapped in a styled button.
+  - **Photo**: Implement as a hidden file input wrapped in a styled button (`scanFile`).
   - **+ Manual Entry**: Implement as a new feature (likely a modal) to add a person to the roster/session if they forgot their badge.
   - **End Session**: Place the destructive "End Session" button next to the session name in the top header.
 - **Recommended Model**: Gemini 3.1 Pro (High) - *High-risk integration combining complex existing business logic with a completely new structural UI.*
@@ -80,5 +86,6 @@ You want to completely overhaul the UI/UX of the TLC Attendance app to match a n
 - **Manual Verification**: View the roster; verify youth rows do not display email fields, and layout uses glassmorphism.
 
 ## 4. Architecture Doc Updates Needed
-- Update `02_frontend_architecture.md` (or equivalent) to reflect the new `DataTable` component specifications.
-- Update routing documentation to explicitly document the `ProtectedRoute` role arrays and `<SidebarLayout>` access.
+- [x] **`02_rls_and_auth.md`**: Updated to document `complete_user_onboarding()` RPC function for non-admin onboarding.
+- [ ] **`05_frontend_patterns.md`**: Update during Phase 4 to document bulk photo upload scanning (`scanFile`) alongside live camera feed scanning.
+- [ ] **`05_frontend_patterns.md`**: Update to reflect `DataTable` component specifications upon completion of Phase 3.

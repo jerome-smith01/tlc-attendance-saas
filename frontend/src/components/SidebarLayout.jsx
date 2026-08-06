@@ -43,7 +43,11 @@ export function SidebarLayout() {
   });
 
   const currentUserRole = selectedTroop?.currentUserRole || '';
-  const isAdminOrLeader = isGlobalAdmin || currentUserRole.includes('admin') || currentUserRole.includes('leader') || currentUserRole === 'owner';
+  const isBadgeScanner = !isGlobalAdmin && currentUserRole === 'badge_scanner';
+
+  if (isBadgeScanner) {
+    return <Outlet />;
+  }
 
   const allNavLinks = [
     { path: '/dashboard', label: 'Dashboard' },
@@ -54,9 +58,8 @@ export function SidebarLayout() {
     { path: '/complete-profile', label: 'Profile' },
   ];
 
-  const visibleNavLinks = isAdminOrLeader
-    ? allNavLinks
-    : allNavLinks.filter(link => link.path === '/scanner' || link.path === '/complete-profile');
+  // Since we return early for badge_scanner, the rest are admins/leaders
+  const visibleNavLinks = allNavLinks;
 
   return (
     <div className="layout-root">

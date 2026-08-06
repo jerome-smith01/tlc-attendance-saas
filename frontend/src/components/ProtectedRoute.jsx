@@ -17,13 +17,13 @@ export function ProtectedRoute({ children, allowedRoles = null }) {
   if (allowedRoles && allowedRoles.length > 0) {
     const userRole = selectedTroop?.currentUserRole;
     
-    // Loosely match variations of admin/leader roles (e.g. 'global_admin', 'troop_admin', 'adult_leader')
-    const isAdminOrLeader = isGlobalAdmin || (userRole && (userRole.includes('admin') || userRole.includes('leader') || userRole === 'owner'));
+    // global_admin has access to everything
+    const isAdminOrLeader = isGlobalAdmin;
     const isAuthorized = isAdminOrLeader || (userRole && allowedRoles.includes(userRole));
     
     if (!isAuthorized) {
       let fallbackPath = '/dashboard';
-      if (userRole === 'badge_scanner' || userRole === 'scanner') fallbackPath = '/scanner';
+      if (userRole === 'badge_scanner') fallbackPath = '/scanner';
       else if (!userRole) fallbackPath = '/complete-profile';
       
       return <Navigate to={fallbackPath} replace />;

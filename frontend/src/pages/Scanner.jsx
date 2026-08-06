@@ -5,6 +5,9 @@ import { supabase } from '../lib/supabaseClient';
 import { SessionSelector } from '../components/SessionSelector';
 import { useScanLogic } from '../hooks/useScanLogic';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { useConfirm } from '../components/common/ConfirmContext';
+import { useToast } from '../components/common/ToastContext';
+import { Modal } from '../components/common/Modal';
 
 export function Scanner() {
   const { user } = useAuth();
@@ -25,6 +28,10 @@ export function Scanner() {
   const [manualFirstName, setManualFirstName] = useState('');
   const [manualLastInitial, setManualLastInitial] = useState('');
   const [selectedRosterId, setSelectedRosterId] = useState('');
+  const [isTableVisible, setIsTableVisible] = useState(true);
+
+  const { confirm } = useConfirm();
+  const { addToast } = useToast();
 
   const qrEngineRef = useRef(null);
   const { handleScan } = useScanLogic(troopId, session?.id, user, roster, setRoster);
@@ -101,11 +108,11 @@ export function Scanner() {
   }
 
   const handleEndSession = async () => {
-    if (window.confirm("Are you sure you want to end this session? No more scans can be recorded after ending.")) {
+    if (await confirm({ title: 'End Session', message: 'Are you sure you want to end this session? No more scans can be recorded after ending.', isDestructive: true })) {
       const now = new Date().toISOString();
       const { error } = await supabase.from('sessions').update({ ended_at: now }).eq('id', session.id);
       if (error) {
-        alert("Failed to end session: " + error.message);
+        addToast({ type: 'error', message: "Failed to end session: " + error.message });
         return;
       }
 
@@ -116,7 +123,9 @@ export function Scanner() {
         .eq('session_id', session.id)
         .eq('status', 'pending');
       if (scansError) {
-        alert("Session ended, but failed to approve scans: " + scansError.message);
+        addToast({ type: 'warning', message: "Session ended, but failed to approve scans: " + scansError.message });
+      } else {
+        addToast({ type: 'success', message: "Session ended and scans approved." });
       }
 
       setSession({ ...session, ended_at: now });
@@ -125,25 +134,27 @@ export function Scanner() {
   };
 
   const handleReenableSession = async () => {
-    if (window.confirm("Are you sure you want to reenable this session?")) {
+    if (await confirm({ title: 'Reenable Session', message: "Are you sure you want to reenable this session?" })) {
       const { error } = await supabase.from('sessions').update({ ended_at: null }).eq('id', session.id);
       if (error) {
-        alert("Failed to reenable session: " + error.message);
+        addToast({ type: 'error', message: "Failed to reenable session: " + error.message });
       } else {
+        addToast({ type: 'success', message: "Session reenabled." });
         setSession({ ...session, ended_at: null });
       }
     }
   };
 
   const handleResetSyncSession = async () => {
-    if (window.confirm("Are you sure you want to reset the sync status for this session? This will mark it as not synced so it can be synced again.")) {
+    if (await confirm({ title: 'Reset Sync Status', message: "Are you sure you want to reset the sync status for this session? This will mark it as not synced so it can be synced again." })) {
       const { error } = await supabase
         .from('sessions')
         .update({ synced_at: null, synced_by: null, purge_after: null })
         .eq('id', session.id);
       if (error) {
-        alert("Error resetting sync status: " + error.message);
+        addToast({ type: 'error', message: "Error resetting sync status: " + error.message });
       } else {
+        addToast({ type: 'success', message: "Sync status reset." });
         setSession({ ...session, synced_at: null, synced_by: null, purge_after: null });
       }
     }
@@ -151,7 +162,7 @@ export function Scanner() {
 
   const handleBulkRemove = async () => {
     if (selectedScans.size === 0) return;
-    if (!window.confirm(`Are you sure you want to remove ${selectedScans.size} scan(s)?`)) return;
+    if (!(await confirm({ title: 'Remove Scans', message: `Are you sure you want to remove ${selectedScans.size} scan(s)?`, isDestructive: true }))) return;
 
     const idsToRemove = Array.from(selectedScans);
     
@@ -162,8 +173,9 @@ export function Scanner() {
       .in('id', idsToRemove);
 
     if (error) {
-      alert("Failed to remove scans: " + error.message);
+      addToast({ type: 'error', message: "Failed to remove scans: " + error.message });
     } else {
+      addToast({ type: 'success', message: `Removed ${selectedScans.size} scan(s).` });
       setAttendance(prev => prev.filter(s => !selectedScans.has(s.id)));
       setSelectedScans(new Set());
     }
@@ -440,7 +452,7 @@ export function Scanner() {
 
   const exportOffline = () => {
     const offline = localStorage.getItem('tlc_offline_scans');
-    if (!offline) return alert('No offline scans to export.');
+    if (!offline) return addToast({ type: 'warning', message: 'No offline scans to export.' });
 
     // Create CSV blob and download
     const blob = new Blob([offline], { type: 'text/csv' });
@@ -449,6 +461,7 @@ export function Scanner() {
     a.href = url;
     a.download = `offline-scans-${new Date().toISOString()}.json`;
     a.click();
+    addToast({ type: 'success', message: 'Exported offline scans.' });
   };
 
   const membersWithoutIds = roster.filter(m => !m.member_id);
@@ -458,316 +471,320 @@ export function Scanner() {
   }
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto', color: 'var(--foreground)' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <h1 style={{ margin: 0 }}>Attendance Scanner</h1>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <ThemeToggle />
-          <a href="#/dashboard" style={{ color: 'var(--color-primary)' }}>&larr; Back to Dashboard</a>
-        </div>
-      </header>
-
+    <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
       {!session ? (
-        <SessionSelector troopId={troopId} onSessionSelect={setSession} />
+        <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto', width: '100%' }}>
+          <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+            <h1 style={{ margin: 0 }}>Attendance Scanner</h1>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <ThemeToggle />
+              {(isGlobalAdmin || currentUserRole === 'troop_admin' || currentUserRole === 'billing_admin') && (
+                <a href="#/dashboard" style={{ color: 'var(--color-primary)' }}>&larr; Back to Dashboard</a>
+              )}
+            </div>
+          </header>
+          <SessionSelector troopId={troopId} onSessionSelect={setSession} />
+        </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-
-          {/* Status Bar */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--glass-bg)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+        <>
+          {/* Top Status Bar */}
+          <div style={{ padding: 'var(--spacing-md)', background: 'var(--bg-primary)', color: 'var(--foreground)', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
             <div>
-              <strong>Active Session:</strong> {session.event_name}
-              {session.ended_at && <span style={{ marginLeft: '1rem', color: 'var(--color-warning)', fontWeight: 'bold' }}>(Ended)</span>}
-              <button onClick={() => setSession(null)} style={{ marginLeft: '1rem', padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}>Change</button>
+              <h2 style={{ fontSize: '1.2rem', margin: 0 }}>{session.event_name}</h2>
+              <span style={{ fontSize: '0.8rem', color: session.ended_at ? 'var(--color-error)' : 'var(--color-warning)' }}>
+                {session.ended_at ? 'Ended' : 'Active'} • {session.synced_at ? 'Synced' : 'Unsynced'}
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <span className="badge badge-pending" title="Offline Queue">{attendance.filter(s => s.message === 'Saved Offline').length}</span>
               {(isGlobalAdmin || currentUserRole === 'troop_admin' || currentUserRole === 'billing_admin') && !session.ended_at && (
-                <button
-                  onClick={handleEndSession}
-                  style={{ marginLeft: '0.5rem', padding: '0.25rem 0.5rem', fontSize: '0.8rem', backgroundColor: 'var(--color-error)', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                >
+                <button onClick={handleEndSession} className="btn btn-destructive" style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}>
                   End Session
                 </button>
               )}
-            </div>
-            <div>
-              <span style={{ fontSize: '0.9rem', color: 'var(--muted-foreground)' }}>{scannerStatus}</span>
+              <button onClick={() => setSession(null)} className="btn btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}>
+                Change
+              </button>
             </div>
           </div>
 
-          {/* Scanner Viewfinder */}
-          {!session.ended_at ? (
-            <div style={{ position: 'relative', width: '100%', maxWidth: '500px', margin: '0 auto', overflow: 'hidden', borderRadius: '8px', backgroundColor: '#000' }}>
-              <div id="qr-reader" style={{ width: '100%' }}></div>
-              {showCheckmark && (
-                <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0, 255, 0, 0.1)', zIndex: 10 }}>
-                  <div style={{ backgroundColor: 'white', borderRadius: '50%', padding: '1rem', display: 'flex', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
-                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                  </div>
-                </div>
-              )}
-              {showWarning && (
-                <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255, 165, 0, 0.1)', zIndex: 10 }}>
-                  <div style={{ backgroundColor: 'white', borderRadius: '50%', padding: '1rem', display: 'flex', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
-                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--color-warning)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="12" y1="8" x2="12" y2="12"></line>
-                      <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                    </svg>
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div style={{ textAlign: 'center', padding: '2rem', backgroundColor: 'var(--glass-bg)', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-              <h2>This session has been ended.</h2>
-              <p style={{ color: 'var(--muted-foreground)' }}>No further scans can be recorded.</p>
-              {(isGlobalAdmin || currentUserRole === 'troop_admin' || currentUserRole === 'billing_admin') && (
-                session.synced_at ? (
-                  <button
-                    onClick={handleResetSyncSession}
-                    style={{ marginTop: '1rem', padding: '0.75rem 1.5rem', backgroundColor: '#eab308', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                  >
-                    Reset Sync Status
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleReenableSession}
-                    style={{ marginTop: '1rem', padding: '0.75rem 1.5rem', backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                  >
-                    Reenable Session
-                  </button>
-                )
-              )}
-            </div>
-          )}
-
-          {/* Controls */}
-          {!session.ended_at && (
-            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button onClick={startScanner} style={{ padding: '0.75rem 1.5rem', backgroundColor: 'var(--color-primary)', color: 'white' }}>Start Camera</button>
-              <button onClick={stopScanner} style={{ padding: '0.75rem 1.5rem', backgroundColor: '#555', color: 'white' }}>Stop Camera</button>
-
-              <div style={{ position: 'relative', overflow: 'hidden', display: 'inline-block' }}>
-                <button style={{ padding: '0.75rem 1.5rem', backgroundColor: '#333', color: 'white' }}>Select Photos</button>
-                <input type="file" multiple accept="image/*" onChange={handleBulkPhotos} style={{ position: 'absolute', top: 0, left: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }} />
-              </div>
-
-              <button onClick={exportOffline} style={{ padding: '0.75rem 1.5rem', backgroundColor: 'var(--glass-bg)', color: 'var(--foreground)', border: '1px solid var(--glass-border)' }}>Export Offline Scans</button>
-            </div>
-          )}
-
-          {progressText && <div style={{ textAlign: 'center', fontWeight: 'bold' }}>{progressText}</div>}
-
-          {/* Unknown Member Modal */}
-          {unknownPayload && (() => {
-            const displayMemberId = typeof unknownPayload === 'object'
-              ? (unknownPayload?.memberId || unknownPayload?.tlcId || '')
-              : (unknownPayload || '');
-            const displayTlcId = typeof unknownPayload === 'object'
-              ? (unknownPayload?.tlcId || unknownPayload?.memberId || '')
-              : (unknownPayload || '');
-
-            return (
-              <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-                <div style={{ backgroundColor: 'var(--background)', padding: '2rem', borderRadius: '8px', maxWidth: '650px', width: '100%', boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}>
-                  <h2 style={{ color: 'var(--color-error)', marginTop: 0 }}>Unknown Member</h2>
-                  <p style={{ marginBottom: displayMemberId ? '0.5rem' : '1rem' }}>This badge is not recognized.</p>
-                  {displayMemberId && (
-                    <p style={{ marginBottom: '1rem', fontSize: '0.95rem' }}>
-                      Member ID:{' '}
-                      <a
-                        href={`https://www.traillifeconnect.com/profile/${displayTlcId}?tab=print-id-card`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ color: 'var(--color-primary)', textDecoration: 'underline', fontWeight: 600 }}
-                      >
-                        {displayMemberId}
-                      </a>
-                    </p>
-                  )}
-                  <form onSubmit={handleResolveUnknown}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
-                      {/* Left: Existing members selection list */}
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
-                          Select Existing Member (no ID):
-                        </label>
-                        <div
-                          style={{
-                            border: '1px solid var(--glass-border, #ccc)',
-                            borderRadius: '6px',
-                            maxHeight: '240px',
-                            minHeight: '120px',
-                            overflowY: 'auto',
-                            backgroundColor: 'var(--glass-bg, rgba(0,0,0,0.05))',
-                            display: 'flex',
-                            flexDirection: 'column'
-                          }}
-                        >
-                          {membersWithoutIds.length === 0 ? (
-                            <div style={{ padding: '1rem', color: 'var(--muted-foreground)', fontSize: '0.9rem', textAlign: 'center', margin: 'auto' }}>
-                              No members without an ID found.
-                            </div>
-                          ) : (
-                            membersWithoutIds.map(m => {
-                              const isSelected = selectedRosterId === m.id;
-                              return (
-                                <button
-                                  key={m.id}
-                                  type="button"
-                                  onClick={() => {
-                                    if (isSelected) {
-                                      setSelectedRosterId('');
-                                    } else {
-                                      setSelectedRosterId(m.id);
-                                      setManualFirstName('');
-                                      setManualLastInitial('');
-                                    }
-                                  }}
-                                  style={{
-                                    padding: '0.6rem 0.8rem',
-                                    textAlign: 'left',
-                                    backgroundColor: isSelected ? 'var(--color-primary, #0066cc)' : 'transparent',
-                                    color: isSelected ? '#fff' : 'inherit',
-                                    border: 'none',
-                                    borderBottom: '1px solid var(--glass-border, rgba(0,0,0,0.1))',
-                                    cursor: 'pointer',
-                                    fontSize: '0.95rem',
-                                    fontWeight: isSelected ? 600 : 400,
-                                    transition: 'background-color 0.15s ease',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    flexShrink: 0
-                                  }}
-                                >
-                                  <span>{m.first_name} {m.last_initial}</span>
-                                  {isSelected && <span style={{ marginLeft: 'auto', fontSize: '0.85rem' }}>✓</span>}
-                                </button>
-                              );
-                            })
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Right: Add new member inputs */}
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
-                          Or Add New Member:
-                        </label>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                          <input
-                            type="text"
-                            placeholder="First Name"
-                            value={manualFirstName}
-                            onChange={e => { setManualFirstName(e.target.value); setSelectedRosterId(''); }}
-                            style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box' }}
-                          />
-                          <input
-                            type="text"
-                            placeholder="Last Initial"
-                            maxLength={1}
-                            value={manualLastInitial}
-                            onChange={e => { setManualLastInitial(e.target.value); setSelectedRosterId(''); }}
-                            style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box' }}
-                          />
-                        </div>
-                      </div>
-                      <p style={{ fontSize: '0.8rem', color: 'var(--muted-foreground, #888)', marginTop: '0.75rem', lineHeight: '1.4' }}>
-                        Due to browser security, we cannot automatically fetch names from Trail Life Connect. Please select the member or enter their name.
-                      </p>
+          {/* Camera Viewfinder (Top Half) */}
+          <div style={{ flex: isTableVisible ? '0 0 45%' : '1', transition: 'flex 0.3s cubic-bezier(0.4, 0, 0.2, 1)', background: '#000', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+            {!session.ended_at ? (
+              <>
+                <div id="qr-reader" style={{ width: '100%', maxWidth: '500px', margin: '0 auto' }}></div>
+                {showCheckmark && (
+                  <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(34, 197, 94, 0.1)', zIndex: 10 }}>
+                    <div style={{ backgroundColor: 'white', borderRadius: '50%', padding: '1rem', display: 'flex', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
+                      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
                     </div>
-
-                    <div style={{ display: 'flex', gap: '1rem' }}>
-                      <button type="submit" style={{ flex: 1, padding: '0.75rem', backgroundColor: 'var(--color-primary)', color: 'white' }}>Link & Save Scan</button>
-                      <button type="button" onClick={() => { 
-                        setUnknownPayload(null); 
-                        if (qrEngineRef.current?.getState() === 2) qrEngineRef.current.resume(); 
-                        if (resolveUnknownRef.current) {
-                          resolveUnknownRef.current();
-                          resolveUnknownRef.current = null;
-                        }
-                      }} style={{ padding: '0.75rem' }}>Cancel</button>
+                  </div>
+                )}
+                {showWarning && (
+                  <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(234, 179, 8, 0.1)', zIndex: 10 }}>
+                    <div style={{ backgroundColor: 'white', borderRadius: '50%', padding: '1rem', display: 'flex', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
+                      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--color-warning)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                      </svg>
                     </div>
-                  </form>
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* Scanned In People */}
-          <div style={{ marginTop: '2rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 style={{ margin: 0 }}>Scanned In ({attendance.length})</h3>
-              {(isGlobalAdmin || currentUserRole === 'troop_admin' || currentUserRole === 'billing_admin') && selectedScans.size > 0 && (
-                <button
-                  onClick={handleBulkRemove}
-                  style={{ padding: '0.5rem 1rem', backgroundColor: 'var(--color-error)', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
-                >
-                  Remove Selected ({selectedScans.size})
-                </button>
-              )}
-            </div>
-            
-            <div style={{ overflowX: 'auto', backgroundColor: 'var(--glass-bg)', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--glass-border)', backgroundColor: 'rgba(0,0,0,0.02)' }}>
-                    {(isGlobalAdmin || currentUserRole === 'troop_admin' || currentUserRole === 'billing_admin') && (
-                      <th style={{ padding: '1rem', width: '40px' }}>
-                        <input 
-                          type="checkbox" 
-                          checked={attendance.filter(s => s.id && !String(s.id).startsWith('temp-')).length > 0 && selectedScans.size === attendance.filter(s => s.id && !String(s.id).startsWith('temp-')).length}
-                          onChange={handleSelectAll} 
-                        />
-                      </th>
-                    )}
-                    <th style={{ padding: '1rem' }}>Name</th>
-                    <th style={{ padding: '1rem' }}>Status</th>
-                    <th style={{ padding: '1rem' }}>Time</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {attendance.length === 0 ? (
-                    <tr>
-                      <td colSpan="4" style={{ padding: '2rem', textAlign: 'center', color: 'var(--muted-foreground)' }}>No people scanned in yet for this session.</td>
-                    </tr>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '2rem', color: 'white' }}>
+                <h2>Session Ended</h2>
+                <p>No further scans can be recorded.</p>
+                {(isGlobalAdmin || currentUserRole === 'troop_admin' || currentUserRole === 'billing_admin') && (
+                  session.synced_at ? (
+                    <button onClick={handleResetSyncSession} className="btn btn-action" style={{ marginTop: '1rem' }}>Reset Sync Status</button>
                   ) : (
-                    attendance.map((scan) => (
-                      <tr key={scan.id} style={{ borderBottom: '1px solid var(--glass-border)' }}>
-                        {(isGlobalAdmin || currentUserRole === 'troop_admin' || currentUserRole === 'billing_admin') && (
-                          <td style={{ padding: '1rem' }}>
-                            {scan.id && !String(scan.id).startsWith('temp-') && (
-                              <input 
-                                type="checkbox" 
-                                checked={selectedScans.has(scan.id)}
-                                onChange={() => handleToggleSelect(scan.id)} 
-                              />
-                            )}
-                          </td>
-                        )}
-                        <td style={{ padding: '1rem' }}>
-                          <strong>{scan.member ? `${scan.member.first_name} ${scan.member.last_initial}` : 'Unknown'}</strong>
-                        </td>
-                        <td style={{ padding: '1rem' }}>
-                          <span style={{ 
-                            color: scan.status === 'success' ? 'var(--color-success)' : scan.status === 'duplicate' ? 'var(--color-warning)' : 'var(--color-error)',
-                            fontWeight: 'bold'
-                          }}>
-                            {scan.message}
-                          </span>
-                        </td>
-                        <td style={{ padding: '1rem', color: 'var(--muted-foreground)' }}>
-                          {scan.time}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    <button onClick={handleReenableSession} className="btn btn-primary" style={{ marginTop: '1rem' }}>Reenable Session</button>
+                  )
+                )}
+              </div>
+            )}
           </div>
-        </div>
+
+          {/* Inline Table & Bottom Controls */}
+          <div style={{ flex: isTableVisible ? 1 : 'none', display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)', transition: 'flex 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>
+            
+            {/* Interactive Header to Toggle Table */}
+            <div 
+              style={{ padding: 'var(--spacing-sm) var(--spacing-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)', cursor: 'pointer', userSelect: 'none' }}
+              onClick={() => setIsTableVisible(!isTableVisible)}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h3 style={{ margin: 0, fontSize: '1rem' }}>Recent Scans</h3>
+                <span className="badge badge-success">{attendance.length}</span>
+              </div>
+              <button className="btn" style={{ background: 'transparent', padding: '4px 8px' }}>
+                {isTableVisible ? '▼ Collapse' : '▲ Expand'}
+              </button>
+            </div>
+
+            {/* Scrollable list inside table - Animated Wrapper */}
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateRows: isTableVisible ? '1fr' : '0fr',
+              transition: 'grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              flex: isTableVisible ? 1 : 'none'
+            }}>
+              <div style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ flex: 1, overflowY: 'auto', padding: '0 var(--spacing-md)' }}>
+                  {attendance.length === 0 ? (
+                    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>No people scanned in yet.</div>
+                  ) : (
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', marginTop: '1rem' }}>
+                      <tbody>
+                        {attendance.map((scan) => (
+                          <tr key={scan.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                            {(isGlobalAdmin || currentUserRole === 'troop_admin' || currentUserRole === 'billing_admin') && (
+                              <td style={{ padding: '0.75rem', width: '40px' }}>
+                                {scan.id && !String(scan.id).startsWith('temp-') && (
+                                  <input 
+                                    type="checkbox" 
+                                    checked={selectedScans.has(scan.id)}
+                                    onChange={() => handleToggleSelect(scan.id)} 
+                                  />
+                                )}
+                              </td>
+                            )}
+                            <td style={{ padding: '0.75rem' }}>
+                              <strong style={{ color: 'var(--text-primary)' }}>{scan.member ? `${scan.member.first_name} ${scan.member.last_initial}` : 'Unknown'}</strong>
+                            </td>
+                            <td style={{ padding: '0.75rem' }}>
+                              <span className={`badge badge-${scan.status === 'success' ? 'success' : scan.status === 'duplicate' ? 'warning' : 'error'}`}>
+                                {scan.message}
+                              </span>
+                            </td>
+                            <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{scan.time}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Large Bottom Controls (Locked to bottom for one-handed use) */}
+            {!session.ended_at && (
+              <div style={{ padding: 'var(--spacing-md)', background: 'var(--bg-elevated)', borderTop: '1px solid var(--border-color)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-md)' }}>
+                <button onClick={qrEngineRef.current?.getState() === 2 ? stopScanner : startScanner} className={`btn ${qrEngineRef.current?.getState() === 2 ? 'btn-secondary' : 'btn-primary'}`} style={{ padding: '1rem', fontSize: '1rem', display: 'flex', justifyContent: 'center' }}>
+                  {qrEngineRef.current?.getState() === 2 ? 'Stop Scan' : 'Start Scan'}
+                </button>
+                <div style={{ position: 'relative', overflow: 'hidden', display: 'inline-block' }}>
+                  <button className="btn btn-secondary" style={{ width: '100%', padding: '1rem', fontSize: '1rem', display: 'flex', justifyContent: 'center' }}>
+                    Photo Mode
+                  </button>
+                  <input type="file" multiple accept="image/*" onChange={handleBulkPhotos} style={{ position: 'absolute', top: 0, left: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }} />
+                </div>
+              </div>
+            )}
+            
+            {/* Selected items actions */}
+            {(isGlobalAdmin || currentUserRole === 'troop_admin' || currentUserRole === 'billing_admin') && selectedScans.size > 0 && (
+              <div style={{ padding: '0.5rem var(--spacing-md)', background: 'var(--color-error)', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>{selectedScans.size} selected</span>
+                <button onClick={handleBulkRemove} style={{ background: 'white', color: 'var(--color-error)', border: 'none', padding: '0.25rem 0.75rem', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>
+                  Remove
+                </button>
+              </div>
+            )}
+          </div>
+        </>
       )}
+
+      {/* Unknown Member Modal using our new common Modal */}
+      <Modal
+        isOpen={!!unknownPayload}
+        onClose={() => {
+          setUnknownPayload(null);
+          if (qrEngineRef.current?.getState() === 2) qrEngineRef.current.resume();
+          if (resolveUnknownRef.current) {
+            resolveUnknownRef.current();
+            resolveUnknownRef.current = null;
+          }
+        }}
+        title="Unknown Member"
+      >
+        {(() => {
+          const displayMemberId = typeof unknownPayload === 'object'
+            ? (unknownPayload?.memberId || unknownPayload?.tlcId || '')
+            : (unknownPayload || '');
+          const displayTlcId = typeof unknownPayload === 'object'
+            ? (unknownPayload?.tlcId || unknownPayload?.memberId || '')
+            : (unknownPayload || '');
+
+          return (
+            <div>
+              <p style={{ marginBottom: displayMemberId ? '0.5rem' : '1rem' }}>This badge is not recognized.</p>
+              {displayMemberId && (
+                <p style={{ marginBottom: '1rem', fontSize: '0.95rem' }}>
+                  Member ID:{' '}
+                  <a
+                    href={`https://www.traillifeconnect.com/profile/${displayTlcId}?tab=print-id-card`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: 'var(--color-primary)', textDecoration: 'underline', fontWeight: 600 }}
+                  >
+                    {displayMemberId}
+                  </a>
+                </p>
+              )}
+              <form onSubmit={handleResolveUnknown}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                  {/* Left: Existing members selection list */}
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
+                      Select Existing Member (no ID):
+                    </label>
+                    <div
+                      style={{
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '6px',
+                        maxHeight: '240px',
+                        minHeight: '120px',
+                        overflowY: 'auto',
+                        backgroundColor: 'var(--bg-secondary)',
+                        display: 'flex',
+                        flexDirection: 'column'
+                      }}
+                    >
+                      {membersWithoutIds.length === 0 ? (
+                        <div style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem', textAlign: 'center', margin: 'auto' }}>
+                          No members without an ID found.
+                        </div>
+                      ) : (
+                        membersWithoutIds.map(m => {
+                          const isSelected = selectedRosterId === m.id;
+                          return (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => {
+                                if (isSelected) {
+                                  setSelectedRosterId('');
+                                } else {
+                                  setSelectedRosterId(m.id);
+                                  setManualFirstName('');
+                                  setManualLastInitial('');
+                                }
+                              }}
+                              style={{
+                                padding: '0.6rem 0.8rem',
+                                textAlign: 'left',
+                                backgroundColor: isSelected ? 'var(--color-primary)' : 'transparent',
+                                color: isSelected ? '#fff' : 'inherit',
+                                border: 'none',
+                                borderBottom: '1px solid var(--border-color)',
+                                cursor: 'pointer',
+                                fontSize: '0.95rem',
+                                fontWeight: isSelected ? 600 : 400,
+                                transition: 'background-color 0.15s ease',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                flexShrink: 0
+                              }}
+                            >
+                              <span>{m.first_name} {m.last_initial}</span>
+                              {isSelected && <span style={{ marginLeft: 'auto', fontSize: '0.85rem' }}>✓</span>}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right: Add new member inputs */}
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
+                      Or Add New Member:
+                    </label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <input
+                        type="text"
+                        placeholder="First Name"
+                        value={manualFirstName}
+                        onChange={e => { setManualFirstName(e.target.value); setSelectedRosterId(''); }}
+                        style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box', background: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '4px' }}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Last Initial"
+                        maxLength={1}
+                        value={manualLastInitial}
+                        onChange={e => { setManualLastInitial(e.target.value); setSelectedRosterId(''); }}
+                        style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box', background: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '4px' }}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.75rem', lineHeight: '1.4' }}>
+                  Due to browser security, we cannot automatically fetch names from Trail Life Connect. Please select the member or enter their name.
+                </p>
+
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+                  <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Link & Save Scan</button>
+                  <button type="button" onClick={() => { 
+                    setUnknownPayload(null); 
+                    if (qrEngineRef.current?.getState() === 2) qrEngineRef.current.resume(); 
+                    if (resolveUnknownRef.current) {
+                      resolveUnknownRef.current();
+                      resolveUnknownRef.current = null;
+                    }
+                  }} className="btn btn-secondary">Cancel</button>
+                </div>
+              </form>
+            </div>
+          );
+        })()}
+      </Modal>
+
     </div>
   );
 }
