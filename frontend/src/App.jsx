@@ -23,11 +23,46 @@ export default function App() {
             {/* Protected with Sidebar Layout */}
             <Route element={<ProtectedRoute><SidebarLayout /></ProtectedRoute>}>
               <Route path="/complete-profile" element={<CompleteProfile />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/scanner" element={<Scanner />} />
-              <Route path="/roster" element={<Roster />} />
-              <Route path="/sessions" element={<Sessions />} />
-              <Route path="/billing" element={<Billing />} />
+              <Route 
+                path="/dashboard" 
+                element={
+                  <ProtectedRoute allowedRoles={['admin', 'adult_leader']}>
+                    <Dashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/scanner" 
+                element={
+                  <ProtectedRoute allowedRoles={['admin', 'adult_leader', 'badge_scanner']}>
+                    <Scanner />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/roster" 
+                element={
+                  <ProtectedRoute allowedRoles={['admin', 'adult_leader']}>
+                    <Roster />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/sessions" 
+                element={
+                  <ProtectedRoute allowedRoles={['admin', 'adult_leader']}>
+                    <Sessions />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/billing" 
+                element={
+                  <ProtectedRoute allowedRoles={['admin', 'adult_leader']}>
+                    <Billing />
+                  </ProtectedRoute>
+                } 
+              />
             </Route>
 
             {/* Default — redirect root to login; AuthContext will bounce to dashboard if logged in */}

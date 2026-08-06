@@ -1,0 +1,32 @@
+# UI Redesign Task List
+
+- [x] Phase 1: Design System & Global Styles
+  - [x] Update `src/global.css` with new tokens, `.dark` mode, and utility classes
+  - [x] Standardize buttons in `src/components/common/Button.jsx`
+  - [x] Adopt `.app-modal-*` styles in modal components
+  - [x] Verify light/dark mode and colors locally
+- [x] Phase 2: Role-Based Routing & Global Components
+  - [x] Update routing logic in `src/App.jsx`
+  - [x] Filter nav by role in `src/components/SidebarLayout.jsx`
+  - [x] Implement custom styled dropdown Troop Switcher in the header
+  - [x] Verify `badge_scanner` redirection
+- [ ] Phase 3: Reusable DataTable Component
+  - [ ] Create `src/components/DataTable.jsx`
+  - [ ] Implement sorting, filtering, and drag-and-drop
+  - [ ] Implement `localStorage` state persistence
+  - [ ] Verify column order and persistence
+- [ ] Phase 4: Scanner Screen Redesign
+  - [ ] Update `src/pages/Scanner.jsx` to match prototype layout
+  - [ ] Implement collapsible inline table
+  - [ ] Wire up "Photo" as a file input button
+  - [ ] Build "+ Manual Entry" modal for roster lookup and adding
+  - [ ] Place "End Session" button next to session name in top header
+  - [ ] Verify offline queues and `tlc_id` Chrome Extension hooks remain intact
+- [ ] Phase 5: Dashboard & Sessions Polish
+  - [ ] Wrap Dashboard overview panel in glass-card
+  - [ ] Fix Dashboard warning banner copy (remove auto-purge)
+  - [ ] Integrate DataTable into `src/pages/Sessions.jsx`
+  - [ ] Add per-scan lifecycle status badges in Sessions
+- [ ] Phase 6: Roster & Billing Polish
+  - [ ] Apply tokens/glass-card to `src/pages/Roster.jsx` and `src/pages/Billing.jsx`
+  - [ ] Configure role-aware columns in Roster (hide email for youth)

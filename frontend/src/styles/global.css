@@ -6,20 +6,26 @@
 /* ── Light Theme (Default) ── */
 :root {
   --background:          #f4f4f5;
-  --bg-gradient:         #f4f4f5;
+  --bg-gradient:         linear-gradient(135deg, #f4f4f5 0%, #e4e4e7 100%);
   --foreground:          #0f172a;
   --muted:               #e4e4e7;
   --muted-foreground:    #475569;
   --primary-foreground:  #ffffff;
-  --glass-bg:            rgba(255, 255, 255, 0.7);
-  --glass-border:        rgba(224, 224, 227, 0.8);
+  --glass-bg:            rgba(255, 255, 255, 0.75);
+  --glass-border:        rgba(255, 255, 255, 0.4);
+  --glass-shadow:        0 8px 32px 0 rgba(31, 38, 135, 0.07);
+  --glass-blur:          blur(12px);
 
   /* TLC-specific accents */
   --color-primary:       #0284c7;    /* sky-600 — CTA buttons, links */
   --color-primary-hover: #0369a1;    /* sky-700 */
+  --color-secondary:     #64748b;    /* slate-500 */
+  --color-secondary-hover:#475569;   /* slate-600 */
   --color-success:       #22c55e;    /* green-500 — scan success, logo placeholder */
   --color-error:         #ef4444;    /* red-500 */
   --color-warning:       #f59e0b;    /* amber-500 */
+  --color-destructive:   #dc2626;    /* red-600 */
+  --color-destructive-hover: #b91c1c;
 
   /* Spacing scale */
   --spacing-xs:  4px;
@@ -36,10 +42,10 @@
   --radius-pill: 9999px;
 
   /* Typography */
-  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --font-display: 'Outfit', sans-serif;
 
-  /* Transitions (matching jerome-portfolio conventions) */
+  /* Transitions */
   --transition-fast:   150ms ease;
   --transition-normal: 250ms ease;
   --transition-slow:   400ms ease;
@@ -55,21 +61,72 @@
 
 /* ── Dark Theme ── */
 .dark {
-  --background:          #121214;
-  --bg-gradient:         #121214;
-  --foreground:          #ffffff;
-  --color-primary:       #60a5fa;    /* blue-400 — brighter on dark bg */
-  --color-primary-hover: #93c5fd;    /* blue-300 */
+  --background:          #0f172a;
+  --bg-gradient:         radial-gradient(ellipse at top, #1e293b 0%, #0f172a 100%);
+  --foreground:          #f8fafc;
+  --color-primary:       #38bdf8;    /* sky-400 */
+  --color-primary-hover: #7dd3fc;    /* sky-300 */
+  --color-secondary:     #94a3b8;
+  --color-secondary-hover:#cbd5e1;
   --muted:               #1e293b;
   --muted-foreground:    #94a3b8;
-  --primary-foreground:  #000000;
-  --glass-bg:            rgba(30, 41, 59, 0.5);
+  --primary-foreground:  #0f172a;
+  --glass-bg:            rgba(15, 23, 42, 0.65);
   --glass-border:        rgba(255, 255, 255, 0.1);
+  --glass-shadow:        0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --glass-blur:          blur(16px);
 
   /* Custom variables for theme UI elements in dark mode */
-  --border-color:      rgba(255, 255, 255, 0.1);
-  --bg-secondary:      #1a1a1f;
-  --bg-elevated:       #1e293b;
+  --border-color:      rgba(255, 255, 255, 0.12);
+  --bg-secondary:      #1e293b;
+  --bg-elevated:       #334155;
+}
+
+/* ── Glassmorphism Utility ── */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  border-radius: var(--radius-md);
+}
+
+/* ── Status Badges ── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: var(--radius-pill);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.badge-success {
+  background-color: color-mix(in srgb, var(--color-success) 15%, transparent);
+  color: var(--color-success);
+  border: 1px solid color-mix(in srgb, var(--color-success) 30%, transparent);
+}
+
+.badge-warning {
+  background-color: color-mix(in srgb, var(--color-warning) 15%, transparent);
+  color: var(--color-warning);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 30%, transparent);
+}
+
+.badge-error, .badge-destructive {
+  background-color: color-mix(in srgb, var(--color-error) 15%, transparent);
+  color: var(--color-error);
+  border: 1px solid color-mix(in srgb, var(--color-error) 30%, transparent);
+}
+
+.badge-neutral {
+  background-color: color-mix(in srgb, var(--muted-foreground) 15%, transparent);
+  color: var(--text-secondary);
+  border: 1px solid color-mix(in srgb, var(--muted-foreground) 30%, transparent);
 }
 
 /* ── Reset + Base ── */
@@ -84,7 +141,7 @@ body {
   background-attachment: fixed;
   color: var(--foreground);
   font-family: var(--font-sans);
-  transition: background 0.8s ease, color 0.8s ease;
+  transition: background 0.4s ease, color 0.4s ease;
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
 }
