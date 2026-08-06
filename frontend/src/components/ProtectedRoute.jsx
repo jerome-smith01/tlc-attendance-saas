@@ -22,7 +22,10 @@ export function ProtectedRoute({ children, allowedRoles = null }) {
     const isAuthorized = isAdminOrLeader || (userRole && allowedRoles.includes(userRole));
     
     if (!isAuthorized) {
-      const fallbackPath = userRole === 'badge_scanner' ? '/scanner' : '/dashboard';
+      let fallbackPath = '/dashboard';
+      if (userRole === 'badge_scanner' || userRole === 'scanner') fallbackPath = '/scanner';
+      else if (!userRole) fallbackPath = '/complete-profile';
+      
       return <Navigate to={fallbackPath} replace />;
     }
   }

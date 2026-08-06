@@ -121,10 +121,7 @@ export function CompleteProfile() {
 
       // 4. Mark onboarding as completed for this user in all troops
       if (needsOnboarding) {
-        const { error: updateError } = await supabase
-          .from('troop_users')
-          .update({ onboarding_completed: true })
-          .eq('user_id', user.id);
+        const { error: updateError } = await supabase.rpc('complete_user_onboarding');
         
         if (updateError) throw updateError;
         

@@ -100,6 +100,7 @@ This function is declared `SECURITY DEFINER STABLE`, so it runs with elevated pr
 ### `troop_users`
 - **SELECT**: Users can see all members of their own troops.
 - **INSERT / UPDATE / DELETE**: Only `troop_admin` and `billing_admin` (or `global_admin`).
+- **RPC `complete_user_onboarding()`**: `SECURITY DEFINER` function allowing any authenticated user to set `onboarding_completed = true` for their own `troop_users` rows upon completing profile setup.
 
 ### `roster`
 - **SELECT**: Any troop member.

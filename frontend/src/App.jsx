@@ -34,7 +34,7 @@ export default function App() {
               <Route 
                 path="/scanner" 
                 element={
-                  <ProtectedRoute allowedRoles={['admin', 'adult_leader', 'badge_scanner']}>
+                  <ProtectedRoute allowedRoles={['admin', 'adult_leader', 'badge_scanner', 'scanner']}>
                     <Scanner />
                   </ProtectedRoute>
                 } 
