@@ -132,3 +132,21 @@ The `supabaseClient.js` singleton does not expose the Supabase URL or anon key i
 ## 7. SPA Routing for Cloudflare Pages
 
 `HashRouter` is used instead of `BrowserRouter` because Cloudflare Pages serves from a CDN. Without hash routing, direct navigation to `/#/dashboard` would return the React app's `index.html` correctly without needing server-side redirects. A `public/_redirects` file (`/* /index.html 200`) is also in place as a fallback for any path-based routing edge cases.
+
+---
+
+## 8. Scanner Manual Entry & Photo Scan
+
+**File**: `src/pages/Scanner.jsx`
+
+The Scanner UI contains features to augment standard QR scanning:
+
+### Manual Entry
+Allows users to add attendance for someone who forgot their badge.
+- When selecting an existing member, it inserts a `scans` row immediately.
+- When creating a *new* member/guest, it first performs a `supabase.from('roster').insert()` to create the member record, retrieves the inserted `id`, and *then* records the scan.
+
+### Photo Scan (Bulk)
+Allows uploading multiple photos containing QR codes from the device's camera roll.
+- Handled via `<input type="file" multiple accept="image/*">`.
+- Leverages the same `html5-qrcode` library by passing the image files to the scanner engine, iterating over the extracted payloads.

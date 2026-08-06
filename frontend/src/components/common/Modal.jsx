@@ -26,7 +26,7 @@ export function Modal({ isOpen, onClose, title, children, footer = null, maxWidt
         <div 
           style={{ 
             display: 'flex', 
-            justify: 'space-between', 
+            justifyContent: 'space-between', 
             alignItems: 'center', 
             padding: '1.25rem 1.5rem', 
             borderBottom: '1px solid var(--border-color)' 
@@ -57,7 +57,7 @@ export function Modal({ isOpen, onClose, title, children, footer = null, maxWidt
               padding: '1rem 1.5rem', 
               borderTop: '1px solid var(--border-color)', 
               display: 'flex', 
-              justify: 'flex-end', 
+              justifyContent: 'flex-end', 
               gap: '0.75rem' 
             }}
           >

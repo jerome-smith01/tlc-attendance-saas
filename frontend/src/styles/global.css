@@ -491,3 +491,56 @@ button:active, .btn-primary:active, .btn-action:active {
     height: 56px;
   }
 }
+
+/* ── Scanner Utilities ── */
+.scanner-viewfinder {
+  background: var(--muted);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: flex var(--transition-normal);
+}
+
+.scan-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+.scan-overlay--success {
+  background: color-mix(in srgb, var(--color-success) 10%, transparent);
+}
+.scan-overlay--warning {
+  background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+}
+
+.scanner-action-bar {
+  padding: var(--spacing-md);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border-top: 1px solid var(--glass-border);
+  display: grid;
+  gap: var(--spacing-md);
+}
+
+.scanner-panel-header {
+  padding: var(--spacing-sm) var(--spacing-md);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  user-select: none;
+}
+
+.scan-empty-state {
+  padding: var(--spacing-xl);
+  text-align: center;
+  color: var(--text-secondary);
+}
