@@ -394,7 +394,10 @@ button:active, .btn-primary:active, .btn-action:active {
 
 .layout-root {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
   background-color: var(--bg-primary);
 }
 
@@ -403,10 +406,16 @@ button:active, .btn-primary:active, .btn-action:active {
   display: flex;
   flex-direction: column;
   min-width: 0; /* prevent flex overflow */
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 .layout-main {
   flex-grow: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   overflow: auto;
 }
 
@@ -500,7 +509,13 @@ button:active, .btn-primary:active, .btn-action:active {
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  min-height: 0;
   transition: flex var(--transition-normal);
+}
+
+#qr-reader video {
+  max-height: 100%;
+  object-fit: contain;
 }
 
 .scan-overlay {

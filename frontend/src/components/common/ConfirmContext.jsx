@@ -23,19 +23,25 @@ export function ConfirmProvider({ children }) {
   const resolver = useRef(null);
 
   const confirm = useCallback((opts) => {
-    setOptions({
-      title: opts.title || 'Confirm',
-      message: opts.message || '',
-      confirmText: opts.confirmText || 'Confirm',
-      cancelText: opts.cancelText || 'Cancel',
-      isDestructive: opts.isDestructive || false
-    });
+    const optionsObj = typeof opts === 'string'
+      ? { title: 'Confirm', message: opts, confirmText: 'Confirm', cancelText: 'Cancel', isDestructive: false }
+      : {
+          title: opts?.title || 'Confirm',
+          message: opts?.message || '',
+          confirmText: opts?.confirmText || 'Confirm',
+          cancelText: opts?.cancelText || 'Cancel',
+          isDestructive: opts?.isDestructive || false
+        };
+
+    setOptions(optionsObj);
     setIsOpen(true);
     
     return new Promise((resolve) => {
       resolver.current = resolve;
     });
   }, []);
+
+  confirm.confirm = confirm;
 
   const handleConfirm = () => {
     setIsOpen(false);
@@ -48,7 +54,7 @@ export function ConfirmProvider({ children }) {
   };
 
   return (
-    <ConfirmContext.Provider value={{ confirm }}>
+    <ConfirmContext.Provider value={confirm}>
       {children}
       {isOpen && (
         <div 

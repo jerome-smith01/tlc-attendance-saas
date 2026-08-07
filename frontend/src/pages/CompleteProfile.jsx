@@ -126,7 +126,7 @@ export function CompleteProfile() {
         if (updateError) throw updateError;
         
         // Force reload to update TroopContext
-        window.location.href = '#/dashboard';
+        window.location.href = '#/scanner';
         window.location.reload();
       } else {
         setSuccess('Profile updated successfully.');

@@ -22,8 +22,20 @@ export function ToastProvider({ children }) {
     setToasts((prev) => prev.filter(t => t.id !== id));
   }, []);
 
+  const toastFn = useCallback((msgOrOpts, type = 'info', duration = 3000) => {
+    if (typeof msgOrOpts === 'object' && msgOrOpts !== null) {
+      addToast(msgOrOpts);
+    } else {
+      addToast({ message: String(msgOrOpts ?? ''), type, duration });
+    }
+  }, [addToast]);
+
+  toastFn.toast = toastFn;
+  toastFn.addToast = addToast;
+  toastFn.removeToast = removeToast;
+
   return (
-    <ToastContext.Provider value={{ addToast, removeToast }}>
+    <ToastContext.Provider value={toastFn}>
       {children}
       <div 
         style={{

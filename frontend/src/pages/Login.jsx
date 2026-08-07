@@ -15,9 +15,9 @@ export function Login() {
   const [message,  setMessage]  = useState('');
   const [loading,  setLoading]  = useState(false);
 
-  // If already logged in, bounce to dashboard immediately
+  // If already logged in, bounce to scanner immediately
   useEffect(() => {
-    if (session) navigate('/dashboard', { replace: true });
+    if (session) navigate('/scanner', { replace: true });
   }, [session, navigate]);
 
   // Clear error as soon as the user starts correcting their input

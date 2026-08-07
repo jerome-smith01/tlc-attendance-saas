@@ -135,7 +135,7 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
   }
 
   async function handleBulkRemove() {
-    if (!await confirm(`Are you sure you want to remove ${selectedMembers.length} member(s)?`)) return;
+    if (!await confirm({ title: 'Remove Members', message: `Are you sure you want to remove ${selectedMembers.length} member(s)?`, isDestructive: true })) return;
 
     try {
       const { error } = await supabase

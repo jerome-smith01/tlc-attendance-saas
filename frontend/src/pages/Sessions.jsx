@@ -78,9 +78,9 @@ export function Sessions() {
     try {
       const { data, error } = await supabase
         .from('scans')
-        .select('id, created_at, status, roster(id, first_name, last_initial, member_id, tlc_id)')
+        .select('id, scan_time, status, roster(id, first_name, last_initial, member_id, tlc_id)')
         .eq('session_id', session.id)
-        .order('created_at', { ascending: true });
+        .order('scan_time', { ascending: true });
 
       if (!error && data) {
         const seen = new Set();
@@ -94,7 +94,7 @@ export function Sessions() {
               id: scan.id,
               name: scan.roster ? `${scan.roster.first_name} ${scan.roster.last_initial || ''}`.trim() : 'Unknown Member',
               memberId: scan.roster?.member_id || scan.roster?.tlc_id || '-',
-              time: scan.created_at ? new Date(scan.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-',
+              time: scan.scan_time ? new Date(scan.scan_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-',
               status: scan.status
             });
           }

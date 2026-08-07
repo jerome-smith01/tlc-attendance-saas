@@ -43,23 +43,20 @@ export function SidebarLayout() {
   });
 
   const currentUserRole = selectedTroop?.currentUserRole || '';
-  const isBadgeScanner = !isGlobalAdmin && currentUserRole === 'badge_scanner';
-
-  if (isBadgeScanner) {
-    return <Outlet />;
-  }
 
   const allNavLinks = [
-    { path: '/dashboard', label: 'Dashboard' },
-    { path: '/roster', label: 'Roster' },
-    { path: '/sessions', label: 'Sessions' },
-    { path: '/scanner', label: 'Scanner' },
-    { path: '/billing', label: 'Billing' },
-    { path: '/complete-profile', label: 'Profile' },
+    { path: '/dashboard', label: 'Dashboard', allowedRoles: ['troop_admin', 'billing_admin', 'global_admin'] },
+    { path: '/roster', label: 'Roster', allowedRoles: ['troop_admin', 'billing_admin', 'global_admin'] },
+    { path: '/sessions', label: 'Sessions', allowedRoles: ['troop_admin', 'billing_admin', 'global_admin'] },
+    { path: '/scanner', label: 'Scanner', allowedRoles: ['badge_scanner', 'troop_admin', 'billing_admin', 'global_admin'] },
+    { path: '/billing', label: 'Billing', allowedRoles: ['billing_admin', 'global_admin'] },
+    { path: '/complete-profile', label: 'Profile', allowedRoles: ['badge_scanner', 'troop_admin', 'billing_admin', 'global_admin'] },
   ];
 
-  // Since we return early for badge_scanner, the rest are admins/leaders
-  const visibleNavLinks = allNavLinks;
+  const visibleNavLinks = allNavLinks.filter(link => {
+    if (isGlobalAdmin) return true;
+    return link.allowedRoles.includes(currentUserRole);
+  });
 
   return (
     <div className="layout-root">

@@ -446,8 +446,8 @@ Scanner may need these new utility classes (check if they already exist before a
 
 #### 4.10 — Architecture Doc Update (Upon Completion)
 
-- [ ] **`docs/architecture/05_frontend_patterns.md`**: Add documentation for bulk photo upload scanning (`handleBulkPhotos` → `scanFile` pattern) and the Manual Entry modal flow alongside the standard live-camera flow.
-- [ ] **`ui_redesign_action_plan.md`**: Mark Phase 4 status as `Complete` in the Overall Status table.
+- [x] **`docs/architecture/05_frontend_patterns.md`**: Add documentation for bulk photo upload scanning (`handleBulkPhotos` → `scanFile` pattern) and the Manual Entry modal flow alongside the standard live-camera flow.
+- [x] **`ui_redesign_action_plan.md`**: Mark Phase 4 status as `Complete` in the Overall Status table.
 
 ### Phase 5: Dashboard & Sessions Polish
 - **File Changes**:

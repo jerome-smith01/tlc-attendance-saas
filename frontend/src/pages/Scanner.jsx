@@ -17,6 +17,7 @@ export function Scanner() {
   const [attendance, setAttendance] = useState([]);
   const [selectedScans, setSelectedScans] = useState(new Set());
   const [scannerStatus, setScannerStatus] = useState('Idle');
+  const [isScanning, setIsScanning] = useState(false);
   const [progressText, setProgressText] = useState('');
   const [showCheckmark, setShowCheckmark] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
@@ -52,11 +53,36 @@ export function Scanner() {
     }
   }, [user]);
 
+  // Restore last session from localStorage on mount
+  useEffect(() => {
+    async function restoreSession() {
+      const savedSessionId = localStorage.getItem('tlc_last_session_id');
+      const savedTroop = localStorage.getItem('tlc_last_troop_id');
+      if (savedSessionId && savedTroop && !session) {
+        const { data, error } = await supabase
+          .from('sessions')
+          .select('*')
+          .eq('id', savedSessionId)
+          .eq('troop_id', savedTroop)
+          .maybeSingle();
+        if (!error && data) {
+          setSession(data);
+        } else {
+          // Session no longer exists or RLS blocked it — clear stale reference
+          localStorage.removeItem('tlc_last_session_id');
+        }
+      }
+    }
+    restoreSession();
+  }, [user]); // re-run once auth is ready
+
   useEffect(() => {
     if (session) {
+      // Persist session selection so navigation away and back restores it
+      localStorage.setItem('tlc_last_session_id', session.id);
       fetchAttendance();
     }
-  }, [session]);
+  }, [session?.id]);
 
   async function fetchAttendance() {
     if (!session) return;
@@ -64,8 +90,12 @@ export function Scanner() {
       .from('scans')
       .select(`*, roster (id, first_name, last_initial, member_id, tlc_id)`)
       .eq('session_id', session.id)
-      .order('created_at', { ascending: false });
-    if (!error && data) {
+      .order('scan_time', { ascending: false });
+    if (error) {
+      console.error('[fetchAttendance] Supabase error:', error);
+      return;
+    }
+    if (data) {
       const seen = new Set();
       const formatted = [];
       data.forEach(s => {
@@ -76,7 +106,7 @@ export function Scanner() {
             id: s.id,
             roster_id: s.roster_id,
             member: s.roster,
-            time: new Date(s.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+            time: new Date(s.scan_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
             status: 'success',
             message: 'Scanned In'
           });
@@ -171,7 +201,7 @@ export function Scanner() {
     if (!(await confirm({ title: 'Remove Scans', message: `Are you sure you want to remove ${selectedScans.size} scan(s)?`, isDestructive: true }))) return;
 
     const idsToRemove = Array.from(selectedScans);
-    
+
     // Delete from DB
     const { error } = await supabase
       .from('scans')
@@ -215,18 +245,28 @@ export function Scanner() {
         { fps: 10, qrbox: { width: 220, height: 220 }, disableFlip: false },
         onScanSuccess
       );
+      setIsScanning(true);
       setScannerStatus('Camera Active - Ready to scan');
     } catch (err) {
       console.error(err);
+      setIsScanning(false);
       setScannerStatus('Failed to start camera');
     }
   };
 
   const stopScanner = async () => {
-    if (qrEngineRef.current && qrEngineRef.current.getState() === 2) {
-      await qrEngineRef.current.stop();
-      setScannerStatus('Camera Stopped');
+    if (qrEngineRef.current) {
+      const state = qrEngineRef.current.getState();
+      if (state === 2 || state === 3) {
+        try {
+          await qrEngineRef.current.stop();
+        } catch (err) {
+          console.error(err);
+        }
+      }
     }
+    setIsScanning(false);
+    setScannerStatus('Camera Stopped');
   };
 
   const onScanSuccess = async (decodedText) => {
@@ -299,7 +339,7 @@ export function Scanner() {
               return [newEntry, ...prev];
             });
           }
-          
+
           resolve(); // Resolve immediately for known members
         }
       });
@@ -535,7 +575,7 @@ export function Scanner() {
 
   if (!troopId) {
     return (
-      <div style={{ height: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div className="glass-card scan-empty-state">
           <h2>No Troop Selected</h2>
           <p>Please select a troop in the Dashboard first.</p>
@@ -545,7 +585,7 @@ export function Scanner() {
   }
 
   return (
-    <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', flex: 1 }}>
       {!session ? (
         <div style={{ padding: 'var(--spacing-lg)', maxWidth: '800px', margin: '0 auto', width: '100%' }} className="glass-card">
           <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
@@ -588,7 +628,7 @@ export function Scanner() {
           </div>
 
           {/* Camera Viewfinder (Top Half) */}
-          <div className="scanner-viewfinder" style={{ flex: isTableVisible ? '0 0 45%' : '1' }}>
+          <div className="scanner-viewfinder" style={{ flex: isTableVisible ? '0 0 45%' : '1', minHeight: 0 }}>
             {!session.ended_at ? (
               <>
                 <div id="qr-reader" style={{ width: '100%', maxWidth: '500px', margin: '0 auto' }}></div>
@@ -630,11 +670,11 @@ export function Scanner() {
           {!session.ended_at && (
             <div className="scanner-action-bar" style={{ gridTemplateColumns: '1fr 1fr 1fr', flexShrink: 0 }}>
               <button
-                onClick={qrEngineRef.current?.getState() === 2 ? stopScanner : startScanner}
-                className={`btn ${qrEngineRef.current?.getState() === 2 ? 'btn-secondary' : 'btn-primary'}`}
+                onClick={isScanning ? stopScanner : startScanner}
+                className={`btn ${isScanning ? 'btn-destructive' : 'btn-primary'}`}
                 style={{ padding: 'var(--spacing-lg) var(--spacing-md)', fontSize: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem' }}
               >
-                {qrEngineRef.current?.getState() === 2 ? '⏹ Stop Scan' : '📷 Scan Camera'}
+                {isScanning ? '⏹ Stop Scan' : '📷 Start Scan'}
               </button>
               <div style={{ position: 'relative', overflow: 'hidden', display: 'flex' }}>
                 <button className="btn btn-secondary" style={{ width: '100%', padding: 'var(--spacing-lg) var(--spacing-md)', fontSize: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem' }}>
@@ -653,7 +693,7 @@ export function Scanner() {
           )}
 
           {/* Inline Table & Collapsible Panel */}
-          <div style={{ flex: isTableVisible ? 1 : 'none', display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)', transition: 'flex 0.3s cubic-bezier(0.4, 0, 0.2, 1)', minHeight: 0 }}>
+          <div style={{ flex: isTableVisible ? 1 : 'none', display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)', transition: 'flex 0.3s cubic-bezier(0.4, 0, 0.2, 1)', minHeight: 0, flexShrink: 0 }}>
 
             {/* Interactive Header to Toggle Table */}
             <div
@@ -661,7 +701,7 @@ export function Scanner() {
               onClick={() => setIsTableVisible(!isTableVisible)}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h3 style={{ margin: 0, fontSize: '1rem' }}>Recent Scans</h3>
+                <h3 style={{ margin: 0, fontSize: '1rem' }}>Attendance</h3>
                 <span className="badge badge-success">{attendance.length}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -695,7 +735,7 @@ export function Scanner() {
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', marginTop: '1rem' }}>
                       <tbody>
                         {attendance.map((scan) => (
-                          <tr key={scan.id} id={`${scan.member?.member_id || 'unknown'}-${session.id}-attended`} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                          <tr key={scan.id} id={`scan-row-${scan.id}`} style={{ borderBottom: '1px solid var(--border-color)' }}>
                             {(isGlobalAdmin || currentUserRole === 'troop_admin' || currentUserRole === 'billing_admin') && (
                               <td style={{ padding: '0.75rem', width: '40px' }}>
                                 {scan.id && !String(scan.id).startsWith('temp-') && (
@@ -743,7 +783,7 @@ export function Scanner() {
         isOpen={!!unknownPayload}
         onClose={() => {
           setUnknownPayload(null);
-          if (qrEngineRef.current?.getState() === 2) qrEngineRef.current.resume();
+          if (qrEngineRef.current?.getState() === 3) qrEngineRef.current.resume();
           if (resolveUnknownRef.current) {
             resolveUnknownRef.current();
             resolveUnknownRef.current = null;
@@ -870,9 +910,9 @@ export function Scanner() {
 
                 <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
                   <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Link & Save Scan</button>
-                  <button type="button" onClick={() => { 
-                    setUnknownPayload(null); 
-                    if (qrEngineRef.current?.getState() === 2) qrEngineRef.current.resume(); 
+                  <button type="button" onClick={() => {
+                    setUnknownPayload(null);
+                    if (qrEngineRef.current?.getState() === 3) qrEngineRef.current.resume();
                     if (resolveUnknownRef.current) {
                       resolveUnknownRef.current();
                       resolveUnknownRef.current = null;
@@ -919,8 +959,14 @@ export function Scanner() {
                     No members found.
                   </div>
                 ) : (
-                  roster.map(m => {
-                    const isSelected = manualEntryRosterId === m.id;
+                  [...roster]
+                    .sort((a, b) => {
+                      const nameA = `${a.first_name || ''} ${a.last_initial || ''}`.toLowerCase();
+                      const nameB = `${b.first_name || ''} ${b.last_initial || ''}`.toLowerCase();
+                      return nameA.localeCompare(nameB);
+                    })
+                    .map(m => {
+                      const isSelected = manualEntryRosterId === m.id;
                     return (
                       <button
                         key={m.id}

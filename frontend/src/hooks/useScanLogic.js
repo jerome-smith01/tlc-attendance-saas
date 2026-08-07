@@ -74,6 +74,7 @@ export function useScanLogic(troopId, sessionId, user, roster, setRoster) {
         .select();
 
       if (error) {
+        console.error('[useScanLogic] Supabase insert error:', error);
         if (error.code === '23505') { // Postgres UNIQUE violation code
           onResult({ status: 'duplicate', message: 'Already Scanned', member: matchedMember });
         } else if (error.message.includes('fetch') || error.message.includes('Failed to fetch')) {

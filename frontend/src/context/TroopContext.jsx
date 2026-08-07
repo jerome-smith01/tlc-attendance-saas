@@ -5,7 +5,7 @@ import { useAuth } from './AuthContext';
 const TroopContext = createContext(null);
 
 export function TroopProvider({ children }) {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [troops, setTroops] = useState([]);
   const [selectedTroopId, setSelectedTroopId] = useState('');
   const [loadingTroops, setLoadingTroops] = useState(true);
@@ -13,6 +13,8 @@ export function TroopProvider({ children }) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    if (authLoading) return; // Wait for auth to settle
+
     if (user) {
       fetchTroops();
     } else {
@@ -21,7 +23,7 @@ export function TroopProvider({ children }) {
       setIsGlobalAdmin(false);
       setLoadingTroops(false);
     }
-  }, [user]);
+  }, [user, authLoading]);
 
   async function fetchTroops() {
     try {
