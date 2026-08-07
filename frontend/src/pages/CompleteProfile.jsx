@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import './Login.css'; // Reusing Login.css for consistent card styling
 
 export function CompleteProfile() {
-  const { session, user } = useAuth();
+  const { session, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   const [firstName, setFirstName] = useState('');
@@ -19,10 +19,10 @@ export function CompleteProfile() {
   const [fetchingInfo, setFetchingInfo] = useState(true);
 
   useEffect(() => {
-    if (!session) {
+    if (!authLoading && !session) {
       navigate('/login', { replace: true });
     }
-  }, [session, navigate]);
+  }, [session, authLoading, navigate]);
 
   useEffect(() => {
     async function loadProfile() {
@@ -151,6 +151,16 @@ export function CompleteProfile() {
         <p className="login-subtitle">Update your personal details and password</p>
 
         <form onSubmit={handleSubmit} noValidate>
+          <div className="login-field" style={{ marginBottom: '1rem' }}>
+            <label htmlFor="email" style={{ marginBottom: '0.5rem', display: 'block' }}>Email Address</label>
+            <input
+              id="email"
+              type="email"
+              value={user?.email || ''}
+              disabled
+            />
+          </div>
+
           <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
             <div className="login-field" style={{ flex: 1, marginBottom: 0 }}>
               <label htmlFor="first-name" style={{ marginBottom: '0.5rem', display: 'block' }}>First Name</label>

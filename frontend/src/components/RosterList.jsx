@@ -5,7 +5,7 @@ import { DataTable } from './common/DataTable';
 import { useToast } from './common/ToastContext';
 import { useConfirm } from './common/ConfirmContext';
 
-export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAdmin }) {
+export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAdmin, activeTab }) {
   const canManageRoster = isGlobalAdmin || currentUserRole === 'troop_admin' || currentUserRole === 'billing_admin';
   const [roster, setRoster] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -169,7 +169,14 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
     }
   }
 
-  const displayRoster = roster.filter(member => member.role !== 'global_admin');
+  const displayRoster = roster.filter(member => {
+    if (member.role === 'global_admin') return false;
+    if (activeTab === 'leaders') {
+      return member.role !== null && member.role !== 'trailman';
+    } else {
+      return member.role === null || member.role === 'trailman';
+    }
+  });
 
   const rosterColumns = [];
 
@@ -198,10 +205,16 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
     });
   }
 
+  rosterColumns.push({ label: 'Name', key: 'name', render: (val, member) => `${member.first_name} ${member.last_initial}.` });
+  
+  if (activeTab === 'leaders') {
+    rosterColumns.push(
+      { label: 'Role', key: 'role', render: (val, member) => <span style={{ textTransform: 'capitalize' }}>{member.role ? member.role.replace('_', ' ') : 'Trailman'}</span> },
+      { label: 'Email', key: 'email', render: (val, member) => <span style={{ color: 'var(--text-secondary)', fontSize: '0.9em' }}>{member.email || '-'}</span> }
+    );
+  }
+  
   rosterColumns.push(
-    { label: 'Name', key: 'name', render: (val, member) => `${member.first_name} ${member.last_initial}.` },
-    { label: 'Role', key: 'role', render: (val, member) => <span style={{ textTransform: 'capitalize' }}>{member.role ? member.role.replace('_', ' ') : 'Trailman'}</span> },
-    { label: 'Email', key: 'email', render: (val, member) => <span style={{ color: 'var(--text-secondary)', fontSize: '0.9em' }}>{member.email || '-'}</span> },
     { label: 'Member ID', key: 'member_id', render: (val, member) => member.member_id || '-' },
     { label: 'Badge Linked?', key: 'tlc_id', render: (val, member) => member.tlc_id ? '✅ Yes' : '❌ No' }
   );
@@ -275,28 +288,13 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
           data={displayRoster}
           columns={rosterColumns}
           keyField="id"
-          storageKey="roster"
+          storageKey={`roster_${activeTab || 'all'}`}
         />
       </div>
 
       {/* Sticky Bulk Actions Modal */}
       {selectedMembers.length > 0 && (
-        <div style={{
-          position: 'fixed',
-          bottom: '2rem',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          backgroundColor: 'var(--bg-elevated)',
-          color: 'var(--foreground)',
-          padding: '1rem 2rem',
-          borderRadius: '50px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '2rem',
-          boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
-          border: '1px solid var(--border-color)',
-          zIndex: 1000
-        }}>
+        <div className="bulk-action-pill">
           <span style={{ fontWeight: 'bold' }}>{selectedMembers.length} selected</span>
           <div style={{ display: 'flex', gap: '1rem' }}>
             <button 

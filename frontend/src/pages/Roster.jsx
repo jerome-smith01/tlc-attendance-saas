@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTroop } from '../context/TroopContext';
 import { RosterList } from '../components/RosterList';
@@ -7,6 +7,7 @@ import { InviteUser } from '../components/InviteUser';
 export function Roster() {
   const { user } = useAuth();
   const { selectedTroopId, selectedTroop, isGlobalAdmin, loadingTroops } = useTroop();
+  const [activeTab, setActiveTab] = useState('leaders');
 
   if (loadingTroops) {
     return <div style={{ padding: '2rem' }}>Loading roster...</div>;
@@ -31,13 +32,29 @@ export function Roster() {
       </header>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-        <InviteUser troopId={selectedTroopId} />
+        <div className="roster-tabs">
+          <button 
+            className={`roster-tab ${activeTab === 'leaders' ? 'active' : ''}`}
+            onClick={() => setActiveTab('leaders')}
+          >
+            Leaders
+          </button>
+          <button 
+            className={`roster-tab ${activeTab === 'members' ? 'active' : ''}`}
+            onClick={() => setActiveTab('members')}
+          >
+            Members
+          </button>
+        </div>
+
+        {activeTab === 'leaders' && <InviteUser troopId={selectedTroopId} />}
         
         <RosterList 
           troopId={selectedTroopId} 
           currentUserRole={selectedTroop?.currentUserRole}
           currentUserId={user?.id}
           isGlobalAdmin={isGlobalAdmin}
+          activeTab={activeTab}
         />
       </div>
     </div>

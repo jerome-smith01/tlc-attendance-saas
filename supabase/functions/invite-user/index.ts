@@ -76,8 +76,12 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // 1. Invite the user
-    const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email)
+    // 1. Invite the user — redirect them to the complete-profile page after clicking the link
+    const appUrl = Deno.env.get('APP_SITE_URL') ?? 'http://localhost:5173'
+    const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+      email,
+      { redirectTo: `${appUrl}/#/complete-profile` }
+    )
 
     if (inviteError) {
       return new Response(JSON.stringify({ error: inviteError.message }), {

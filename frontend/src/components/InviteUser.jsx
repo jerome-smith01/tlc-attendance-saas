@@ -23,7 +23,13 @@ export function InviteUser({ troopId }) {
       });
 
       if (error) {
-        throw new Error(error.message || 'Failed to invite user');
+        // FunctionsHttpError wraps the real response — read the JSON body for the actual message
+        let errMsg = error.message;
+        try {
+          const body = await error.context?.json?.();
+          if (body?.error) errMsg = body.error;
+        } catch (_) {}
+        throw new Error(errMsg);
       }
 
       setMessage(`Successfully sent invite to ${email}`);
