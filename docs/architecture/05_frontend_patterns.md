@@ -153,3 +153,71 @@ Allows uploading multiple photos containing QR codes from the device's camera ro
 - Processed sequentially via `handleBulkPhotos`: for each selected file, an instance of `Html5Qrcode` is created (or reused) and `html5Qrcode.scanFile(file, true)` is invoked to decode the QR code payload without activating camera video feeds.
 - Extracted payloads are passed directly into `handleScan` / `processScanPayload`, triggering the exact same validation, lookup, offline queueing, and state update pipeline as live scanning.
 
+---
+
+## 9. Reusable `DataTable` Component
+
+**File**: `src/components/common/DataTable.jsx`
+
+A fully-featured, user-configurable data table used across Sessions, Roster, and the attendee sub-modal. Its state (column visibility, column order, sort key, sort direction) is persisted to `localStorage` per-user, per-table.
+
+### Props
+
+| Prop | Type | Default | Description |
+|:---|:---|:---|:---|
+| `columns` | `Array<Column>` | required | Column definitions (see below) |
+| `data` | `Array<Object>` | required | Array of row objects |
+| `storageKey` | `string` | — | **Required for persistence.** A unique key (e.g., `"sessions"`, `"roster"`, `"session-attendees"`) stored under `tlc_datatable_<storageKey>_<userId>` in localStorage |
+| `searchable` | `boolean` | `true` | Toggles the global search input |
+| `onRowClick` | `function` | — | If provided, rows gain `cursor: pointer` and call this function with the row data on click |
+
+### Column Definition Format
+
+```js
+{
+  label: 'Event Name',            // Header text displayed in <th>
+  key: 'event_name',              // Property name on the row object; also used as sort key
+  render: (val, row) => <JSX />  // Optional custom cell renderer
+}
+```
+
+> **Known gap**: The `keyField` prop is accepted by callers but silently ignored — rows key on `row.id || idx` internally. This is a minor issue with no functional impact.
+
+### Usage Pattern
+
+```jsx
+// Always provide storageKey to enable column persistence
+<DataTable
+  data={sessions}
+  columns={sessionColumns}
+  keyField="id"
+  storageKey="sessions"
+/>
+```
+
+### Persistence Mechanism
+
+State is written to `localStorage` on every change via a `useEffect`. On mount, the component reads saved state and merges it with the default, making column reorders and visibility toggles survive page refreshes and re-mounts.
+
+---
+
+## 10. Session Purge Threshold & Warning Banner
+
+**File**: `src/pages/Dashboard.jsx`
+
+The session purge window is **30 days** from the session's `event_date`. This constant is defined inline as `MAX_DAYS = 30` in `Dashboard.jsx`.
+
+Warning banners appear only for **unsynced** sessions (`session.synced_at === null`) and follow a two-tier escalation:
+
+| Days Remaining | Banner Style | Label |
+|:---|:---|:---|
+| > 14 days | Hidden | — |
+| 8–14 days | Amber left-border (`var(--color-warning)`) | **Warning:** |
+| ≤ 7 days | Red left-border (`var(--color-error)`) | **Urgent Warning:** |
+| ≤ 0 days | Red left-border (`var(--color-error)`) | **Urgent Warning:** + overdue copy |
+
+The Sessions page subtitle mirrors this with the copy: *"Synced session data is automatically purged after 30 days."*
+
+> **Developer simulation**: To test warning banners locally without waiting for real sessions to age, temporarily hardcode `const diffDays = 20;` (for 10 days left, amber) or `const diffDays = 25;` (for 5 days left, red) in the `sessions.map` loop in `Dashboard.jsx`.
+
+

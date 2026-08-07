@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 
-export function Modal({ isOpen, onClose, title, children, footer = null, maxWidth = '42rem' }) {
+export function Modal({ isOpen, onClose, title, children, footer = null, maxWidth = '42rem', minHeight, style = {} }) {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape' && isOpen) {
@@ -22,14 +22,22 @@ export function Modal({ isOpen, onClose, title, children, footer = null, maxWidt
       role="dialog"
       aria-modal="true"
     >
-      <div className="app-modal-content glass-card" style={{ maxWidth }}>
+      <div 
+        className="app-modal-content glass-card" 
+        style={{ 
+          maxWidth, 
+          ...(minHeight ? { minHeight } : {}),
+          ...style 
+        }}
+      >
         <div 
           style={{ 
             display: 'flex', 
             justifyContent: 'space-between', 
             alignItems: 'center', 
             padding: '1.25rem 1.5rem', 
-            borderBottom: '1px solid var(--border-color)' 
+            borderBottom: '1px solid var(--border-color)',
+            flexShrink: 0 
           }}
         >
           <h3 className="app-modal-title" style={{ margin: 0 }}>{title}</h3>
@@ -47,7 +55,7 @@ export function Modal({ isOpen, onClose, title, children, footer = null, maxWidt
             ✕
           </button>
         </div>
-        <div className="app-modal-body" style={{ padding: '1.5rem' }}>
+        <div className="app-modal-body" style={{ padding: '1.5rem', flex: 1 }}>
           {children}
         </div>
         {footer && (
@@ -58,7 +66,8 @@ export function Modal({ isOpen, onClose, title, children, footer = null, maxWidt
               borderTop: '1px solid var(--border-color)', 
               display: 'flex', 
               justifyContent: 'flex-end', 
-              gap: '0.75rem' 
+              gap: '0.75rem',
+              flexShrink: 0 
             }}
           >
             {footer}

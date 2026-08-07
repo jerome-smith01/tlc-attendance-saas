@@ -245,9 +245,12 @@ html.dark .app-modal-overlay,
     width: 100%;
     margin: 0 auto;
     max-width: 42rem;
+    min-height: 520px;
     max-height: 90vh;
     overflow-y: auto;
     position: relative;
+    display: flex;
+    flex-direction: column;
     animation: modalSlideIn 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
     scrollbar-width: thin;
     scrollbar-color: #cbd5e1 transparent;
@@ -554,8 +557,35 @@ button:active, .btn-primary:active, .btn-action:active {
   user-select: none;
 }
 
-.scan-empty-state {
-  padding: var(--spacing-xl);
-  text-align: center;
-  color: var(--text-secondary);
+/* ── DataTable Utilities ── */
+.datatable-container {
+  width: 100%;
 }
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.table-row-hover {
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+.table-row-hover:hover {
+  background: var(--bg-elevated);
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  cursor: pointer;
+  text-decoration: underline;
+  font: inherit;
+  font-weight: 600;
+  padding: 0;
+  text-align: left;
+  transition: color var(--transition-fast);
+}
+.btn-link:hover, .btn-link:focus {
+  color: var(--color-primary-hover);
+}
+

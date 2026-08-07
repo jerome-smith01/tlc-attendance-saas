@@ -25,10 +25,10 @@ You want to completely overhaul the UI/UX of the TLC Attendance app to match a n
 | :--- | :--- | :--- | :--- | :--- |
 | 1 | Design System & Global Styles | Complete | Gemini 3.6 Flash (Low) | None |
 | 2 | Role-Based Routing & Contexts | Complete | Gemini 3.1 Pro (Low) | None |
-| 3 | Reusable DataTable Component | Pending | Gemini 3.1 Pro (High) | Phase 1 |
+| 3 | Reusable DataTable Component | Complete | Gemini 3.1 Pro (High) | Phase 1 |
 | 4 | Scanner Screen Redesign | Complete | Gemini 3.1 Pro (High) | Phase 1, 2 |
-| 5 | Dashboard & Sessions Polish | Pending | Gemini 3.1 Pro (High) | Phase 1, 3 |
-| 6 | Roster & Billing Polish | Pending | Gemini 3.1 Pro (Low) | Phase 1, 3 |
+| 5 | Dashboard & Sessions Polish | Complete | Gemini 3.6 Flash (Medium) | Phase 1, 3 |
+| 6 | Roster Polish | Pending | Gemini 3.6 Flash (Medium) | Phase 1, 3 |
 
 ## 3. Phases
 
@@ -52,11 +52,14 @@ You want to completely overhaul the UI/UX of the TLC Attendance app to match a n
 - **Recommended Model**: Gemini 3.1 Pro (Low) - *Routine logical integration of access control into existing routes.*
 - **Manual Verification**: Login as a `badge_scanner` and attempt to navigate to `/dashboard` via URL; verify redirection back to `/scanner`. Verify Troop Switcher is a custom dropdown in the header.
 
-### Phase 3: Reusable DataTable Component
+### Phase 3: Reusable DataTable Component ✅ Complete
 - **File Changes**:
-  - `New` `src/components/DataTable.jsx`
+  - `New` `src/components/common/DataTable.jsx` — **Implemented** (266 lines)
 - **Key Pattern**: Component state for sorting/filtering, HTML5 drag-and-drop for reordering, `useEffect` for persistence to `localStorage`.
 - **Recommended Model**: Gemini 3.1 Pro (High) - *Complex component logic requiring state management and generic data handling.*
+- **Known Gaps (to address in Phase 5)**:
+  - `keyField` prop is accepted by callers (`Sessions.jsx`, `RosterList.jsx`) but is silently ignored — rows use `row.id || idx` internally.
+  - Missing CSS classes referenced by `DataTable.jsx` but not yet defined in `global.css`: `.datatable-container`, `.data-table`, `.table-row-hover`.
 - **Manual Verification**: Render a dummy table, reorder columns, refresh the page, and verify column order is preserved.
 
 ### Phase 4: Scanner Screen Redesign
@@ -450,22 +453,70 @@ Scanner may need these new utility classes (check if they already exist before a
 - [x] **`ui_redesign_action_plan.md`**: Mark Phase 4 status as `Complete` in the Overall Status table.
 
 ### Phase 5: Dashboard & Sessions Polish
+
+> **Pre-Implementation Note**: `DataTable.jsx` is already integrated in `Sessions.jsx` — this phase is a polish and correctness pass only. There is **no sessions table on Dashboard** — it uses warning banner cards, not a data list.
+
 - **File Changes**:
   - `Modify` `src/pages/Dashboard.jsx`
   - `Modify` `src/pages/Sessions.jsx`
-- **Key Pattern**: Component composition and prop passing to DataTable. Updating text content for accuracy.
-- **Recommended Model**: Gemini 3.1 Pro (High) - *Refactoring existing data lists to use the new complex DataTable component and updating visual logic.*
-- **Manual Verification**: Load the Dashboard, verify the warning banner copy. Go to Sessions, verify the table uses the new interactive component.
+  - `Modify` `src/styles/global.css`
 
-### Phase 6: Roster & Billing Polish
+#### Dashboard.jsx
+- Fix `color: 'red'` on the error state display → `color: 'var(--color-error)'`.
+- **Resolve purge-day discrepancy**: Dashboard uses `MAX_DAYS = 30` but Sessions.jsx subtitle tells users "14 days" — decide on the correct threshold and apply it consistently to both files.
+- **Warning banner accuracy**: The banner currently says data "will be automatically purged" even if it has never synced. Review wording to avoid false urgency — only show the countdown when the session is genuinely approaching the threshold.
+
+#### Sessions.jsx
+- **Add `storageKey` prop** to both `<DataTable>` usages — currently omitted on both, so column visibility/order is not persisted.
+  - Suggested: `storageKey="sessions"` (main list) and `storageKey="session-attendees"` (attendee modal).
+- Polish inline `style` overrides on action buttons in column definitions — use `.btn` sizing utilities where possible.
+- Confirm the clickable Event Name cell has a proper `className` for hover/focus accessibility (currently fully inline-styled).
+
+#### global.css
+- Add missing DataTable CSS classes (referenced by `DataTable.jsx` but not yet defined):
+  ```css
+  .datatable-container { /* table wrapper */ }
+  .data-table { /* <table> element */ }
+  .table-row-hover { cursor: pointer; }
+  .table-row-hover:hover { background: var(--bg-elevated); }
+  ```
+
+- **Recommended Model**: `Gemini 3.6 Flash (Medium)` — *Targeted token fixes, storageKey additions, missing CSS class definitions, and copy corrections. No complex logic changes.*
+- **Manual Verification**:
+  1. Load Dashboard as `troop_admin`. Confirm error state uses `var(--color-error)`, not `red`.
+  2. Check warning banners: confirm the day count is consistent with Sessions.jsx subtitle.
+  3. Go to Sessions. Reorder or hide a column, then refresh — verify column state is preserved.
+  4. Open an attendee modal. Hide a column, close and reopen the modal — verify column state is preserved.
+
+---
+
+### Phase 6: Roster Polish
+
+> **Billing.jsx is out of scope**: It is a stub page ("Billing coming soon") with no functional UI — nothing to polish.
+> **Primary file is `RosterList.jsx`**, not `Roster.jsx`. `Roster.jsx` is a thin shell that only passes props down.
+
 - **File Changes**:
-  - `Modify` `src/pages/Roster.jsx`
-  - `Modify` `src/pages/Billing.jsx`
-- **Key Pattern**: Conditional column rendering in DataTable based on row data (hiding email for youth).
-- **Recommended Model**: Gemini 3.1 Pro (Low) - *Straightforward styling and minor logic adjustments.*
-- **Manual Verification**: View the roster; verify youth rows do not display email fields, and layout uses glassmorphism.
+  - `Modify` `src/components/RosterList.jsx`
+
+#### RosterList.jsx
+- `DataTable` is already in use with `storageKey="roster"` — column persistence is working.
+- **Youth email hiding — DECISION REQUIRED**: The action plan originally called for hiding the email column on youth rows. However, the current `roster` schema has **no `is_youth` flag or equivalent** — all members are rendered identically. This feature is **not implementable** without a schema change. Options:
+  - **Option A**: Add `is_youth: boolean` column to `roster` table (requires a new migration, changes scope significantly).
+  - **Option B**: Remove this requirement from Phase 6 scope.
+- Polish the bulk action pill bar — currently entirely inline-styled; consider extracting to a CSS class.
+- Confirm `global_admin` members continue to be filtered out of the display roster (`displayRoster.filter(m => m.role !== 'global_admin')`).
+
+- **Recommended Model**: `Gemini 3.6 Flash (Medium)` — *Style cleanup and minor conditional rendering. Only elevate to Pro if the youth schema change is chosen.*
+- **Manual Verification**:
+  1. View the roster as `troop_admin`. Verify DataTable column reorder/hide persists after refresh.
+  2. Select members and confirm the bulk remove action executes correctly (admin only).
+  3. Confirm `global_admin` role members are absent from the roster list.
+
+---
 
 ## 4. Architecture Doc Updates Needed
 - [x] **`02_rls_and_auth.md`**: Updated to document `complete_user_onboarding()` RPC function for non-admin onboarding.
-- [ ] **`05_frontend_patterns.md`**: Update during Phase 4 to document bulk photo upload scanning (`scanFile`) alongside live camera feed scanning.
-- [ ] **`05_frontend_patterns.md`**: Update to reflect `DataTable` component specifications upon completion of Phase 3.
+- [x] **`05_frontend_patterns.md`**: Updated during Phase 4 to document bulk photo upload scanning (`handleBulkPhotos` → `scanFile`) and Manual Entry modal flow.
+- [x] **`05_frontend_patterns.md`**: Updated to reflect `DataTable` component API (props, column definition format, storageKey pattern) upon completion of Phase 5.
+- [x] **`05_frontend_patterns.md`**: Updated to document final purge-day threshold decision (30-day window; amber warning at ≤14 days; red urgent at ≤7 days).
+

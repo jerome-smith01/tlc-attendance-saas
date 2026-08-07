@@ -177,17 +177,7 @@ export function Sessions() {
       render: (val, session) => (
         <button
           onClick={() => handleViewAttendees(session)}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--color-primary)',
-            cursor: 'pointer',
-            textDecoration: 'underline',
-            font: 'inherit',
-            fontWeight: '600',
-            textAlign: 'left',
-            padding: 0
-          }}
+          className="btn-link"
           title="Click to view attendees"
         >
           {session.event_name}
@@ -304,12 +294,13 @@ export function Sessions() {
       ) : (
         <div className="glass-card" style={{ padding: '1.5rem' }}>
           <p style={{ fontSize: '0.875rem', marginBottom: '1.5rem', color: 'var(--text-secondary)' }}>
-            A list of past scanning sessions. Synced session data is automatically purged after 14 days.
+            A list of past scanning sessions. Synced session data is automatically purged after 30 days.
           </p>
           <DataTable 
             data={sessions}
             columns={sessionColumns}
             keyField="id"
+            storageKey="sessions"
           />
         </div>
       )}
@@ -319,6 +310,7 @@ export function Sessions() {
         isOpen={!!selectedSessionModal}
         onClose={() => setSelectedSessionModal(null)}
         title={selectedSessionModal?.event_name || 'Session Attendees'}
+        minHeight="550px"
       >
         <p style={{ margin: '0.25rem 0 1rem 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
           Date: {selectedSessionModal?.event_date} &bull; Total Attendees: <strong>{sessionAttendees.length}</strong>
@@ -352,6 +344,7 @@ export function Sessions() {
               data={filteredAttendees}
               columns={attendeeColumns}
               keyField="id"
+              storageKey="session-attendees"
             />
           </>
         )}

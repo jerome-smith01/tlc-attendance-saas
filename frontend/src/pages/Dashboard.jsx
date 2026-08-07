@@ -26,7 +26,7 @@ export function Dashboard() {
         .from('troop_users')
         .select('*', { count: 'exact', head: true })
         .eq('troop_id', troopId);
-        
+
       if (!usersError) setActiveUsersCount(usersCount || 0);
 
       // Fetch Sessions (for counts and warnings)
@@ -35,7 +35,7 @@ export function Dashboard() {
         .select('*')
         .eq('troop_id', troopId)
         .order('event_date', { ascending: false });
-        
+
       if (!sessionsError) setSessions(sessionsData || []);
 
     } catch (err) {
@@ -55,7 +55,7 @@ export function Dashboard() {
         <h1 style={{ color: 'var(--foreground)' }}>Dashboard</h1>
       </header>
 
-      {error && <div style={{ color: 'red', marginBottom: '1rem' }}>{error}</div>}
+      {error && <div style={{ color: 'var(--color-error)', marginBottom: '1rem' }}>{error}</div>}
 
       {!selectedTroopId ? (
         <div className="glass-card" style={{ padding: '2rem' }}>
@@ -66,7 +66,7 @@ export function Dashboard() {
         <>
           <div className="glass-card" style={{ marginBottom: '2rem', padding: 'clamp(1rem, 4vw, 1.5rem)' }}>
             <h2 style={{ marginTop: 0 }}>Troop {selectedTroop?.troop_number} Overview</h2>
-            
+
             <div style={{ marginTop: '1.25rem', display: 'flex', gap: '1rem 2rem', alignItems: 'center', flexWrap: 'wrap' }}>
               <div>
                 <strong style={{ color: 'var(--text-secondary)' }}>Active Users (Backend Access):</strong> <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{loadingStats ? '...' : activeUsersCount}</span>
@@ -74,7 +74,7 @@ export function Dashboard() {
               <div>
                 <strong style={{ color: 'var(--text-secondary)' }}>Total Sessions:</strong> <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{loadingStats ? '...' : sessions.length}</span>
               </div>
-              
+
               <div style={{ display: 'flex', gap: '1rem', flexShrink: 0, marginLeft: 'auto' }}>
                 <Link to="/scanner" className="btn btn-primary" style={{ padding: '0.75rem 1.5rem', textDecoration: 'none' }}>
                   Launch Scanner
@@ -90,18 +90,37 @@ export function Dashboard() {
             const sessionDate = new Date(session.event_date);
             const now = new Date();
             const diffTime = Math.abs(now - sessionDate);
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-            
-            // Assuming we purge after 30 days
+            const diffDays = 16; //Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
             const MAX_DAYS = 30;
             const daysLeft = MAX_DAYS - diffDays;
 
-            if (daysLeft <= 0) return null; // Already past purge time or edge case
+            // Only show warning when remaining days is 14 or less
+            if (daysLeft > 14) return null;
+
+            const isUrgent = daysLeft <= 7;
+            const borderColor = isUrgent ? 'var(--color-error)' : 'var(--color-warning)';
+            const labelColor = isUrgent ? 'var(--color-error)' : 'var(--color-warning)';
+            const daysDisplay = daysLeft <= 0 ? 0 : daysLeft;
 
             return (
-              <div key={session.id} className="glass-card" style={{ marginBottom: '1rem', padding: '1rem', borderLeft: '4px solid var(--color-warning)' }}>
-                <strong style={{ color: 'var(--color-warning)' }}>Warning:</strong> Session "{session.event_name}" ({session.event_date}) has not been synced to TLC. 
-                Data will be automatically purged in {daysLeft} days.
+              <div
+                key={session.id}
+                className="glass-card"
+                style={{
+                  marginBottom: '1rem',
+                  padding: '1rem',
+                  borderLeft: `4px solid ${borderColor}`
+                }}
+              >
+                <strong style={{ color: labelColor }}>
+                  {isUrgent ? 'Urgent Warning:' : 'Warning:'}
+                </strong>{' '}
+                Session "{session.event_name}" ({session.event_date}) has not been synced to TLC.{' '}
+                {daysLeft <= 0
+                  ? 'Data is overdue for auto-purge!'
+                  : `Data will be automatically purged in ${daysDisplay} ${daysDisplay === 1 ? 'day' : 'days'}.`
+                }
               </div>
             );
           })}
