@@ -54,7 +54,7 @@ export default function App() {
                   <Route 
                     path="/sessions" 
                     element={
-                      <ProtectedRoute allowedRoles={['troop_admin', 'billing_admin', 'global_admin']}>
+                      <ProtectedRoute allowedRoles={['badge_scanner', 'troop_admin', 'billing_admin', 'global_admin']}>
                         <Sessions />
                       </ProtectedRoute>
                     } 

@@ -15,9 +15,9 @@ export function Login() {
   const [message,  setMessage]  = useState('');
   const [loading,  setLoading]  = useState(false);
 
-  // If already logged in, bounce to scanner immediately
+  // If already logged in, bounce to sessions immediately
   useEffect(() => {
-    if (session) navigate('/scanner', { replace: true });
+    if (session) navigate('/sessions', { replace: true });
   }, [session, navigate]);
 
   // Clear error as soon as the user starts correcting their input
@@ -121,7 +121,7 @@ export function Login() {
 
           <button
             type="submit"
-            className="btn-primary login-submit"
+            className="btn btn-primary login-submit"
             disabled={loading || !email || !password}
           >
             {loading

@@ -231,7 +231,7 @@ export function CompleteProfile() {
 
           <button
             type="submit"
-            className="btn-primary login-submit"
+            className="btn btn-primary login-submit"
             disabled={loading || !firstName || !lastInitial}
           >
             {loading ? <><span className="spinner" /> Saving…</> : 'Save Changes'}
