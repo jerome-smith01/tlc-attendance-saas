@@ -533,6 +533,35 @@ export function Events() {
     }
   };
 
+  // Single-row: Reset Sync
+  const handleResetSyncEvent = async (eventId) => {
+    if (await confirm('Reset sync status for this event? It will be marked as unsynced and can be synced again.')) {
+      const { error } = await supabase
+        .from('events')
+        .update({ synced_at: null, synced_by: null, purge_after: null })
+        .eq('id', eventId);
+      if (error) {
+        toast('Error resetting sync: ' + error.message, 'error');
+      } else {
+        setEvents(prev => prev.map(e => e.id === eventId ? { ...e, synced_at: null, synced_by: null, purge_after: null } : e));
+        toast('Sync status reset', 'success');
+      }
+    }
+  };
+
+  // Single-row: Delete
+  const handleDeleteEvent = async (eventId) => {
+    if (await confirm('Delete this event? This will also delete all associated scans and cannot be undone.')) {
+      const { error } = await supabase.from('events').delete().eq('id', eventId);
+      if (error) {
+        toast('Error deleting event: ' + error.message, 'error');
+      } else {
+        setEvents(prev => prev.filter(e => e.id !== eventId));
+        toast('Event deleted', 'success');
+      }
+    }
+  };
+
   // Sort Handler
   const handleSortToggle = (key) => {
     setSortConfig(prev => {
@@ -753,35 +782,13 @@ export function Events() {
           {/* Responsive Grid Morph Table */}
           <div className="grid-table-container">
             {/* Table Header (Desktop Only) */}
-            <div className="grid-table-header" style={{
-              display: 'grid',
-              gridTemplateColumns: '40px 2fr 1.5fr 1.2fr 1.8fr 140px',
-              gap: '1rem',
-              padding: '0.75rem 1rem',
-              fontWeight: 700,
-              fontSize: '0.75rem',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              color: 'var(--text-secondary)',
-              borderBottom: '2px solid var(--border-color)',
-              alignItems: 'center'
-            }}>
-              <div>
-                <input
-                  type="checkbox"
-                  checked={isAllSelected}
-                  ref={el => el && (el.indeterminate = isSomeSelected)}
-                  onChange={handleToggleSelectAll}
-                  style={{ cursor: 'pointer', width: '16px', height: '16px' }}
-                  title="Select all events"
-                />
-              </div>
+            <div className="grid-table-header" style={{ gridTemplateColumns: canManage ? '1.5fr 1fr 1fr 1fr 1.5fr' : '1.5fr 1fr 1fr 1fr' }} role="row">
 
               {/* Event Name Header */}
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                <span onClick={() => handleSortToggle('event_name')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <div role="columnheader" className="column-header-cell">
+                <button type="button" className="column-header-btn" onClick={() => handleSortToggle('event_name')}>
                   Event Name {sortConfig.key === 'event_name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                </span>
+                </button>
                 <button
                   type="button"
                   className={`filter-funnel-btn ${columnFilters.event_name?.length > 0 ? 'active' : ''}`}
@@ -801,11 +808,11 @@ export function Events() {
                 )}
               </div>
 
-              {/* Event Date Header */}
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                <span onClick={() => handleSortToggle('event_date')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              {/* Date Header */}
+              <div role="columnheader" className="column-header-cell">
+                <button type="button" className="column-header-btn" onClick={() => handleSortToggle('event_date')}>
                   Date {sortConfig.key === 'event_date' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                </span>
+                </button>
                 <button
                   type="button"
                   className={`filter-funnel-btn ${(columnFilters.event_date?.from || columnFilters.event_date?.to) ? 'active' : ''}`}
@@ -825,10 +832,10 @@ export function Events() {
               </div>
 
               {/* Status Header */}
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                <span onClick={() => handleSortToggle('status')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <div role="columnheader" className="column-header-cell">
+                <button type="button" className="column-header-btn" onClick={() => handleSortToggle('status')}>
                   Status {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                </span>
+                </button>
                 <button
                   type="button"
                   className={`filter-funnel-btn ${columnFilters.status?.length > 0 ? 'active' : ''}`}
@@ -849,10 +856,10 @@ export function Events() {
               </div>
 
               {/* Synced By Header */}
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                <span onClick={() => handleSortToggle('synced_by')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <div role="columnheader" className="column-header-cell">
+                <button type="button" className="column-header-btn" onClick={() => handleSortToggle('synced_by')}>
                   Synced By {sortConfig.key === 'synced_by' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                </span>
+                </button>
                 <button
                   type="button"
                   className={`filter-funnel-btn ${columnFilters.synced_by?.length > 0 ? 'active' : ''}`}
@@ -872,7 +879,8 @@ export function Events() {
                 )}
               </div>
 
-              <div style={{ textAlign: 'right' }}>Actions</div>
+              {/* Actions Header — admin only */}
+              {canManage && <div role="columnheader" style={{ textAlign: 'right' }}>Actions</div>}
             </div>
 
             {/* Table Rows / Cards */}
@@ -881,66 +889,90 @@ export function Events() {
                 No events found matching criteria.
               </div>
             ) : (
-              processedEvents.map(eventObj => {
-                const isSelected = selectedEventIds.includes(eventObj.id);
-                return (
-                  <div
-                    key={eventObj.id}
-                    className={`grid-table-row ${isSelected ? 'selected' : ''}`}
-                    style={{ gridTemplateColumns: '40px 2fr 1.5fr 1.2fr 1.8fr 140px' }}
-                  >
-                    {/* Checkbox Cell */}
-                    <div className="grid-table-cell grid-table-checkbox">
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => handleToggleSelectRow(eventObj.id)}
-                        style={{ cursor: 'pointer', width: '16px', height: '16px' }}
-                      />
-                    </div>
+              processedEvents.map(eventObj => (
+                <div
+                  key={eventObj.id}
+                  className="grid-table-row"
+                  style={{ gridTemplateColumns: canManage ? '1.5fr 1fr 1fr 1fr 1.5fr' : '1.5fr 1fr 1fr 1fr' }}
+                  role="row"
+                >
+                  {/* Event Name — clickable link */}
+                  <div className="grid-table-cell" role="cell">
+                    <span className="grid-table-label">Event Name</span>
+                    <button
+                      type="button"
+                      className="btn-link"
+                      onClick={() => handleViewAttendees(eventObj)}
+                      title="Click to view attendees"
+                    >
+                      {eventObj.event_name}
+                    </button>
+                  </div>
 
-                    {/* Event Name Cell */}
-                    <div className="grid-table-cell">
-                      <span className="grid-table-label">Event Name</span>
-                      <span style={{ fontWeight: 600 }}>{eventObj.event_name}</span>
-                    </div>
+                  {/* Date */}
+                  <div className="grid-table-cell" role="cell">
+                    <span className="grid-table-label">Date</span>
+                    <span>{eventObj.event_date}</span>
+                  </div>
 
-                    {/* Date Cell */}
-                    <div className="grid-table-cell">
-                      <span className="grid-table-label">Date</span>
-                      <span>{eventObj.event_date}</span>
-                    </div>
-
-                    {/* Status Cell */}
-                    <div className="grid-table-cell">
-                      <span className="grid-table-label">Status</span>
+                  {/* Status */}
+                  <div className="grid-table-cell" role="cell">
+                    <span className="grid-table-label">Status</span>
+                    <div>
                       <span className={`badge ${getStatusBadgeClass(eventObj)}`}>
                         {getStatusLabel(eventObj)}
                       </span>
                     </div>
-
-                    {/* Synced By Cell */}
-                    <div className="grid-table-cell">
-                      <span className="grid-table-label">Synced By</span>
-                      <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                        {eventObj.synced_by ? (usersMap[eventObj.synced_by] || 'Admin') : '-'}
-                      </span>
-                    </div>
-
-                    {/* Actions Cell */}
-                    <div className="grid-table-cell" style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                      <button
-                        type="button"
-                        className="btn btn-secondary"
-                        onClick={() => handleViewAttendees(eventObj)}
-                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}
-                      >
-                        View Attendees
-                      </button>
-                    </div>
                   </div>
-                );
-              })
+
+                  {/* Synced By */}
+                  <div className="grid-table-cell" role="cell">
+                    <span className="grid-table-label">Synced By</span>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                      {eventObj.synced_by ? (usersMap[eventObj.synced_by] || 'Admin') : '-'}
+                    </span>
+                  </div>
+
+                  {/* Actions — admin only */}
+                  {canManage && (
+                    <div className="grid-table-cell" role="cell" style={{ justifyContent: 'flex-end' }}>
+                      <span className="grid-table-label">Actions</span>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={() => handleViewAttendees(eventObj)}
+                          style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
+                        >
+                          View Attendees
+                        </button>
+                        {eventObj.synced_at && (
+                          <button
+                            type="button"
+                            className="btn btn-reset-sync"
+                            onClick={() => handleResetSyncEvent(eventObj.id)}
+                            style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
+                            title="Reset Sync Status"
+                          >
+                            Reset Sync
+                          </button>
+                        )}
+                        {!eventObj.synced_at && eventObj.ended_at && (
+                          <button
+                            type="button"
+                            className="btn btn-destructive"
+                            onClick={() => handleDeleteEvent(eventObj.id)}
+                            style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
+                            title="Delete Event"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))
             )}
           </div>
         </div>
