@@ -1131,6 +1131,44 @@ button:active, .btn-primary:active, .btn-action:active {
   flex-shrink: 0;
 }
 
+/* Mobile Card Event Title Header Layout: Checkbox + Event Name Link */
+.grid-table-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  width: 100%;
+  padding-bottom: 0.625rem;
+  border-bottom: 1px dashed var(--border-color);
+  margin-bottom: 0.25rem;
+}
+
+.grid-table-cell-select {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 0;
+  margin-top: 2px;
+  border-bottom: none;
+}
+
+.grid-table-cell-name {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border-bottom: none;
+}
+
+.event-name-link {
+  text-align: left !important;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.4;
+  word-break: break-word;
+  white-space: normal;
+  width: 100%;
+}
+
 @media (min-width: 768px) {
   .grid-table-header {
     display: grid;
@@ -1171,6 +1209,10 @@ button:active, .btn-primary:active, .btn-action:active {
     background: var(--bg-elevated);
   }
 
+  .grid-table-card-header {
+    display: contents;
+  }
+
   .grid-table-cell {
     display: block;
     padding: 0;
@@ -1178,6 +1220,25 @@ button:active, .btn-primary:active, .btn-action:active {
     min-width: 0;
     overflow-wrap: break-word;
     word-break: break-word;
+  }
+
+  .grid-table-cell-select {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding-left: 1rem;
+    margin-top: 0;
+  }
+
+  .grid-table-cell-name {
+    display: block;
+    padding: 0;
+    border-bottom: none;
+  }
+
+  .event-name-link {
+    font-size: inherit;
+    width: auto;
   }
 
   .grid-table-cell > :not(.grid-table-label) {

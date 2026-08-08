@@ -17,6 +17,35 @@ The app uses two table presentation strategies depending on UI density and mobil
 
 ---
 
+## 1.1 Mobile Card Direct Title Header Pattern (`.grid-table-card-header`)
+
+To maximize vertical reading space and accommodate arbitrarily long record names on mobile (< 768px), cards replace separate column labels ("EVENT NAME") with a **Direct Record Title Header** pattern:
+
+```
++--------------------------------------------------------+
+| [x] Really Long Event Title Value That Wraps           |
+|     Across Multiple Lines                              |
+| - - - - - - - - - - - - - - - - - - - - - - - - - - - -|
+| DATE                                        2026-08-08 |
+| STATUS                                          CLOSED |
+| SYNCED BY                                            - |
+| ACTIONS                                  [🔒] [🔓] [🗑️] |
++--------------------------------------------------------+
+```
+
+### Mobile Card Header Architecture
+1. **Header Wrapper (`.grid-table-card-header`)**:
+   - Combines Cell 1 (Selection Checkbox) and Cell 2 (Record Title Link) into a single top flex container (`display: flex; align-items: flex-start; gap: 0.6rem; width: 100%; border-bottom: 1px dashed var(--border-color); padding-bottom: 0.625rem;`).
+2. **Top-Aligned Checkbox (`.grid-table-cell-select`)**:
+   - Uses `margin-top: 2px` on mobile so the top border of the 18px checkbox aligns pixel-perfect with the cap height (top edge) of the first line of the record title.
+3. **Full-Width Title Link (`.event-name-link`)**:
+   - Occupies remaining width (`flex: 1; min-width: 0;`), styled with `text-align: left !important; font-size: 0.95rem; font-weight: 600; line-height: 1.4; word-break: break-word;`.
+4. **Desktop Grid Unwrapping (`display: contents`)**:
+   - On desktop viewports (`@media (min-width: 768px)`), `.grid-table-card-header` sets `display: contents;`.
+   - This eliminates the wrapper from the CSS grid calculation, allowing Cell 1 (checkbox) and Cell 2 (title link) to participate directly as Columns 1 and 2 in the desktop 6-column CSS grid without DOM duplication.
+
+---
+
 ## 2. Canonical Filter & Sort State Contract
 
 All screens implementing full Excel-like filtering must manage state adhering to the following structure:
@@ -62,13 +91,19 @@ const canManage = isGlobalAdmin || currentUserRole === 'billing_admin' || curren
 
 ---
 
-## 4. Popover UI Layer (`FilterPopover.jsx`)
+## 4. Popover UI Layer & Status Badge Synchronization
 
 ### Popover Design Standards
 - **No Header Bar or Prefix**: Do **not** render a `<div className="filter-popover-header">` header bar or `"Filter "` title prefix. Popovers must be clean, border-less, compact glass-cards.
 - **Auto-Dismiss Mechanics**: Popovers close automatically when clicking outside the popover card (backdrop click) or pressing the `Escape` key.
 - **Distinct Top Sort Group**: When sorting is supported (`onSort`), render `Sort Ascending` and `Sort Descending` as a distinct, styled top group section (`filter-popover-sort-section`) inside the popover body, separated from filter options by a bottom border line. Provide custom contextual labels (e.g., "Sort A to Z", "Sort Oldest to Newest").
 - **Strictly Dynamic Multi-select Options**: Multi-select checkbox options (`type="multiselect"`) MUST be derived dynamically via `useMemo` **strictly from items present in the active dataset** (`events`). Never hardcode option arrays.
+
+### Status Badge Design Token Synchronization
+Status badges (`.badge`) MUST share identical color design tokens with their corresponding action buttons to preserve visual cohesion:
+- **Closed Badge (`.badge-closed`)**: Uses `var(--color-action-close)` (`#0284c7`) for text, border, and background tint matching the Close action button (`.btn-close` / `.btn-icon-close`).
+- **Open / Active Badge (`.badge-success`)**: Uses `var(--color-action-start)` (`#22c55e`).
+- **Synced / Complete Badge (`.badge-neutral`)**: Uses `var(--muted-foreground)`.
 
 ### Multiselect Default State & Filter Synchronization (`[]` = All Selected)
 - **Empty Array Contract**: An empty array (`[]` or falsy) in `columnFilters` represents **"no filter active / all options selected"**.
@@ -88,11 +123,6 @@ const canManage = isGlobalAdmin || currentUserRole === 'billing_admin' || curren
     </label>
     ```
   - Items in the `Hidden:` section render with reduced opacity (`opacity: 0.5`), a `cursor: not-allowed` indicator, and a disabled input (`disabled={true}`).
-
-- **Date Range & Multi-Select Date Filtering (`type="daterange"`)**:
-  - **Native Calendar Trigger**: Date inputs MUST invoke `onClick={(e) => { try { e.target.showPicker?.(); } catch (_) {} }}` to immediately open the browser's graphical calendar popup on click. Styled with `color-scheme: dark` and custom `::-webkit-calendar-picker-indicator` in CSS.
-  - **Preset Shortcuts**: Include one-click range presets (`Today`, `This Week`, `This Month`) below the `From` / `To` inputs.
-  - **Dynamic Table Dates Selection**: In addition to range inputs, pass `options={uniqueDates}` derived dynamically via `useMemo` from dates in the active table dataset (with `disabled` status computed via `availableDates`). Render active dates first, and disabled dates under a `Hidden:` header section.
 
 ### Active Filter Chips Bar
 Appears between toolbar and table when 1 or more column filters are active:
@@ -152,7 +182,8 @@ Screens supporting bulk operations include a multi-select checkbox column to the
 ### Selection Behavior & Alignment
 - **Master Checkbox (Header)**: Toggles selection on all currently visible (filtered) rows. Uses `input.indeterminate = isSomeSelected` for partial selection.
 - **Row Checkbox**: Toggles selection for individual row IDs.
-- **Pixel-Perfect Alignment**: Both the header selection cell and row selection cell MUST use identical padding and flex alignment (`display: flex; align-items: center; justify-content: flex-start; padding-left: 1rem; width: 48px;`) so the checkboxes align vertically.
+- **Pixel-Perfect Alignment**: Both the header selection cell and row selection cell MUST use identical padding and flex alignment (`display: flex; align-items: center; justify-content: flex-start; padding-left: 1rem; width: 48px;`) on desktop.
+- **Mobile Alignment**: On mobile cards (< 768px), `.grid-table-cell-select` uses `margin-top: 2px` to align the top edge of the checkbox flush with the first line of the title text.
 
 ---
 
@@ -185,9 +216,17 @@ Single-row action buttons MUST use global CSS utility classes rather than ad-hoc
 
 ---
 
-## 8. Floating Bulk Action Bar (`.bulk-action-pill`)
+## 8. Floating Bulk Action Bar (`.bulk-action-pill`) & Action Guide
 
-When 1 or more rows are selected via checkboxes, a floating bottom action bar appears containing action buttons (`Close`, `Reopen`, `Reset Sync`, `Delete`).
+When 1 or more rows are selected via checkboxes, a floating bottom action bar (`.bulk-action-pill`) appears centered above the bottom viewport edge.
+
+### High-Contrast Floating Pill Theme
+- Uses high-contrast surface styling (`#334155` background in light mode, `#f1f5f9` in dark mode) with elevated drop shadow (`0 14px 35px rgba(0,0,0,0.45)`).
+- Action icon buttons in the floating bar use standard design tokens (`var(--color-action-close)`, `var(--color-action-start)`, `var(--color-action-reset)`, `var(--color-destructive)`).
+
+### Help Icon & Interactive Action Guide Popover
+- Includes a circular Help `?` button (`.btn-icon-help`) with `border: none; background: transparent;` rendering a single SVG circle around the question mark.
+- Tapping `?` opens an `.action-guide-popover` card displaying an "ACTION GUIDE" legend detailing all available bulk action icon meanings and labels.
 
 ### Forethought Action Enablement Rules
 To prevent invalid state transitions across multi-selected items, bulk actions evaluate conditional status rules across **all** currently selected items:
@@ -212,6 +251,10 @@ When building or upgrading another page (e.g. `Roster.jsx`) to use this pattern:
 - [ ] Implement sum-preserving FR drag resizing (`handleStartResize`) with `minFr` limits so total table width stays fixed at 100%.
 - [ ] Ensure `canManage` (or role checks) is declared BEFORE `gridTemplateStyle` and `handleStartResize` hooks to prevent TDZ errors.
 - [ ] Use `selectedTroop?.currentUserRole` for permission checks (`canManage`).
+- [ ] Wrap top mobile selection cell and record title cell in `.grid-table-card-header` using `align-items: flex-start; gap: 0.6rem;` on mobile and `display: contents;` on desktop.
+- [ ] Set `margin-top: 2px` on `.grid-table-cell-select` for mobile so the top border of the checkbox box aligns with the top of the first title text line.
+- [ ] Remove standalone "Event Name" label text on mobile cards, placing the event title value link directly next to the checkbox.
+- [ ] Match status badge color tokens to action button tokens (`.badge-closed` uses `var(--color-action-close)` `#0284c7`).
 - [ ] Enforce `width: 100%` and `box-sizing: border-box` on outer page wrapper, `.glass-card`, `.grid-table-container`, header, and row elements so table width never shrinks when filtering.
 - [ ] Use `minmax(0, ...)` tracks for all fractional columns in `grid-template-columns` and `min-width: 0` on `.grid-table-cell` to guarantee column width stability.
 - [ ] Define dynamic `useMemo` options for column filters derived strictly from current dataset items (including `uniqueDates` for date columns).
@@ -224,12 +267,14 @@ When building or upgrading another page (e.g. `Roster.jsx`) to use this pattern:
 - [ ] Display ` 🌪️` for active filters and ` ↑` / ` ↓` for active sort direction inside title buttons (no ` ↕` for unsorted).
 - [ ] Left-align `Actions` header and row action cells (`justifyContent: 'flex-start'`).
 - [ ] Exclude sorting controls from `Actions` popover.
-- [ ] Ensure selection header and row selection cells use identical `padding-left: 1rem` alignment.
+- [ ] Ensure selection header and row selection cells use identical `padding-left: 1rem` alignment on desktop.
 - [ ] Use `.btn-icon-action` with contextual modifier classes (`.btn-icon-close`, `.btn-icon-reopen`, `.btn-icon-reset-sync`, `.btn-icon-destructive`) and inline SVG stroke icons (`stroke="currentColor"`).
 - [ ] Keep all row actions present in DOM; shade unavailable actions grey (`opacity: 0.35`, `disabled={true}`) with tooltips.
 - [ ] Use record title links for detail modals (remove redundant "View" action buttons).
+- [ ] Include high-contrast `.bulk-action-pill` with `?` help button (`.btn-icon-help`) and interactive Action Guide popover card.
 - [ ] Add active filter chips bar under toolbar area.
 - [ ] Add mobile Filter/Sort trigger button and bottom sheet drawer.
+
 
 
 

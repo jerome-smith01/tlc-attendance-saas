@@ -1252,29 +1252,32 @@ export function Events() {
                     role="row"
                     style={gridTemplateStyle}
                   >
-                    {/* Selection Cell */}
-                    {canManage && (
-                      <div className="grid-table-cell" role="cell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', paddingLeft: '1rem' }}>
-                        <input
-                          type="checkbox"
-                          checked={selectedEventIds.includes(eventObj.id)}
-                          onChange={() => handleToggleSelectRow(eventObj.id)}
-                          style={{ margin: 0, cursor: 'pointer', width: '18px', height: '18px' }}
-                        />
-                      </div>
-                    )}
+                    {/* Header Group (Mobile: Checkbox + Event Name Link / Desktop: grid contents) */}
+                    <div className="grid-table-card-header">
+                      {/* Selection Cell */}
+                      {canManage && (
+                        <div className="grid-table-cell grid-table-cell-select" role="cell">
+                          <input
+                            type="checkbox"
+                            checked={selectedEventIds.includes(eventObj.id)}
+                            onChange={() => handleToggleSelectRow(eventObj.id)}
+                            style={{ margin: 0, cursor: 'pointer', width: '18px', height: '18px' }}
+                            title="Select event"
+                          />
+                        </div>
+                      )}
 
-                    {/* Event Name — clickable link */}
-                    <div className="grid-table-cell" role="cell">
-                      <span className="grid-table-label">Event Name</span>
-                      <button
-                        type="button"
-                        className="btn-link"
-                        onClick={() => handleViewAttendees(eventObj)}
-                        title="Click to view attendees"
-                      >
-                        {eventObj.event_name}
-                      </button>
+                      {/* Event Name — clickable link */}
+                      <div className="grid-table-cell grid-table-cell-name" role="cell">
+                        <button
+                          type="button"
+                          className="btn-link event-name-link"
+                          onClick={() => handleViewAttendees(eventObj)}
+                          title="Click to view attendees"
+                        >
+                          {eventObj.event_name}
+                        </button>
+                      </div>
                     </div>
 
                     {/* Date */}
