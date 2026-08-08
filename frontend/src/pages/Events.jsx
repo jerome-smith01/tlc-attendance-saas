@@ -705,9 +705,12 @@ export function Events() {
     const chips = [];
 
     if (columnFilters.event_name && columnFilters.event_name.length > 0) {
+      const labelStr = columnFilters.event_name.length > 2
+        ? `${columnFilters.event_name.length} selected`
+        : columnFilters.event_name.join(', ');
       chips.push({
         id: 'event_name',
-        label: `Name: ${columnFilters.event_name.join(', ')}`,
+        label: `Event Name: ${labelStr.length > 50 ? labelStr.substring(0, 50) + '...' : labelStr}`,
         onRemove: () => setColumnFilters(prev => ({ ...prev, event_name: [] }))
       });
     }
@@ -722,7 +725,10 @@ export function Events() {
         parts.push(`Until ${columnFilters.event_date.to}`);
       }
       if (columnFilters.event_date.dates && columnFilters.event_date.dates.length > 0) {
-        parts.push(`Dates: ${columnFilters.event_date.dates.join(', ')}`);
+        const datesLabel = columnFilters.event_date.dates.length > 2 
+          ? `${columnFilters.event_date.dates.length} selected`
+          : columnFilters.event_date.dates.join(', ');
+        parts.push(datesLabel);
       }
       chips.push({
         id: 'event_date',
@@ -732,25 +738,34 @@ export function Events() {
     }
 
     if (columnFilters.status && columnFilters.status.length > 0) {
+      const labelStr = columnFilters.status.length > 2
+        ? `${columnFilters.status.length} selected`
+        : columnFilters.status.join(', ');
       chips.push({
         id: 'status',
-        label: `Status: ${columnFilters.status.join(', ')}`,
+        label: `Status: ${labelStr}`,
         onRemove: () => setColumnFilters(prev => ({ ...prev, status: [] }))
       });
     }
 
     if (columnFilters.synced_by && columnFilters.synced_by.length > 0) {
+      const labelStr = columnFilters.synced_by.length > 2
+        ? `${columnFilters.synced_by.length} selected`
+        : columnFilters.synced_by.join(', ');
       chips.push({
         id: 'synced_by',
-        label: `Synced By: ${columnFilters.synced_by.join(', ')}`,
+        label: `Synced By: ${labelStr.length > 50 ? labelStr.substring(0, 50) + '...' : labelStr}`,
         onRemove: () => setColumnFilters(prev => ({ ...prev, synced_by: [] }))
       });
     }
 
     if (columnFilters.actions && columnFilters.actions.length > 0) {
+      const labelStr = columnFilters.actions.length > 2
+        ? `${columnFilters.actions.length} selected`
+        : columnFilters.actions.join(', ');
       chips.push({
         id: 'actions',
-        label: `Action: ${columnFilters.actions.join(', ')}`,
+        label: `Actions: ${labelStr}`,
         onRemove: () => setColumnFilters(prev => ({ ...prev, actions: [] }))
       });
     }

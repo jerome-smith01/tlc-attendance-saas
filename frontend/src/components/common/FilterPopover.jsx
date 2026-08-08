@@ -74,19 +74,34 @@ export function FilterPopover({
   const isSortedDesc = sortConfig?.key === columnKey && sortConfig?.direction === 'desc';
 
   const handleMultiselectToggle = (optVal) => {
-    const current = Array.isArray(value) ? value : [];
+    const current = (!value || value.length === 0) ? options.map(o => o.value) : value;
+    let next;
     if (current.includes(optVal)) {
-      onChange(current.filter(v => v !== optVal));
+      next = current.filter(v => v !== optVal);
     } else {
-      onChange([...current, optVal]);
+      next = [...current, optVal];
+    }
+
+    if (next.length === options.length) {
+      onChange([]);
+    } else {
+      onChange(next);
     }
   };
 
   const handleSelectAll = () => {
-    const current = Array.isArray(value) ? value : [];
-    const visibleValues = visibleOptions.map(o => o.value);
-    const combined = Array.from(new Set([...current, ...visibleValues]));
-    onChange(combined);
+    if (!searchTerm.trim()) {
+      onChange([]);
+    } else {
+      const current = (!value || value.length === 0) ? options.map(o => o.value) : value;
+      const visibleValues = visibleOptions.map(o => o.value);
+      const combined = Array.from(new Set([...current, ...visibleValues]));
+      if (combined.length === options.length) {
+        onChange([]);
+      } else {
+        onChange(combined);
+      }
+    }
   };
 
   const handleClearMultiselect = () => {
@@ -94,8 +109,9 @@ export function FilterPopover({
       onChange([]);
     } else {
       const visibleValues = visibleOptions.map(o => o.value);
-      const current = Array.isArray(value) ? value : [];
-      onChange(current.filter(v => !visibleValues.includes(v)));
+      const current = (!value || value.length === 0) ? options.map(o => o.value) : value;
+      const next = current.filter(v => !visibleValues.includes(v));
+      onChange(next.length === 0 ? [] : next);
     }
   };
 
@@ -344,7 +360,7 @@ export function FilterPopover({
                 </div>
               ) : (
                 visibleOptions.map((opt) => {
-                  const checked = (Array.isArray(value) ? value : []).includes(opt.value);
+                  const checked = (!value || value.length === 0) ? true : value.includes(opt.value);
                   return (
                     <label key={opt.value} className="filter-multiselect-item">
                       <input
