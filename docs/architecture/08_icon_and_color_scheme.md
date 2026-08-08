@@ -74,35 +74,72 @@ Action icons rendered inside table rows use `.btn-icon-action` combined with the
 
 ## 4. Bulk Action Pill Implementation Guide
 
-The `.bulk-action-pill` floating widget provides bulk management capabilities. Any screen implementing bulk selection MUST use:
+The `.bulk-action-pill` floating widget provides bulk management capabilities in a compact, floating toolbar fixed at the bottom center of the viewport. On mobile viewports it renders icon-only action buttons to save screen real estate, and displays text labels on desktop viewports via `.bulk-action-btn-text`.
+
+Any screen implementing bulk selection MUST use:
 
 ```jsx
 <div className="bulk-action-pill">
-  <span>{selectedCount} item{selectedCount > 1 ? 's' : ''} selected</span>
-  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-    {/* Blue Close Button */}
-    <button className="btn btn-close" disabled={!canBulkClose} onClick={handleBulkClose}>
-      Close
+  {/* Left Side: Count, Label & Clear */}
+  <div className="bulk-action-pill-info">
+    <span className="bulk-action-pill-count">{selectedCount}</span>
+    <span className="bulk-action-pill-label">Selected</span>
+    <button
+      type="button"
+      className="btn-icon-action btn-icon-clear"
+      onClick={clearSelection}
+      title="Clear selection"
+    >
+      <XIcon width="16" height="16" />
+    </button>
+  </div>
+
+  {/* Vertical Divider */}
+  <div className="bulk-action-pill-divider" />
+
+  {/* Right Side: Action Buttons */}
+  <div className="bulk-action-pill-actions">
+    <button
+      type="button"
+      className="btn-icon-action btn-icon-close"
+      disabled={!canBulkClose}
+      onClick={handleBulkClose}
+      title={...}
+    >
+      <LockIcon width="18" height="18" />
+      <span className="bulk-action-btn-text">Close</span>
     </button>
     
-    {/* Green Reopen Button */}
-    <button className="btn btn-reopen" disabled={!canBulkReopen} onClick={handleBulkReopen}>
-      Reopen
+    <button
+      type="button"
+      className="btn-icon-action btn-icon-reopen"
+      disabled={!canBulkReopen}
+      onClick={handleBulkReopen}
+      title={...}
+    >
+      <UnlockIcon width="18" height="18" />
+      <span className="bulk-action-btn-text">Reopen</span>
     </button>
     
-    {/* Purple Reset Sync Button */}
-    <button className="btn btn-reset-sync" disabled={!canBulkResetSync} onClick={handleBulkResetSync}>
-      Reset Sync
+    <button
+      type="button"
+      className="btn-icon-action btn-icon-reset-sync"
+      disabled={!canBulkResetSync}
+      onClick={handleBulkResetSync}
+      title={...}
+    >
+      <ResetIcon width="18" height="18" />
+      <span className="bulk-action-btn-text">Reset Sync</span>
     </button>
     
-    {/* Red Delete Button */}
-    <button className="btn btn-destructive" onClick={handleBulkDelete}>
-      Delete
-    </button>
-    
-    {/* Deselect */}
-    <button className="btn-link" onClick={clearSelection}>
-      Deselect All
+    <button
+      type="button"
+      className="btn-icon-action btn-icon-destructive"
+      onClick={handleBulkDelete}
+      title="Delete selected items"
+    >
+      <TrashIcon width="18" height="18" />
+      <span className="bulk-action-btn-text">Delete</span>
     </button>
   </div>
 </div>

@@ -24,6 +24,7 @@ export function Events() {
 
   // Row selection state for bulk actions
   const [selectedEventIds, setSelectedEventIds] = useState([]);
+  const [showActionGuide, setShowActionGuide] = useState(false);
 
   // Start new event states
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -286,7 +287,7 @@ export function Events() {
 
   const getStatusBadgeClass = (eventObj) => {
     if (eventObj.synced_at) return 'badge-neutral';
-    if (eventObj.ended_at) return 'badge-warning';
+    if (eventObj.ended_at) return 'badge-closed';
     return 'badge-success';
   };
 
@@ -1054,7 +1055,7 @@ export function Events() {
           )}
 
           {/* Responsive Grid Morph Table */}
-          <div className="grid-table-container">
+          <div className={`grid-table-container ${selectedEventIds.length > 0 ? 'has-bulk-selection' : ''}`}>
             {/* Table Header (Desktop Only) */}
             <div
               ref={headerRef}
@@ -1373,69 +1374,162 @@ export function Events() {
       {/* Floating Bulk Action Bar */}
       {selectedEventIds.length > 0 && (
         <div className="bulk-action-pill">
-          <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>
-            {selectedEventIds.length} event{selectedEventIds.length > 1 ? 's' : ''} selected
-          </span>
-
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            {/* Close Button: Blue */}
+          {/* Left Side: Count, Label & Clear */}
+          <div className="bulk-action-pill-info">
+            <span className="bulk-action-pill-count">{selectedEventIds.length}</span>
+            <span className="bulk-action-pill-label">Selected</span>
             <button
               type="button"
-              className="btn btn-close"
-              onClick={handleBulkClose}
+              className="btn-icon-action btn-icon-clear"
+              onClick={() => setSelectedEventIds([])}
+              title="Clear selection"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Vertical Divider */}
+          <div className="bulk-action-pill-divider" />
+
+          {/* Right Side: Action Icons */}
+          <div className="bulk-action-pill-actions">
+            {/* Close Action: Blue */}
+            <button
+              type="button"
+              className="btn-icon-action btn-icon-close"
               disabled={!canBulkClose}
-              style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
-              title={!canBulkClose ? "Close is disabled: all selected events must be open (not closed or synced)" : "Close selected events"}
+              onClick={handleBulkClose}
+              title={!canBulkClose ? "Close unavailable: all selected events must be open (not closed or synced)" : "Close selected events"}
             >
-              Close
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+              <span className="bulk-action-btn-text">Close</span>
             </button>
 
-            {/* Reopen Button: Green */}
+            {/* Reopen Action: Green */}
             <button
               type="button"
-              className="btn btn-reopen"
-              onClick={handleBulkReopen}
+              className="btn-icon-action btn-icon-reopen"
               disabled={!canBulkReopen}
-              style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
-              title={!canBulkReopen ? "Reopen is disabled: all selected events must be closed and not synced" : "Reopen selected events"}
+              onClick={handleBulkReopen}
+              title={!canBulkReopen ? "Reopen unavailable: all selected events must be closed and not synced" : "Reopen selected events"}
             >
-              Reopen
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+              </svg>
+              <span className="bulk-action-btn-text">Reopen</span>
             </button>
 
-            {/* Reset Sync Button: Purple */}
+            {/* Reset Sync Action: Purple */}
             <button
               type="button"
-              className="btn btn-reset-sync"
-              onClick={handleBulkResetSync}
+              className="btn-icon-action btn-icon-reset-sync"
               disabled={!canBulkResetSync}
-              style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
-              title={!canBulkResetSync ? "Reset Sync is disabled: all selected events must be synced" : "Reset sync status"}
+              onClick={handleBulkResetSync}
+              title={!canBulkResetSync ? "Reset Sync unavailable: all selected events must be synced" : "Reset sync status"}
             >
-              Reset Sync
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="23 4 23 10 17 10" />
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+              </svg>
+              <span className="bulk-action-btn-text">Reset Sync</span>
             </button>
 
-            {/* Delete Button: Red */}
+            {/* Delete Action: Red */}
             {canManage && (
               <button
                 type="button"
-                className="btn btn-destructive"
+                className="btn-icon-action btn-icon-destructive"
                 onClick={handleBulkDelete}
-                style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
                 title="Delete selected events"
               >
-                Delete
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                </svg>
+                <span className="bulk-action-btn-text">Delete</span>
               </button>
             )}
 
-            {/* Clear Selection */}
+            {/* Help Divider & Icon */}
+            <div className="bulk-action-pill-divider" />
             <button
               type="button"
-              className="btn-link"
-              onClick={() => setSelectedEventIds([])}
-              style={{ fontSize: '0.8rem', marginLeft: '0.5rem', color: 'var(--text-secondary)' }}
+              className="btn-icon-action btn-icon-help"
+              onClick={() => setShowActionGuide(prev => !prev)}
+              title="Action Guide"
             >
-              Deselect All
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
             </button>
+
+            {/* Action Guide Popover */}
+            {showActionGuide && (
+              <div className="action-guide-popover">
+                <div className="action-guide-header">
+                  <span>ACTION GUIDE</span>
+                  <button
+                    type="button"
+                    className="action-guide-close"
+                    onClick={() => setShowActionGuide(false)}
+                    title="Close guide"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="action-guide-body">
+                  <div className="action-guide-item">
+                    <span className="action-guide-icon btn-icon-close">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                      </svg>
+                    </span>
+                    <span>Close Event</span>
+                  </div>
+                  <div className="action-guide-item">
+                    <span className="action-guide-icon btn-icon-reopen">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                        <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+                      </svg>
+                    </span>
+                    <span>Reopen Event</span>
+                  </div>
+                  <div className="action-guide-item">
+                    <span className="action-guide-icon btn-icon-reset-sync">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="23 4 23 10 17 10" />
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                      </svg>
+                    </span>
+                    <span>Reset Sync</span>
+                  </div>
+                  <div className="action-guide-item">
+                    <span className="action-guide-icon btn-icon-destructive">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      </svg>
+                    </span>
+                    <span>Delete Event</span>
+                  </div>
+                </div>
+                <div className="action-guide-arrow" />
+              </div>
+            )}
           </div>
         </div>
       )}
