@@ -800,7 +800,7 @@ export function Events() {
   }
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
+    <div style={{ width: '100%', maxWidth: '1400px', margin: '0 auto', boxSizing: 'border-box', padding: '2rem' }}>
       {/* Top Bar / Header */}
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
@@ -918,7 +918,7 @@ export function Events() {
           {/* Responsive Grid Morph Table */}
           <div className="grid-table-container">
             {/* Table Header (Desktop Only) */}
-            <div className="grid-table-header" style={{ gridTemplateColumns: canManage ? '48px 1.5fr 1fr 1fr 1fr 1.5fr' : '1.5fr 1fr 1fr 1fr' }} role="row">
+            <div className={`grid-table-header ${canManage ? '' : 'no-manage'}`} role="row">
 
               {/* Selection Header */}
               {canManage && (
@@ -1074,8 +1074,7 @@ export function Events() {
                 return (
                   <div
                     key={eventObj.id}
-                    className="grid-table-row"
-                    style={{ gridTemplateColumns: canManage ? '48px 1.5fr 1fr 1fr 1fr 1.5fr' : '1.5fr 1fr 1fr 1fr' }}
+                    className={`grid-table-row ${canManage ? '' : 'no-manage'}`}
                     role="row"
                   >
                     {/* Selection Cell */}
@@ -1135,20 +1134,9 @@ export function Events() {
                           {/* Close Action */}
                           <button
                             type="button"
+                            className="btn-icon-action btn-icon-close"
                             disabled={!canCloseRow}
                             onClick={() => canCloseRow && handleCloseEvent(eventObj)}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              padding: '6px',
-                              borderRadius: 'var(--radius-sm, 4px)',
-                              border: '1px solid var(--border-color)',
-                              background: 'transparent',
-                              color: canCloseRow ? 'var(--foreground)' : 'var(--text-secondary)',
-                              opacity: canCloseRow ? 1 : 0.35,
-                              cursor: canCloseRow ? 'pointer' : 'not-allowed'
-                            }}
                             title={canCloseRow ? "Close Event" : "Close unavailable: event is already closed or synced"}
                           >
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1160,20 +1148,9 @@ export function Events() {
                           {/* Reopen Action */}
                           <button
                             type="button"
+                            className="btn-icon-action btn-icon-reopen"
                             disabled={!canReopenRow}
                             onClick={() => canReopenRow && handleReopenEvent(eventObj)}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              padding: '6px',
-                              borderRadius: 'var(--radius-sm, 4px)',
-                              border: '1px solid var(--border-color)',
-                              background: 'transparent',
-                              color: canReopenRow ? 'var(--foreground)' : 'var(--text-secondary)',
-                              opacity: canReopenRow ? 1 : 0.35,
-                              cursor: canReopenRow ? 'pointer' : 'not-allowed'
-                            }}
                             title={canReopenRow ? "Reopen Event" : "Reopen unavailable: event is open or already synced"}
                           >
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1185,20 +1162,9 @@ export function Events() {
                           {/* Reset Sync Action */}
                           <button
                             type="button"
+                            className="btn-icon-action btn-icon-reset-sync"
                             disabled={!canResetSyncRow}
                             onClick={() => canResetSyncRow && handleResetSyncEvent(eventObj.id)}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              padding: '6px',
-                              borderRadius: 'var(--radius-sm, 4px)',
-                              border: '1px solid var(--border-color)',
-                              background: 'transparent',
-                              color: canResetSyncRow ? 'var(--foreground)' : 'var(--text-secondary)',
-                              opacity: canResetSyncRow ? 1 : 0.35,
-                              cursor: canResetSyncRow ? 'pointer' : 'not-allowed'
-                            }}
                             title={canResetSyncRow ? "Reset Sync Status" : "Reset Sync unavailable: event has not been synced yet"}
                           >
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1210,19 +1176,8 @@ export function Events() {
                           {/* Delete Action */}
                           <button
                             type="button"
+                            className="btn-icon-action btn-icon-destructive"
                             onClick={() => handleDeleteEvent(eventObj.id)}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              padding: '6px',
-                              borderRadius: 'var(--radius-sm, 4px)',
-                              border: '1px solid var(--border-color)',
-                              background: 'transparent',
-                              color: 'var(--foreground)',
-                              opacity: 1,
-                              cursor: 'pointer'
-                            }}
                             title="Delete Event"
                           >
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

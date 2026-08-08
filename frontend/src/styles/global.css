@@ -98,6 +98,8 @@
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
   border-radius: var(--radius-md);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* ── Status Badges ── */
@@ -303,6 +305,90 @@ html, body, #root { height: 100%; }
   pointer-events: none;
 }
 
+/* ── Row Action Icon Buttons ── */
+.btn-icon-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: var(--radius-sm, 6px);
+  border: 1px solid var(--border-color);
+  background: transparent;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), opacity var(--transition-fast);
+}
+
+.btn-icon-action:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Close Icon: Blue */
+.btn-icon-close {
+  color: var(--color-action-close);
+  border-color: rgba(2, 132, 199, 0.4);
+}
+.btn-icon-close:hover:not(:disabled) {
+  color: var(--color-action-close-hover);
+  border-color: var(--color-action-close);
+  background-color: rgba(2, 132, 199, 0.1);
+}
+.btn-icon-close:disabled {
+  color: var(--color-action-close);
+  border-color: rgba(2, 132, 199, 0.25);
+  opacity: 0.35;
+}
+
+/* Reopen Icon: Green */
+.btn-icon-reopen {
+  color: var(--color-action-start);
+  border-color: rgba(34, 197, 94, 0.4);
+}
+.btn-icon-reopen:hover:not(:disabled) {
+  color: var(--color-action-start-hover);
+  border-color: var(--color-action-start);
+  background-color: rgba(34, 197, 94, 0.1);
+}
+.btn-icon-reopen:disabled {
+  color: var(--color-action-start);
+  border-color: rgba(34, 197, 94, 0.25);
+  opacity: 0.35;
+}
+
+/* Reset Sync Icon: Purple */
+.btn-icon-reset-sync {
+  color: var(--color-action-reset);
+  border-color: rgba(124, 58, 237, 0.4);
+}
+.btn-icon-reset-sync:hover:not(:disabled) {
+  color: var(--color-action-reset-hover);
+  border-color: var(--color-action-reset);
+  background-color: rgba(124, 58, 237, 0.1);
+}
+.btn-icon-reset-sync:disabled {
+  color: var(--color-action-reset);
+  border-color: rgba(124, 58, 237, 0.25);
+  opacity: 0.35;
+}
+
+/* Delete Icon: Red */
+.btn-icon-destructive {
+  color: var(--color-destructive);
+  border-color: rgba(220, 38, 38, 0.4);
+}
+.btn-icon-destructive:hover:not(:disabled) {
+  color: var(--color-destructive-hover);
+  border-color: var(--color-destructive);
+  background-color: rgba(220, 38, 38, 0.1);
+}
+.btn-icon-destructive:disabled {
+  color: var(--color-destructive);
+  border-color: rgba(220, 38, 38, 0.25);
+  opacity: 0.35;
+}
+
+
 
 /* ── Modal (verbatim from jerome-portfolio/src/styles/global.css) ── */
 .app-modal-overlay {
@@ -506,6 +592,8 @@ button:active, .btn-primary:active, .btn-action:active {
   display: flex;
   flex-direction: column;
   overflow: auto;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .layout-header {
@@ -724,10 +812,13 @@ button:active, .btn-primary:active, .btn-action:active {
 /* ── Responsive Grid Table (Div-based Table/Card morph) ── */
 .grid-table-container {
   width: 100%;
+  box-sizing: border-box;
 }
 
 .grid-table-header {
   display: none;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .grid-table-row {
@@ -740,6 +831,8 @@ button:active, .btn-primary:active, .btn-action:active {
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
   transition: background var(--transition-fast), border-color var(--transition-fast);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .grid-table-cell {
@@ -794,6 +887,16 @@ button:active, .btn-primary:active, .btn-action:active {
     align-items: center;
   }
 
+  .grid-table-header,
+  .grid-table-row {
+    grid-template-columns: 48px minmax(0, 2.5fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.3fr);
+  }
+
+  .grid-table-header.no-manage,
+  .grid-table-row.no-manage {
+    grid-template-columns: minmax(0, 2.5fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+  }
+
   .grid-table-row:hover {
     background: var(--bg-elevated);
   }
@@ -802,6 +905,9 @@ button:active, .btn-primary:active, .btn-action:active {
     display: block;
     padding: 0;
     border-bottom: none;
+    min-width: 0;
+    overflow-wrap: break-word;
+    word-break: break-word;
   }
 
   .grid-table-label {

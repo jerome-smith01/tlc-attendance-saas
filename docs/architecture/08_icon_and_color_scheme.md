@@ -45,10 +45,21 @@ To ensure visual clarity and consistency across screens and bulk-action bars, ac
 When any action button is disabled (e.g. invalid bulk selection states):
 1. **Never use default grey backgrounds** for active buttons. Active buttons maintain their full brand color.
 2. Disabled buttons MUST render with:
-   - `opacity: 0.4`
+   - `opacity: 0.4` (or `0.35` for icon buttons)
    - `cursor: not-allowed`
    - `pointer-events: none` (prevents hover triggers and tooltip flicker)
-3. Every button variant (`.btn-primary`, `.btn-secondary`, `.btn-destructive`, `.btn-close`, `.btn-start`, `.btn-reopen`, `.btn-reset-sync`) has an explicit `:disabled` CSS block in `global.css`.
+3. Every button variant (`.btn-primary`, `.btn-secondary`, `.btn-destructive`, `.btn-close`, `.btn-start`, `.btn-reopen`, `.btn-reset-sync`, `.btn-icon-action`) has an explicit `:disabled` CSS block in `global.css`.
+
+### 2.3 Row Action Icon Buttons
+
+Action icons rendered inside table rows use `.btn-icon-action` combined with the matching action class so their active and deactivated states match the bulk action color tokens:
+
+| Action Purpose | Icon | Active Color | CSS Class | Disabled Behavior |
+|:---|:---|:---|:---|:---|
+| **Close** | Lock Closed | 🔵 Blue | `.btn-icon-action.btn-icon-close` | Faded blue theme (`opacity: 0.35`) |
+| **Reopen** | Lock Open | 🟢 Green | `.btn-icon-action.btn-icon-reopen` | Faded green theme (`opacity: 0.35`) |
+| **Reset Sync** | Rotate Arrow | 🟣 Purple | `.btn-icon-action.btn-icon-reset-sync` | Faded purple theme (`opacity: 0.35`) |
+| **Delete** | Trash Can | 🔴 Red | `.btn-icon-action.btn-icon-destructive` | Faded red theme (`opacity: 0.35`) |
 
 ---
 

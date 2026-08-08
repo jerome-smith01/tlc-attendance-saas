@@ -69,6 +69,10 @@ const canManage = isGlobalAdmin || currentUserRole === 'billing_admin' || curren
 - **Auto-Dismiss Mechanics**: Popovers close automatically when clicking outside the popover card (backdrop click) or pressing the `Escape` key.
 - **Distinct Top Sort Group**: When sorting is supported (`onSort`), render `Sort Ascending` and `Sort Descending` as a distinct, styled top group section (`filter-popover-sort-section`) inside the popover body, separated from filter options by a bottom border line. Provide custom contextual labels (e.g., "Sort A to Z", "Sort Oldest to Newest").
 - **Strictly Dynamic Multi-select Options**: Multi-select checkbox options (`type="multiselect"`) MUST be derived dynamically via `useMemo` **strictly from items present in the active dataset** (`events`). Never hardcode option arrays (e.g., do **not** include "Synced" in Status options if no records in the current dataset have the "Synced" status).
+- **Date Range & Multi-Select Date Filtering (`type="daterange"`)**:
+  - **Native Calendar Trigger**: Date inputs MUST invoke `onClick={(e) => { try { e.target.showPicker?.(); } catch (_) {} }}` to immediately open the browser's graphical calendar popup on click. Styled with `color-scheme: dark` and custom `::-webkit-calendar-picker-indicator` in CSS.
+  - **Preset Shortcuts**: Include one-click range presets (`Today`, `This Week`, `This Month`) below the `From` / `To` inputs.
+  - **Dynamic Table Dates Selection**: In addition to range inputs, pass `options={uniqueDates}` derived dynamically via `useMemo` from dates in the active table dataset. Render these dates as a multi-select checkbox list with search, "Select All", and "Clear" controls so users can choose specific individual dates.
 
 ### Active Filter Chips Bar
 Appears between toolbar and table when 1 or more column filters are active:
@@ -78,7 +82,22 @@ Appears between toolbar and table when 1 or more column filters are active:
 
 ---
 
-## 5. Row Selection & Pixel-Perfect Alignment
+## 5. Desktop Container Width Stability & Fixed Grid Tracks
+
+To prevent layout jumping and width collapse when filtering table records or displaying rows with varying text lengths, tables MUST follow strict container width and CSS grid rules:
+
+### 5.1 Full Width Container Enforcement (`width: 100%`)
+- **Outer Wrapper & Glass Card**: The page outer wrapper (`<div style={{ width: '100%', maxWidth: '1400px', margin: '0 auto', boxSizing: 'border-box' }}>`), `.glass-card`, `.grid-table-container`, `.grid-table-header`, `.grid-table-row`, and `.layout-main` MUST explicitly set `width: 100%` and `box-sizing: border-box`.
+- **No Shrink Collapse**: Tables must **NEVER** shrink or collapse horizontally when filtering narrows the dataset or removes long text rows. The table card and grid container must permanently remain at maximum container width on desktop.
+
+### 5.2 Strict `minmax(0, ...)` Grid Track Definitions
+- **No Implicit `auto` Min-Content Sizes**: On desktop (`@media (min-width: 768px)`), `grid-template-columns` MUST use `minmax(0, ...)` for all fractional (`fr`) tracks (e.g. `grid-template-columns: 48px minmax(0, 2.5fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.3fr)`).
+- **Why**: Plain `1.5fr` evaluates to `minmax(auto, 1.5fr)`. The `auto` minimum content size forces grid columns to expand when long text rows exist and shrink when filtered out. Using `minmax(0, ...)` ensures column widths remain 100% fixed and predictable regardless of content length.
+- **Cell Shrinkage & Text Wrapping**: `.grid-table-cell` MUST include `min-width: 0`, `overflow-wrap: break-word`, and `word-break: break-word` so cell contents wrap cleanly without stretching grid tracks.
+
+---
+
+## 6. Row Selection & Pixel-Perfect Alignment
 
 Screens supporting bulk operations include a multi-select checkbox column to the left of the primary data column:
 
@@ -89,27 +108,36 @@ Screens supporting bulk operations include a multi-select checkbox column to the
 
 ---
 
-## 6. Single-Row Action Column Rules
+## 7. Single-Row Action Column Rules
 
 ### Layout & Alignment
 - **Left-Aligned Action Cell**: Row action cells MUST align to the left (`justifyContent: 'flex-start'`) directly beneath the left-aligned `Actions` header text.
 - **No Separate "View Attendees" Action Button**: Do **not** render a separate "View Attendees" button in the single-row action cell. The primary record name link (e.g., Event Name) serves as the single mechanism to open attendee detail modals.
 
+### Standardized Action Icon Button Classes (`.btn-icon-action`)
+Single-row action buttons MUST use global CSS utility classes rather than ad-hoc inline styles:
+- Base class: `.btn-icon-action` (flex centered, 6px padding, `var(--radius-sm)`, border, pointer cursor, smooth transitions).
+- Action-specific modifier classes:
+  - `.btn-icon-close` (Blue accent styling for closing an item)
+  - `.btn-icon-reopen` (Green accent styling for reopening an item)
+  - `.btn-icon-reset-sync` (Purple accent styling for resetting sync status)
+  - `.btn-icon-destructive` (Red accent styling for deleting an item)
+
 ### Monochrome Theme-Adaptive SVG Icons
 - Action buttons MUST use standardized inline SVG stroke icons with `stroke="currentColor"` (avoid colorful emoji buttons like 🔒 or 🗑️).
-- Because `stroke="currentColor"` is used, icons automatically render **black** in light theme (`var(--foreground)`) and **white** in dark theme.
+- Color accents applied via CSS borders and subtle hover background tints.
 
 ### Always Present & Shaded Grey when Unavailable
 - All single-row action icons (Close, Reopen, Reset Sync, Delete) MUST remain present in the DOM for all rows (never conditionally hide them).
 - When an action is **available** for a given row:
-  - Button is enabled (`disabled={false}`) with `opacity: 1`, `cursor: 'pointer'`, and `color: 'var(--foreground)'`.
+  - Button is enabled (`disabled={false}`) with full opacity and interactive hover state.
 - When an action is **unavailable** for a given row:
-  - Button is disabled (`disabled={true}`) with `opacity: 0.35`, `color: 'var(--text-secondary)'`, and `cursor: 'not-allowed'`.
+  - Button is disabled (`disabled={true}`) with `opacity: 0.35` and `cursor: 'not-allowed'`.
   - Provide a clear, descriptive tooltip (`title`) explaining why the action is unavailable (e.g., *"Close unavailable: event is already closed or synced"*).
 
 ---
 
-## 7. Floating Bulk Action Bar (`.bulk-action-pill`)
+## 8. Floating Bulk Action Bar (`.bulk-action-pill`)
 
 When 1 or more rows are selected via checkboxes, a floating bottom action bar appears containing action buttons (`Close`, `Reopen`, `Reset Sync`, `Delete`).
 
@@ -125,21 +153,26 @@ To prevent invalid state transitions across multi-selected items, bulk actions e
 
 ---
 
-## 8. Replication Checklist for Future Screens
+## 9. Replication Checklist for Future Screens
 
 When building or upgrading another page (e.g. `Roster.jsx`) to use this pattern:
 
 - [ ] Import `FilterPopover` and global filter CSS.
 - [ ] Implement `columnFilters` and `sortConfig` states initialized from `localStorage` (`tlc_table_<screen>_<userId>`).
 - [ ] Use `selectedTroop?.currentUserRole` for permission checks (`canManage`).
-- [ ] Define dynamic `useMemo` options for column filters derived strictly from current dataset items.
+- [ ] Enforce `width: 100%` and `box-sizing: border-box` on outer page wrapper, `.glass-card`, `.grid-table-container`, header, and row elements so table width never shrinks when filtering.
+- [ ] Use `minmax(0, ...)` tracks for all fractional columns in `grid-template-columns` and `min-width: 0` on `.grid-table-cell` to guarantee column width stability.
+- [ ] Define dynamic `useMemo` options for column filters derived strictly from current dataset items (including `uniqueDates` for date columns).
+- [ ] Support Date Range (`From`/`To` + presets + `showPicker`) as well as dynamic multi-select specific dates in date popovers.
 - [ ] Bind column title buttons to toggle popovers (remove standalone funnel buttons).
 - [ ] Display ` 🌪️` for active filters and ` ↑` / ` ↓` for active sort direction inside title buttons (no ` ↕` for unsorted).
 - [ ] Left-align `Actions` header and row action cells (`justifyContent: 'flex-start'`).
 - [ ] Exclude sorting controls from `Actions` popover.
 - [ ] Ensure selection header and row selection cells use identical `padding-left: 1rem` alignment.
-- [ ] Use theme-adaptive monochrome SVG icons (`stroke="currentColor"`) for single-row actions.
+- [ ] Use `.btn-icon-action` with contextual modifier classes (`.btn-icon-close`, `.btn-icon-reopen`, `.btn-icon-reset-sync`, `.btn-icon-destructive`) and inline SVG stroke icons (`stroke="currentColor"`).
 - [ ] Keep all row actions present in DOM; shade unavailable actions grey (`opacity: 0.35`, `disabled={true}`) with tooltips.
 - [ ] Use record title links for detail modals (remove redundant "View" action buttons).
 - [ ] Add active filter chips bar under toolbar area.
 - [ ] Add mobile Filter/Sort trigger button and bottom sheet drawer.
+
+
