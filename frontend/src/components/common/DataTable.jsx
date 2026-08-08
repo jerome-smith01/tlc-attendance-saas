@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 
 export function DataTable({ 
@@ -18,6 +18,7 @@ export function DataTable({
     hiddenColumns: [],
     sortKey: initialColumns[0]?.key,
     sortDirection: 'asc',
+    columnWidths: {}
   };
 
   const [tableState, setTableState] = useState(() => {
@@ -33,6 +34,7 @@ export function DataTable({
   const [globalFilter, setGlobalFilter] = useState('');
   const [columnFilters, setColumnFilters] = useState({});
   const [showSettings, setShowSettings] = useState(false);
+  const tableRef = useRef(null);
 
   // Persist state when it changes
   useEffect(() => {
@@ -143,6 +145,63 @@ export function DataTable({
     setDraggedCol(null);
   };
 
+  // Resizable columns logic
+  const handleStartResize = (e, leftIdx) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!tableRef.current || leftIdx >= visibleColumns.length - 1) return;
+
+    const leftCol = visibleColumns[leftIdx];
+    const rightCol = visibleColumns[leftIdx + 1];
+    const containerWidth = tableRef.current.getBoundingClientRect().width;
+    const startX = e.clientX;
+
+    const currentWidths = tableState.columnWidths || {};
+    const startLeftFr = currentWidths[leftCol.key] ?? 1.0;
+    const startRightFr = currentWidths[rightCol.key] ?? 1.0;
+
+    const totalFr = visibleColumns.reduce((sum, c) => sum + (currentWidths[c.key] ?? 1.0), 0);
+
+    const handleMouseMove = (moveEv) => {
+      const deltaX = moveEv.clientX - startX;
+      const deltaFr = (deltaX / containerWidth) * totalFr;
+
+      const minFr = 0.4;
+      let newLeftFr = startLeftFr + deltaFr;
+      let newRightFr = startRightFr - deltaFr;
+
+      if (newLeftFr < minFr) {
+        newLeftFr = minFr;
+        newRightFr = startLeftFr + startRightFr - minFr;
+      } else if (newRightFr < minFr) {
+        newRightFr = minFr;
+        newLeftFr = startLeftFr + startRightFr - minFr;
+      }
+
+      setTableState(prev => ({
+        ...prev,
+        columnWidths: {
+          ...(prev.columnWidths || {}),
+          [leftCol.key]: Number(newLeftFr.toFixed(2)),
+          [rightCol.key]: Number(newRightFr.toFixed(2))
+        }
+      }));
+    };
+
+    const handleMouseUp = () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  };
+
   return (
     <div className="datatable-container">
       {/* Toolbar */}
@@ -197,10 +256,15 @@ export function DataTable({
 
       {/* Table */}
       <div style={{ overflowX: 'auto' }}>
-        <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+        <table ref={tableRef} className="data-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', tableLayout: 'fixed' }}>
+          <colgroup>
+            {visibleColumns.map(col => (
+              <col key={col.key} style={{ width: `${tableState.columnWidths?.[col.key] || 1.0}fr` }} />
+            ))}
+          </colgroup>
           <thead>
             <tr>
-              {visibleColumns.map(col => (
+              {visibleColumns.map((col, idx) => (
                 <th 
                   key={col.key}
                   draggable
@@ -216,6 +280,7 @@ export function DataTable({
                     fontWeight: 600, 
                     cursor: 'pointer',
                     userSelect: 'none',
+                    position: 'relative',
                     background: draggedCol === col.key ? 'var(--muted)' : 'transparent'
                   }}
                 >
@@ -227,6 +292,13 @@ export function DataTable({
                       </span>
                     )}
                   </div>
+                  {idx < visibleColumns.length - 1 && (
+                    <div
+                      className="column-resizer"
+                      onMouseDown={(e) => handleStartResize(e, idx)}
+                      title="Drag to resize column"
+                    />
+                  )}
                 </th>
               ))}
             </tr>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useTroop } from '../context/TroopContext';
 import { useAuth } from '../context/AuthContext';
@@ -46,6 +46,14 @@ export function Events() {
 
   const defaultSort = { key: null, direction: 'asc' };
 
+  const defaultColumnWidths = useMemo(() => ({
+    event_name: 2.5,
+    event_date: 1.0,
+    status: 1.0,
+    synced_by: 1.0,
+    actions: 1.3
+  }), []);
+
   const [sortConfig, setSortConfig] = useState(() => {
     try {
       const saved = localStorage.getItem(storageKey);
@@ -78,14 +86,29 @@ export function Events() {
     return defaultFilters;
   });
 
-  // Save sort and filter state on change
+  const [columnWidths, setColumnWidths] = useState(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.columnWidths) return { ...defaultColumnWidths, ...parsed.columnWidths };
+      }
+    } catch (e) {
+      console.warn('Failed to load saved column widths', e);
+    }
+    return defaultColumnWidths;
+  });
+
+  // Save sort, filter, and column width state on change
   useEffect(() => {
     try {
-      localStorage.setItem(storageKey, JSON.stringify({ sortConfig, columnFilters }));
+      localStorage.setItem(storageKey, JSON.stringify({ sortConfig, columnFilters, columnWidths }));
     } catch (e) {
       console.warn('Failed to persist table state', e);
     }
-  }, [sortConfig, columnFilters, storageKey]);
+  }, [sortConfig, columnFilters, columnWidths, storageKey]);
+
+
 
   const confirm = useConfirm();
   const toast = useToast();
@@ -305,7 +328,7 @@ export function Events() {
   }, [events]);
 
   // Filter & Sort Logic
-  const processedEvents = useMemo(() => {
+  const getFilteredEvents = (excludeColumn = null) => {
     let result = [...events];
 
     // Global Search
@@ -321,27 +344,27 @@ export function Events() {
     }
 
     // Column Filters
-    if (columnFilters.event_name && columnFilters.event_name.length > 0) {
+    if (excludeColumn !== 'event_name' && columnFilters.event_name && columnFilters.event_name.length > 0) {
       result = result.filter(s => columnFilters.event_name.includes(s.event_name));
     }
 
-    if (columnFilters.event_date?.from) {
-      result = result.filter(s => s.event_date >= columnFilters.event_date.from);
+    if (excludeColumn !== 'event_date') {
+      if (columnFilters.event_date?.from) {
+        result = result.filter(s => s.event_date >= columnFilters.event_date.from);
+      }
+      if (columnFilters.event_date?.to) {
+        result = result.filter(s => s.event_date <= columnFilters.event_date.to);
+      }
+      if (columnFilters.event_date?.dates && columnFilters.event_date.dates.length > 0) {
+        result = result.filter(s => columnFilters.event_date.dates.includes(s.event_date));
+      }
     }
 
-    if (columnFilters.event_date?.to) {
-      result = result.filter(s => s.event_date <= columnFilters.event_date.to);
-    }
-
-    if (columnFilters.event_date?.dates && columnFilters.event_date.dates.length > 0) {
-      result = result.filter(s => columnFilters.event_date.dates.includes(s.event_date));
-    }
-
-    if (columnFilters.status && columnFilters.status.length > 0) {
+    if (excludeColumn !== 'status' && columnFilters.status && columnFilters.status.length > 0) {
       result = result.filter(s => columnFilters.status.includes(getStatusLabel(s)));
     }
 
-    if (columnFilters.synced_by && columnFilters.synced_by.length > 0) {
+    if (excludeColumn !== 'synced_by' && columnFilters.synced_by && columnFilters.synced_by.length > 0) {
       result = result.filter(s => {
         if (!s.synced_by) return false;
         const name = usersMap[s.synced_by] || s.synced_by;
@@ -349,7 +372,7 @@ export function Events() {
       });
     }
 
-    if (columnFilters.actions && columnFilters.actions.length > 0) {
+    if (excludeColumn !== 'actions' && columnFilters.actions && columnFilters.actions.length > 0) {
       result = result.filter(s => {
         const canClose = !s.synced_at && !s.ended_at;
         const canReopen = !s.synced_at && s.ended_at;
@@ -361,6 +384,39 @@ export function Events() {
         return false;
       });
     }
+
+    return result;
+  };
+
+  const availableEventNames = useMemo(() => {
+    return new Set(getFilteredEvents('event_name').map(s => s.event_name).filter(Boolean));
+  }, [events, eventSearch, columnFilters, usersMap]);
+
+  const availableDates = useMemo(() => {
+    return new Set(getFilteredEvents('event_date').map(s => s.event_date).filter(Boolean));
+  }, [events, eventSearch, columnFilters, usersMap]);
+
+  const availableStatuses = useMemo(() => {
+    return new Set(getFilteredEvents('status').map(s => getStatusLabel(s)).filter(Boolean));
+  }, [events, eventSearch, columnFilters, usersMap]);
+
+  const availableSyncedBy = useMemo(() => {
+    return new Set(getFilteredEvents('synced_by').map(s => usersMap[s.synced_by] || s.synced_by).filter(Boolean));
+  }, [events, eventSearch, columnFilters, usersMap]);
+
+  const availableActions = useMemo(() => {
+    const data = getFilteredEvents('actions');
+    const acts = new Set();
+    data.forEach(s => {
+      if (!s.synced_at && !s.ended_at) acts.add('Close');
+      if (!s.synced_at && s.ended_at) acts.add('Reopen');
+      if (s.synced_at) acts.add('Reset Sync');
+    });
+    return acts;
+  }, [events, eventSearch, columnFilters, usersMap]);
+
+  const processedEvents = useMemo(() => {
+    let result = getFilteredEvents(null);
 
     // Sorting
     if (sortConfig.key) {
@@ -418,6 +474,73 @@ export function Events() {
   // Admin / Leader check
   const currentUserRole = selectedTroop?.currentUserRole;
   const canManage = isGlobalAdmin || currentUserRole === 'billing_admin' || currentUserRole === 'troop_admin';
+
+  const headerRef = useRef(null);
+
+  const gridTemplateStyle = useMemo(() => {
+    if (canManage) {
+      return {
+        gridTemplateColumns: `48px ${columnWidths.event_name || 2.5}fr ${columnWidths.event_date || 1.0}fr ${columnWidths.status || 1.0}fr ${columnWidths.synced_by || 1.0}fr ${columnWidths.actions || 1.3}fr`
+      };
+    }
+    return {
+      gridTemplateColumns: `${columnWidths.event_name || 2.5}fr ${columnWidths.event_date || 1.0}fr ${columnWidths.status || 1.0}fr ${columnWidths.synced_by || 1.0}fr`
+    };
+  }, [canManage, columnWidths]);
+
+  const handleStartResize = (e, leftCol, rightCol) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!headerRef.current) return;
+
+    const containerRect = headerRef.current.getBoundingClientRect();
+    const startX = e.clientX;
+    const startLeftFr = columnWidths[leftCol] ?? defaultColumnWidths[leftCol];
+    const startRightFr = columnWidths[rightCol] ?? defaultColumnWidths[rightCol];
+
+    const activeCols = canManage
+      ? ['event_name', 'event_date', 'status', 'synced_by', 'actions']
+      : ['event_name', 'event_date', 'status', 'synced_by'];
+
+    const totalFr = activeCols.reduce((sum, col) => sum + (columnWidths[col] ?? defaultColumnWidths[col]), 0);
+    const availWidth = canManage ? Math.max(100, containerRect.width - 48) : containerRect.width;
+
+    const handleMouseMove = (moveEv) => {
+      const deltaX = moveEv.clientX - startX;
+      const deltaFr = (deltaX / availWidth) * totalFr;
+
+      const minFr = 0.4;
+      let newLeftFr = startLeftFr + deltaFr;
+      let newRightFr = startRightFr - deltaFr;
+
+      if (newLeftFr < minFr) {
+        newLeftFr = minFr;
+        newRightFr = startLeftFr + startRightFr - minFr;
+      } else if (newRightFr < minFr) {
+        newRightFr = minFr;
+        newLeftFr = startLeftFr + startRightFr - minFr;
+      }
+
+      setColumnWidths(prev => ({
+        ...prev,
+        [leftCol]: Number(newLeftFr.toFixed(2)),
+        [rightCol]: Number(newRightFr.toFixed(2))
+      }));
+    };
+
+    const handleMouseUp = () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  };
 
   // Selected events list & Action Enablement Rules
   const selectedEventsList = useMemo(() => {
@@ -933,7 +1056,12 @@ export function Events() {
           {/* Responsive Grid Morph Table */}
           <div className="grid-table-container">
             {/* Table Header (Desktop Only) */}
-            <div className={`grid-table-header ${canManage ? '' : 'no-manage'}`} role="row">
+            <div
+              ref={headerRef}
+              className={`grid-table-header ${canManage ? '' : 'no-manage'}`}
+              role="row"
+              style={gridTemplateStyle}
+            >
 
               {/* Selection Header */}
               {canManage && (
@@ -961,7 +1089,11 @@ export function Events() {
                     isOpen={true}
                     title="Event Name"
                     type="multiselect"
-                    options={uniqueNames.map(name => ({ label: name, value: name }))}
+                    options={uniqueNames.map(name => ({ 
+                      label: name, 
+                      value: name,
+                      disabled: !availableEventNames.has(name)
+                    }))}
                     value={columnFilters.event_name || []}
                     onChange={(val) => setColumnFilters(prev => ({ ...prev, event_name: val }))}
                     onClose={() => setActivePopover(null)}
@@ -972,6 +1104,11 @@ export function Events() {
                     sortDescLabel="Sort Z to A"
                   />
                 )}
+                <div
+                  className="column-resizer"
+                  onMouseDown={(e) => handleStartResize(e, 'event_name', 'event_date')}
+                  title="Drag to resize column"
+                />
               </div>
 
               {/* Date Header */}
@@ -986,7 +1123,7 @@ export function Events() {
                     isOpen={true}
                     title="Date"
                     type="daterange"
-                    options={uniqueDates}
+                    options={uniqueDates.map(opt => ({ ...opt, disabled: !availableDates.has(opt.value) }))}
                     value={columnFilters.event_date || { from: '', to: '', dates: [] }}
                     onChange={(val) => setColumnFilters(prev => ({ ...prev, event_date: val }))}
                     onClose={() => setActivePopover(null)}
@@ -997,6 +1134,11 @@ export function Events() {
                     sortDescLabel="Sort Newest to Oldest"
                   />
                 )}
+                <div
+                  className="column-resizer"
+                  onMouseDown={(e) => handleStartResize(e, 'event_date', 'status')}
+                  title="Drag to resize column"
+                />
               </div>
 
               {/* Status Header */}
@@ -1011,7 +1153,7 @@ export function Events() {
                     isOpen={true}
                     title="Status"
                     type="multiselect"
-                    options={uniqueStatuses}
+                    options={uniqueStatuses.map(opt => ({ ...opt, disabled: !availableStatuses.has(opt.value) }))}
                     value={columnFilters.status || []}
                     onChange={(val) => setColumnFilters(prev => ({ ...prev, status: val }))}
                     onClose={() => setActivePopover(null)}
@@ -1022,6 +1164,11 @@ export function Events() {
                     sortDescLabel="Sort Z to A"
                   />
                 )}
+                <div
+                  className="column-resizer"
+                  onMouseDown={(e) => handleStartResize(e, 'status', 'synced_by')}
+                  title="Drag to resize column"
+                />
               </div>
 
               {/* Synced By Header */}
@@ -1036,7 +1183,11 @@ export function Events() {
                     isOpen={true}
                     title="Synced By"
                     type="multiselect"
-                    options={uniqueSyncedBy.map(u => ({ label: u.name, value: u.name }))}
+                    options={uniqueSyncedBy.map(u => ({ 
+                      label: u.name, 
+                      value: u.name,
+                      disabled: !availableSyncedBy.has(u.name)
+                    }))}
                     value={columnFilters.synced_by || []}
                     onChange={(val) => setColumnFilters(prev => ({ ...prev, synced_by: val }))}
                     onClose={() => setActivePopover(null)}
@@ -1045,6 +1196,13 @@ export function Events() {
                     onSort={(dir) => setSortConfig({ key: 'synced_by', direction: dir })}
                     sortAscLabel="Sort A to Z"
                     sortDescLabel="Sort Z to A"
+                  />
+                )}
+                {canManage && (
+                  <div
+                    className="column-resizer"
+                    onMouseDown={(e) => handleStartResize(e, 'synced_by', 'actions')}
+                    title="Drag to resize column"
                   />
                 )}
               </div>
@@ -1065,7 +1223,7 @@ export function Events() {
                       isOpen={true}
                       title="Actions"
                       type="multiselect"
-                      options={uniqueActions}
+                      options={uniqueActions.map(opt => ({ ...opt, disabled: !availableActions.has(opt.value) }))}
                       value={columnFilters.actions || []}
                       onChange={(val) => setColumnFilters(prev => ({ ...prev, actions: val }))}
                       onClose={() => setActivePopover(null)}
@@ -1091,6 +1249,7 @@ export function Events() {
                     key={eventObj.id}
                     className={`grid-table-row ${canManage ? '' : 'no-manage'}`}
                     role="row"
+                    style={gridTemplateStyle}
                   >
                     {/* Selection Cell */}
                     {canManage && (
@@ -1143,9 +1302,9 @@ export function Events() {
 
                     {/* Actions — admin only */}
                     {canManage && (
-                      <div className="grid-table-cell" role="cell" style={{ justifyContent: 'flex-start' }}>
+                      <div className="grid-table-cell" role="cell">
                         <span className="grid-table-label">Actions</span>
-                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-start', alignItems: 'center' }}>
+                        <div className="table-actions-group">
                           {/* Close Action */}
                           <button
                             type="button"

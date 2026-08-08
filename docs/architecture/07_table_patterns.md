@@ -68,16 +68,40 @@ const canManage = isGlobalAdmin || currentUserRole === 'billing_admin' || curren
 - **No Header Bar or Prefix**: Do **not** render a `<div className="filter-popover-header">` header bar or `"Filter "` title prefix. Popovers must be clean, border-less, compact glass-cards.
 - **Auto-Dismiss Mechanics**: Popovers close automatically when clicking outside the popover card (backdrop click) or pressing the `Escape` key.
 - **Distinct Top Sort Group**: When sorting is supported (`onSort`), render `Sort Ascending` and `Sort Descending` as a distinct, styled top group section (`filter-popover-sort-section`) inside the popover body, separated from filter options by a bottom border line. Provide custom contextual labels (e.g., "Sort A to Z", "Sort Oldest to Newest").
-- **Strictly Dynamic Multi-select Options**: Multi-select checkbox options (`type="multiselect"`) MUST be derived dynamically via `useMemo` **strictly from items present in the active dataset** (`events`). Never hardcode option arrays (e.g., do **not** include "Synced" in Status options if no records in the current dataset have the "Synced" status).
+- **Strictly Dynamic Multi-select Options**: Multi-select checkbox options (`type="multiselect"`) MUST be derived dynamically via `useMemo` **strictly from items present in the active dataset** (`events`). Never hardcode option arrays.
+
+### Multiselect Default State & Filter Synchronization (`[]` = All Selected)
+- **Empty Array Contract**: An empty array (`[]` or falsy) in `columnFilters` represents **"no filter active / all options selected"**.
+- **Initial Popover Rendering**: When `FilterPopover` opens and `value` is `[]`, all available checkboxes MUST render as **checked** by default.
+- **Auto-Clear to Empty State**: If a user unchecks items and later re-checks all options, `FilterPopover` MUST set the filter value back to `[]`.
+- **Icon & Chip Visibility**: The active filter indicator (` 🌪️`) and active filter chip MUST only appear when a column filter is actively restricting items (`value.length > 0`). When all items are selected or no filter is applied, the filter icon and active chip MUST disappear.
+
+### Cross-Column Inter-Filter Dependency & "Hidden:" Section
+- **Inter-Filter Option Availability**: Options inside a column's `FilterPopover` must dynamically reflect filters applied across **other** columns.
+- **Calculating Available Values**: To determine whether an option is active for column $C$, evaluate the dataset filtered by all active criteria **EXCEPT** column $C$'s own filter (e.g. `getFilteredEvents(excludeColumn)`).
+- **"Hidden:" Section for Inactive Options**:
+  - Options unavailable due to filters in other columns are marked `disabled: true`.
+  - Inactive/disabled options MUST be partitioned to the bottom of the popover option list beneath a separate `<label>` header:
+    ```jsx
+    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--foreground)', marginTop: '0.5rem', marginBottom: '0.35rem' }}>
+      Hidden:
+    </label>
+    ```
+  - Items in the `Hidden:` section render with reduced opacity (`opacity: 0.5`), a `cursor: not-allowed` indicator, and a disabled input (`disabled={true}`).
+
 - **Date Range & Multi-Select Date Filtering (`type="daterange"`)**:
   - **Native Calendar Trigger**: Date inputs MUST invoke `onClick={(e) => { try { e.target.showPicker?.(); } catch (_) {} }}` to immediately open the browser's graphical calendar popup on click. Styled with `color-scheme: dark` and custom `::-webkit-calendar-picker-indicator` in CSS.
   - **Preset Shortcuts**: Include one-click range presets (`Today`, `This Week`, `This Month`) below the `From` / `To` inputs.
-  - **Dynamic Table Dates Selection**: In addition to range inputs, pass `options={uniqueDates}` derived dynamically via `useMemo` from dates in the active table dataset. Render these dates as a multi-select checkbox list with search, "Select All", and "Clear" controls so users can choose specific individual dates.
+  - **Dynamic Table Dates Selection**: In addition to range inputs, pass `options={uniqueDates}` derived dynamically via `useMemo` from dates in the active table dataset (with `disabled` status computed via `availableDates`). Render active dates first, and disabled dates under a `Hidden:` header section.
 
 ### Active Filter Chips Bar
 Appears between toolbar and table when 1 or more column filters are active:
 - **Architectural Rule**: Sorting is **not** considered a filter and must **not** be displayed as a chip in the active filters bar. Active filter chips and badge counters strictly display active column filters.
-- Individual chips displaying `Column: Value` with an `×` remove button.
+- **Exact Header Naming**: Chips MUST use the exact text of the column header as their label prefix (`Event Name: ...`, `Date: ...`, `Status: ...`, `Synced By: ...`, `Actions: ...`). Do **not** use shorthand or nested prefixes (e.g., avoid `Date: Dates:`).
+- **String Truncation & Summarization**:
+  - If more than 2 items are selected in a multiselect filter, summarize as `X selected` (e.g. `Event Name: 3 selected`).
+  - Individual item strings longer than 50 characters MUST be truncated with an ellipsis (`...`).
+- Individual chips display an `×` remove button to clear that specific column filter.
 - Global `Clear All` button resets filters, sort state, and global search text.
 
 ---
@@ -94,6 +118,30 @@ To prevent layout jumping and width collapse when filtering table records or dis
 - **No Implicit `auto` Min-Content Sizes**: On desktop (`@media (min-width: 768px)`), `grid-template-columns` MUST use `minmax(0, ...)` for all fractional (`fr`) tracks (e.g. `grid-template-columns: 48px minmax(0, 2.5fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.3fr)`).
 - **Why**: Plain `1.5fr` evaluates to `minmax(auto, 1.5fr)`. The `auto` minimum content size forces grid columns to expand when long text rows exist and shrink when filtered out. Using `minmax(0, ...)` ensures column widths remain 100% fixed and predictable regardless of content length.
 - **Cell Shrinkage & Text Wrapping**: `.grid-table-cell` MUST include `min-width: 0`, `overflow-wrap: break-word`, and `word-break: break-word` so cell contents wrap cleanly without stretching grid tracks.
+
+### 5.3 Resizable Column Widths & LocalStorage Persistence
+To allow users to adjust column widths according to their viewing preferences without breaking container layouts:
+
+- **Interactive Resizer Handle (`.column-resizer`)**:
+  - Render a `.column-resizer` handle element at the right edge of each resizable header cell (except the last column).
+  - Uses `position: absolute; top: 0; right: -4px; width: 9px; height: 100%; cursor: col-resize; z-index: 10;`.
+  - Displays a subtle border line handle (`::after`) that highlights primary accent color on hover or drag.
+- **Fixed Total Width & Sum-Preserving FR Adjustments**:
+  - Store column widths as fractional ratio weights (`fr`) (e.g. `{ event_name: 2.5, event_date: 1.0, status: 1.0, synced_by: 1.0, actions: 1.3 }`).
+  - When dragging the handle between Column $A$ (left) and Column $B$ (right), calculate pixel drag delta and convert to FR weight delta:
+    $$\Delta\text{fr} = \frac{\Delta x}{\text{availableContainerWidth}} \times \text{totalFr}$$
+    $$\text{newLeftFr} = \max(\text{minFr}, \text{startLeftFr} + \Delta\text{fr})$$
+    $$\text{newRightFr} = \max(\text{minFr}, \text{startRightFr} - (\text{newLeftFr} - \text{startLeftFr}))$$
+  - Because Column $A$ gains exactly what Column $B$ loses ($\Delta\text{fr}_A + \Delta\text{fr}_B = 0$), the total FR sum remains constant, keeping the total table width **100% consistent at all times** with zero container overflow.
+  - Enforce a minimum column width (`minFr = 0.4`) to prevent columns from collapsing.
+- **Hooks Declaration Order & TDZ Safety**:
+  - Role check variables like `canManage` determine active columns.
+  - **CRITICAL**: Always declare `canManage` BEFORE dependent hooks (`gridTemplateStyle` and `handleStartResize`). Placing hooks above `canManage` causes Temporal Dead Zone (`Uncaught ReferenceError: Cannot access 'canManage' before initialization`) runtime crashes.
+- **LocalStorage Persistence**:
+  - Persist `columnWidths` in `localStorage` alongside filters/sort state under `tlc_events_filters_${userId}` (or `tlc_datatable_${storageKey}_${userId}`).
+- **Replication in `DataTable.jsx` (HTML `<table>`)**:
+  - Apply `table-layout: fixed; width: 100%;` to `<table>`.
+  - Render `<colgroup>` with `<col style={{ width: '${columnWidths[key]}fr' }} />` to control column width allocations.
 
 ---
 
@@ -159,10 +207,18 @@ When building or upgrading another page (e.g. `Roster.jsx`) to use this pattern:
 
 - [ ] Import `FilterPopover` and global filter CSS.
 - [ ] Implement `columnFilters` and `sortConfig` states initialized from `localStorage` (`tlc_table_<screen>_<userId>`).
+- [ ] Implement `columnWidths` state initialized from `localStorage` with `defaultColumnWidths`.
+- [ ] Add `.column-resizer` handles to header cells (with `onMouseDown` triggering `handleStartResize`).
+- [ ] Implement sum-preserving FR drag resizing (`handleStartResize`) with `minFr` limits so total table width stays fixed at 100%.
+- [ ] Ensure `canManage` (or role checks) is declared BEFORE `gridTemplateStyle` and `handleStartResize` hooks to prevent TDZ errors.
 - [ ] Use `selectedTroop?.currentUserRole` for permission checks (`canManage`).
 - [ ] Enforce `width: 100%` and `box-sizing: border-box` on outer page wrapper, `.glass-card`, `.grid-table-container`, header, and row elements so table width never shrinks when filtering.
 - [ ] Use `minmax(0, ...)` tracks for all fractional columns in `grid-template-columns` and `min-width: 0` on `.grid-table-cell` to guarantee column width stability.
 - [ ] Define dynamic `useMemo` options for column filters derived strictly from current dataset items (including `uniqueDates` for date columns).
+- [ ] Implement `getFilteredEvents(excludeColumn)` to compute cross-column available options (`availableEventNames`, `availableDates`, etc.).
+- [ ] Pass `disabled: !availableSet.has(val)` to `FilterPopover` options so unavailable options are placed at the bottom under a `Hidden:` header section.
+- [ ] Ensure empty filter array `[]` represents "no filter active", displaying all checkboxes checked in `FilterPopover` and hiding the ` 🌪️` icon and chip.
+- [ ] Format active filter chips using exact column header names (`Event Name:`, `Date:`, `Actions:`), summarizing `> 2` items as `X selected` and truncating strings `> 50` chars.
 - [ ] Support Date Range (`From`/`To` + presets + `showPicker`) as well as dynamic multi-select specific dates in date popovers.
 - [ ] Bind column title buttons to toggle popovers (remove standalone funnel buttons).
 - [ ] Display ` 🌪️` for active filters and ` ↑` / ` ↓` for active sort direction inside title buttons (no ` ↕` for unsorted).
@@ -174,5 +230,7 @@ When building or upgrading another page (e.g. `Roster.jsx`) to use this pattern:
 - [ ] Use record title links for detail modals (remove redundant "View" action buttons).
 - [ ] Add active filter chips bar under toolbar area.
 - [ ] Add mobile Filter/Sort trigger button and bottom sheet drawer.
+
+
 
 

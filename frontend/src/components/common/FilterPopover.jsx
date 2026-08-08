@@ -68,6 +68,16 @@ export function FilterPopover({
     return options.filter(opt => opt.label.toLowerCase().includes(lower));
   }, [options, searchTerm]);
 
+  const { enabledOptions, disabledOptions } = useMemo(() => {
+    const enabled = [];
+    const disabled = [];
+    visibleOptions.forEach(opt => {
+      if (opt.disabled) disabled.push(opt);
+      else enabled.push(opt);
+    });
+    return { enabledOptions: enabled, disabledOptions: disabled };
+  }, [visibleOptions]);
+
   if (!isOpen) return null;
 
   const isSortedAsc = sortConfig?.key === columnKey && sortConfig?.direction === 'asc';
@@ -185,7 +195,7 @@ export function FilterPopover({
                 type="date"
                 value={value?.from || ''}
                 onChange={(e) => onChange({ ...value, from: e.target.value })}
-                onClick={(e) => { try { e.target.showPicker?.(); } catch (_) {} }}
+                onClick={(e) => { try { e.target.showPicker?.(); } catch (_) { } }}
                 className="filter-input"
               />
             </div>
@@ -197,7 +207,7 @@ export function FilterPopover({
                 type="date"
                 value={value?.to || ''}
                 onChange={(e) => onChange({ ...value, to: e.target.value })}
-                onClick={(e) => { try { e.target.showPicker?.(); } catch (_) {} }}
+                onClick={(e) => { try { e.target.showPicker?.(); } catch (_) { } }}
                 className="filter-input"
               />
             </div>
@@ -295,26 +305,54 @@ export function FilterPopover({
                       No matching dates
                     </div>
                   ) : (
-                    visibleOptions.map((opt) => {
-                      const selectedDates = Array.isArray(value?.dates) ? value.dates : [];
-                      const checked = selectedDates.includes(opt.value);
-                      return (
-                        <label key={opt.value} className="filter-multiselect-item">
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => {
-                              const current = Array.isArray(value?.dates) ? value.dates : [];
-                              const updated = current.includes(opt.value)
-                                ? current.filter(v => v !== opt.value)
-                                : [...current, opt.value];
-                              onChange({ ...value, dates: updated });
-                            }}
-                          />
-                          <span>{opt.label}</span>
-                        </label>
-                      );
-                    })
+                    <>
+                      {enabledOptions.map((opt) => {
+                        const selectedDates = Array.isArray(value?.dates) ? value.dates : [];
+                        const checked = selectedDates.includes(opt.value);
+                        return (
+                          <label key={opt.value} className="filter-multiselect-item">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => {
+                                const current = Array.isArray(value?.dates) ? value.dates : [];
+                                const updated = current.includes(opt.value)
+                                  ? current.filter(v => v !== opt.value)
+                                  : [...current, opt.value];
+                                onChange({ ...value, dates: updated });
+                              }}
+                            />
+                            <span>{opt.label}</span>
+                          </label>
+                        );
+                      })}
+
+                      {disabledOptions.length > 0 && (
+                        <>
+                          <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--foreground)', marginTop: '0.5rem', marginBottom: '0.35rem' }}>
+                            Hidden by Active Filter:
+                          </label>
+                          {disabledOptions.map((opt) => {
+                            const selectedDates = Array.isArray(value?.dates) ? value.dates : [];
+                            const checked = selectedDates.includes(opt.value);
+                            return (
+                              <label
+                                key={opt.value}
+                                className="filter-multiselect-item"
+                                style={{ opacity: 0.5, cursor: 'not-allowed' }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  disabled={true}
+                                />
+                                <span>{opt.label}</span>
+                              </label>
+                            );
+                          })}
+                        </>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -359,19 +397,46 @@ export function FilterPopover({
                   No options available
                 </div>
               ) : (
-                visibleOptions.map((opt) => {
-                  const checked = (!value || value.length === 0) ? true : value.includes(opt.value);
-                  return (
-                    <label key={opt.value} className="filter-multiselect-item">
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => handleMultiselectToggle(opt.value)}
-                      />
-                      <span>{opt.label}</span>
-                    </label>
-                  );
-                })
+                <>
+                  {enabledOptions.map((opt) => {
+                    const checked = (!value || value.length === 0) ? true : value.includes(opt.value);
+                    return (
+                      <label key={opt.value} className="filter-multiselect-item">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => handleMultiselectToggle(opt.value)}
+                        />
+                        <span>{opt.label}</span>
+                      </label>
+                    );
+                  })}
+
+                  {disabledOptions.length > 0 && (
+                    <>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--foreground)', marginTop: '0.5rem', marginBottom: '0.35rem' }}>
+                        Hidden by Active Filter:
+                      </label>
+                      {disabledOptions.map((opt) => {
+                        const checked = (!value || value.length === 0) ? true : value.includes(opt.value);
+                        return (
+                          <label
+                            key={opt.value}
+                            className="filter-multiselect-item"
+                            style={{ opacity: 0.5, cursor: 'not-allowed' }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              disabled={true}
+                            />
+                            <span>{opt.label}</span>
+                          </label>
+                        );
+                      })}
+                    </>
+                  )}
+                </>
               )}
             </div>
           </div>
