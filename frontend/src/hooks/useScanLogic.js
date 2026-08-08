@@ -63,15 +63,30 @@ export function useScanLogic(troopId, sessionId, user, roster, setRoster) {
 
     // Supabase Write (Online)
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('scans')
         .insert([{
-          session_id: sessionId,
+          event_id: sessionId,
           roster_id: matchedMember.id,
           status: 'pending',
           scanned_by: user.id
         }])
         .select();
+
+      // Fallback for pre-migration column name 'session_id'
+      if (error && (error.code === 'PGRST204' || error.message?.includes('event_id') || error.message?.includes('session_id'))) {
+        const res = await supabase
+          .from('scans')
+          .insert([{
+            session_id: sessionId,
+            roster_id: matchedMember.id,
+            status: 'pending',
+            scanned_by: user.id
+          }])
+          .select();
+        data = res.data;
+        error = res.error;
+      }
 
       if (error) {
         console.error('[useScanLogic] Supabase insert error:', error);
@@ -80,6 +95,7 @@ export function useScanLogic(troopId, sessionId, user, roster, setRoster) {
         } else if (error.message.includes('fetch') || error.message.includes('Failed to fetch')) {
           // Network error -> Queue offline
           queueOfflineScan({
+            event_id: sessionId,
             session_id: sessionId,
             roster_id: matchedMember.id,
             status: 'pending',
@@ -96,6 +112,7 @@ export function useScanLogic(troopId, sessionId, user, roster, setRoster) {
     } catch (err) {
       // Fallback for network error exception
       queueOfflineScan({
+        event_id: sessionId,
         session_id: sessionId,
         roster_id: matchedMember.id,
         status: 'pending',

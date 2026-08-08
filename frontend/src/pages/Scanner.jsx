@@ -59,12 +59,24 @@ export function Scanner() {
       const savedSessionId = localStorage.getItem('tlc_last_session_id');
       const savedTroop = localStorage.getItem('tlc_last_troop_id');
       if (savedSessionId && savedTroop && !session) {
-        const { data, error } = await supabase
-          .from('sessions')
+        let { data, error } = await supabase
+          .from('events')
           .select('*')
           .eq('id', savedSessionId)
           .eq('troop_id', savedTroop)
           .maybeSingle();
+
+        if (error && (error.code === '42P01' || error.message?.includes('events'))) {
+          const res = await supabase
+            .from('sessions')
+            .select('*')
+            .eq('id', savedSessionId)
+            .eq('troop_id', savedTroop)
+            .maybeSingle();
+          data = res.data;
+          error = res.error;
+        }
+
         if (!error && data) {
           setSession(data);
         } else {
@@ -86,11 +98,21 @@ export function Scanner() {
 
   async function fetchAttendance() {
     if (!session) return;
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('scans')
       .select(`*, roster (id, first_name, last_initial, member_id, tlc_id)`)
-      .eq('session_id', session.id)
+      .eq('event_id', session.id)
       .order('scan_time', { ascending: false });
+
+    if (error && (error.code === 'PGRST204' || error.message?.includes('event_id'))) {
+      const res = await supabase
+        .from('scans')
+        .select(`*, roster (id, first_name, last_initial, member_id, tlc_id)`)
+        .eq('session_id', session.id)
+        .order('scan_time', { ascending: false });
+      data = res.data;
+      error = res.error;
+    }
     if (error) {
       console.error('[fetchAttendance] Supabase error:', error);
       return;
@@ -146,18 +168,30 @@ export function Scanner() {
   const handleEndSession = async () => {
     if (await confirm({ title: 'End Session', message: 'Are you sure you want to end this session? No more scans can be recorded after ending.', isDestructive: true })) {
       const now = new Date().toISOString();
-      const { error } = await supabase.from('sessions').update({ ended_at: now }).eq('id', session.id);
+      let { error } = await supabase.from('events').update({ ended_at: now }).eq('id', session.id);
+      if (error && (error.code === '42P01' || error.message?.includes('events'))) {
+        const res = await supabase.from('sessions').update({ ended_at: now }).eq('id', session.id);
+        error = res.error;
+      }
       if (error) {
         addToast({ type: 'error', message: "Failed to end session: " + error.message });
         return;
       }
 
       // Approve all pending scans so they are visible to the sync extension
-      const { error: scansError } = await supabase
+      let { error: scansError } = await supabase
         .from('scans')
         .update({ status: 'approved' })
-        .eq('session_id', session.id)
+        .eq('event_id', session.id)
         .eq('status', 'pending');
+      if (scansError && (scansError.code === 'PGRST204' || scansError.message?.includes('event_id'))) {
+        const res = await supabase
+          .from('scans')
+          .update({ status: 'approved' })
+          .eq('session_id', session.id)
+          .eq('status', 'pending');
+        scansError = res.error;
+      }
       if (scansError) {
         addToast({ type: 'warning', message: "Session ended, but failed to approve scans: " + scansError.message });
       } else {
@@ -171,7 +205,11 @@ export function Scanner() {
 
   const handleReenableSession = async () => {
     if (await confirm({ title: 'Reenable Session', message: "Are you sure you want to reenable this session?" })) {
-      const { error } = await supabase.from('sessions').update({ ended_at: null }).eq('id', session.id);
+      let { error } = await supabase.from('events').update({ ended_at: null }).eq('id', session.id);
+      if (error && (error.code === '42P01' || error.message?.includes('events'))) {
+        const res = await supabase.from('sessions').update({ ended_at: null }).eq('id', session.id);
+        error = res.error;
+      }
       if (error) {
         addToast({ type: 'error', message: "Failed to reenable session: " + error.message });
       } else {
@@ -183,10 +221,17 @@ export function Scanner() {
 
   const handleResetSyncSession = async () => {
     if (await confirm({ title: 'Reset Sync Status', message: "Are you sure you want to reset the sync status for this session? This will mark it as not synced so it can be synced again." })) {
-      const { error } = await supabase
-        .from('sessions')
+      let { error } = await supabase
+        .from('events')
         .update({ synced_at: null, synced_by: null, purge_after: null })
         .eq('id', session.id);
+      if (error && (error.code === '42P01' || error.message?.includes('events'))) {
+        const res = await supabase
+          .from('sessions')
+          .update({ synced_at: null, synced_by: null, purge_after: null })
+          .eq('id', session.id);
+        error = res.error;
+      }
       if (error) {
         addToast({ type: 'error', message: "Error resetting sync status: " + error.message });
       } else {
@@ -431,7 +476,11 @@ export function Scanner() {
 
     // Now insert the scan
     if (targetRosterId) {
-      const { data } = await supabase.from('scans').insert([{ session_id: session.id, roster_id: targetRosterId, status: 'pending', scanned_by: user.id }]).select();
+      let { data, error } = await supabase.from('scans').insert([{ event_id: session.id, roster_id: targetRosterId, status: 'pending', scanned_by: user.id }]).select();
+      if (error && (error.code === 'PGRST204' || error.message?.includes('event_id') || error.message?.includes('session_id'))) {
+        const res = await supabase.from('scans').insert([{ session_id: session.id, roster_id: targetRosterId, status: 'pending', scanned_by: user.id }]).select();
+        data = res.data;
+      }
       if (data) {
         setAttendance(prev => {
           if (prev.some(item => item.roster_id === targetRosterId || item.member?.id === targetRosterId)) {
@@ -552,7 +601,11 @@ export function Scanner() {
         addToast({ type: 'warning', message: 'This person is already marked as scanned in.' });
         return;
       }
-      const { data } = await supabase.from('scans').insert([{ session_id: session.id, roster_id: targetRosterId, status: 'pending', scanned_by: user.id }]).select();
+      let { data, error } = await supabase.from('scans').insert([{ event_id: session.id, roster_id: targetRosterId, status: 'pending', scanned_by: user.id }]).select();
+      if (error && (error.code === 'PGRST204' || error.message?.includes('event_id') || error.message?.includes('session_id'))) {
+        const res = await supabase.from('scans').insert([{ session_id: session.id, roster_id: targetRosterId, status: 'pending', scanned_by: user.id }]).select();
+        data = res.data;
+      }
       if (data) {
         setAttendance(prev => {
           return [
