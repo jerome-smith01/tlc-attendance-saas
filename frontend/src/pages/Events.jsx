@@ -376,7 +376,7 @@ export function Events() {
   };
 
   // Admin / Leader check
-  const currentUserRole = selectedTroop?.user_role;
+  const currentUserRole = selectedTroop?.currentUserRole;
   const canManage = isGlobalAdmin || currentUserRole === 'billing_admin' || currentUserRole === 'troop_admin';
 
   // Selected events list & Action Enablement Rules
@@ -782,7 +782,21 @@ export function Events() {
           {/* Responsive Grid Morph Table */}
           <div className="grid-table-container">
             {/* Table Header (Desktop Only) */}
-            <div className="grid-table-header" style={{ gridTemplateColumns: canManage ? '1.5fr 1fr 1fr 1fr 1.5fr' : '1.5fr 1fr 1fr 1fr' }} role="row">
+            <div className="grid-table-header" style={{ gridTemplateColumns: canManage ? '48px 1.5fr 1fr 1fr 1fr 1.5fr' : '1.5fr 1fr 1fr 1fr' }} role="row">
+
+              {/* Selection Header */}
+              {canManage && (
+                <div role="columnheader" className="column-header-cell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', paddingLeft: '1rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={isAllSelected}
+                    ref={input => { if (input) input.indeterminate = isSomeSelected; }}
+                    onChange={handleToggleSelectAll}
+                    style={{ margin: 0, cursor: 'pointer', width: '18px', height: '18px' }}
+                    title="Select All"
+                  />
+                </div>
+              )}
 
               {/* Event Name Header */}
               <div role="columnheader" className="column-header-cell">
@@ -799,8 +813,10 @@ export function Events() {
                 </button>
                 {activePopover === 'event_name' && (
                   <FilterPopover
+                    isOpen={true}
+                    title="Event Name"
                     type="multiselect"
-                    options={uniqueNames}
+                    options={uniqueNames.map(name => ({ label: name, value: name }))}
                     value={columnFilters.event_name || []}
                     onChange={(val) => setColumnFilters(prev => ({ ...prev, event_name: val }))}
                     onClose={() => setActivePopover(null)}
@@ -823,6 +839,8 @@ export function Events() {
                 </button>
                 {activePopover === 'event_date' && (
                   <FilterPopover
+                    isOpen={true}
+                    title="Date"
                     type="daterange"
                     value={columnFilters.event_date || { from: '', to: '' }}
                     onChange={(val) => setColumnFilters(prev => ({ ...prev, event_date: val }))}
@@ -846,8 +864,14 @@ export function Events() {
                 </button>
                 {activePopover === 'status' && (
                   <FilterPopover
+                    isOpen={true}
+                    title="Status"
                     type="multiselect"
-                    options={['Open', 'Closed', 'Synced']}
+                    options={[
+                      { label: 'Open', value: 'Open' },
+                      { label: 'Closed', value: 'Closed' },
+                      { label: 'Synced', value: 'Synced' }
+                    ]}
                     value={columnFilters.status || []}
                     onChange={(val) => setColumnFilters(prev => ({ ...prev, status: val }))}
                     onClose={() => setActivePopover(null)}
@@ -870,8 +894,10 @@ export function Events() {
                 </button>
                 {activePopover === 'synced_by' && (
                   <FilterPopover
+                    isOpen={true}
+                    title="Synced By"
                     type="multiselect"
-                    options={uniqueSyncedBy.map(u => u.name)}
+                    options={uniqueSyncedBy.map(u => ({ label: u.name, value: u.name }))}
                     value={columnFilters.synced_by || []}
                     onChange={(val) => setColumnFilters(prev => ({ ...prev, synced_by: val }))}
                     onClose={() => setActivePopover(null)}
@@ -893,9 +919,21 @@ export function Events() {
                 <div
                   key={eventObj.id}
                   className="grid-table-row"
-                  style={{ gridTemplateColumns: canManage ? '1.5fr 1fr 1fr 1fr 1.5fr' : '1.5fr 1fr 1fr 1fr' }}
+                  style={{ gridTemplateColumns: canManage ? '48px 1.5fr 1fr 1fr 1fr 1.5fr' : '1.5fr 1fr 1fr 1fr' }}
                   role="row"
                 >
+                  {/* Selection Cell */}
+                  {canManage && (
+                    <div className="grid-table-cell" role="cell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', paddingLeft: '1rem' }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedEventIds.includes(eventObj.id)}
+                        onChange={() => handleToggleSelectRow(eventObj.id)}
+                        style={{ margin: 0, cursor: 'pointer', width: '18px', height: '18px' }}
+                      />
+                    </div>
+                  )}
+
                   {/* Event Name — clickable link */}
                   <div className="grid-table-cell" role="cell">
                     <span className="grid-table-label">Event Name</span>
