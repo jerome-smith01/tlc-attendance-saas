@@ -92,21 +92,47 @@ const columns = [
 ### Desktop Layer (≥ 768px)
 - **Column Headers**: Each column header includes an interactive button triggering sort toggle on label click, and a funnel filter icon (`FilterIcon`).
 - **Filter Popover (`FilterPopover.jsx`)**: Floating glassmorphism card rendered below the column header.
+  - **Sort Actions**: Includes `Sort Ascending` and `Sort Descending` buttons at the top of the dropdown menu with custom contextual labels (e.g., "Sort A to Z", "Sort Oldest to Newest").
   - Text input with instant string matching.
   - Date Range inputs (From / To).
-  - Multi-select checkbox options populated **dynamically only from values present in current dataset** (avoiding options that return 0 results).
+  - Multi-select checkbox options populated **dynamically only from values present in current dataset** (avoiding options that return 0 results). Includes an internal search input at the top of the popover to instantly filter the list of checkboxes.
   - Close mechanics: Click-outside backdrop detection or Escape key.
 
 ### Mobile Layer (< 768px)
-- **Filter / Sort Trigger Button**: Fixed floating or top pill button showing active filter/sort count badges.
+- **Filter / Sort Trigger Button**: Fixed floating or top pill button showing active filter count badges (badge count reflects active column filters only).
 - **Bottom Sheet (`FilterSheet`)**: Slide-up drawer attached to bottom of viewport (`max-height: 85vh`).
   - Contains full control set: Sort selector + collapsible Accordions per column filter.
   - Sticky bottom actions: `Clear All` and `Apply Filters`.
 
 ### Active Filter Chips Bar
-Appears between toolbar and table when 1 or more filters are active:
+Appears between toolbar and table when 1 or more column filters are active:
+- **Architectural Rule**: Sorting is **not** considered a filter and must **not** be displayed as a chip in the active filters bar. Active filter chips and badge counters strictly display active column filters.
 - Individual chips displaying `Column: Value` with an `×` remove button.
-- Global `Clear All Filters` button.
+- Global `Clear All` button.
+
+---
+
+## 6. Row Selection & Floating Bulk Actions
+
+Screens supporting bulk operations include a multi-select checkbox column to the left of the primary column:
+
+### Selection Behavior
+- **Master Checkbox (Header)**: Toggles selection on all currently visible (filtered) rows.
+- **Row Checkbox**: Toggles selection for individual row IDs.
+- **Column Alignment**: The header and row cells for the selection column must both use identical flex alignment (`display: flex; align-items: center; justify-content: flex-start;`) to guarantee pixel-perfect vertical alignment of the checkboxes.
+
+### Floating Bulk Action Bar (`.bulk-action-pill`)
+When 1 or more rows are selected, a floating bottom action bar appears containing action buttons (`End`, `Reenable`, `Reset Sync`, `Delete`).
+
+### Forethought Action Enablement Rules
+To prevent invalid state transitions across multi-selected items, actions evaluate conditional status rules across **all** currently selected items:
+
+| Bulk Action | Enablement Condition | Disabled Explanation |
+|:---|:---|:---|
+| **End** | `selectedSessions.every(s => !s.synced_at && !s.ended_at)` | Disabled if ANY selected session is already ended or synced. |
+| **Reenable** | `selectedSessions.every(s => !s.synced_at && s.ended_at)` | Disabled if ANY selected session is active or synced. |
+| **Reset Sync** | `selectedSessions.every(s => s.synced_at)` | Disabled if ANY selected session is not synced. |
+| **Delete** | `selectedSessions.length > 0 && canManage` | Enabled for any non-empty selection (for authorized roles). |
 
 ---
 

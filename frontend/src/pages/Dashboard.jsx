@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
 export function Dashboard() {
   const { selectedTroopId, selectedTroop, loadingTroops, error } = useTroop();
   const [activeUsersCount, setActiveUsersCount] = useState(0);
-  const [sessions, setSessions] = useState([]);
+  const [events, setEvents] = useState([]);
   const [loadingStats, setLoadingStats] = useState(false);
 
   useEffect(() => {
@@ -14,7 +14,7 @@ export function Dashboard() {
       fetchStats(selectedTroopId);
     } else {
       setActiveUsersCount(0);
-      setSessions([]);
+      setEvents([]);
     }
   }, [selectedTroopId]);
 
@@ -29,14 +29,24 @@ export function Dashboard() {
 
       if (!usersError) setActiveUsersCount(usersCount || 0);
 
-      // Fetch Sessions (for counts and warnings)
-      const { data: sessionsData, error: sessionsError } = await supabase
-        .from('sessions')
+      // Fetch Events (for counts and warnings)
+      let { data: eventsData, error: eventsError } = await supabase
+        .from('events')
         .select('*')
         .eq('troop_id', troopId)
         .order('event_date', { ascending: false });
 
-      if (!sessionsError) setSessions(sessionsData || []);
+      if (eventsError && (eventsError.code === '42P01' || eventsError.message.includes('events'))) {
+        const res = await supabase
+          .from('sessions')
+          .select('*')
+          .eq('troop_id', troopId)
+          .order('event_date', { ascending: false });
+        eventsData = res.data;
+        eventsError = res.error;
+      }
+
+      if (!eventsError) setEvents(eventsData || []);
 
     } catch (err) {
       console.error('Error fetching stats:', err);
@@ -72,7 +82,7 @@ export function Dashboard() {
                 <strong style={{ color: 'var(--text-secondary)' }}>Active Users (Backend Access):</strong> <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{loadingStats ? '...' : activeUsersCount}</span>
               </div>
               <div>
-                <strong style={{ color: 'var(--text-secondary)' }}>Total Sessions:</strong> <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{loadingStats ? '...' : sessions.length}</span>
+                <strong style={{ color: 'var(--text-secondary)' }}>Total Events:</strong> <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{loadingStats ? '...' : events.length}</span>
               </div>
 
               <div style={{ display: 'flex', gap: '1rem', flexShrink: 0, marginLeft: 'auto' }}>
@@ -83,14 +93,14 @@ export function Dashboard() {
             </div>
           </div>
 
-          {/* Session Warnings */}
-          {sessions.map(session => {
-            if (session.synced_at) return null; // Already synced, no warning
+          {/* Event Warnings */}
+          {events.map(eventObj => {
+            if (eventObj.synced_at) return null; // Already synced, no warning
 
-            const sessionDate = new Date(session.event_date);
+            const eventDate = new Date(eventObj.event_date);
             const now = new Date();
-            const diffTime = Math.abs(now - sessionDate);
-            const diffDays = 16; //Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            const diffTime = Math.abs(now - eventDate);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
             const MAX_DAYS = 30;
             const daysLeft = MAX_DAYS - diffDays;
@@ -105,7 +115,7 @@ export function Dashboard() {
 
             return (
               <div
-                key={session.id}
+                key={eventObj.id}
                 className="glass-card"
                 style={{
                   marginBottom: '1rem',
@@ -116,7 +126,7 @@ export function Dashboard() {
                 <strong style={{ color: labelColor }}>
                   {isUrgent ? 'Urgent Warning:' : 'Warning:'}
                 </strong>{' '}
-                Session "{session.event_name}" ({session.event_date}) has not been synced to TLC.{' '}
+                Event "{eventObj.event_name}" ({eventObj.event_date}) has not been synced to TLC.{' '}
                 {daysLeft <= 0
                   ? 'Data is overdue for auto-purge!'
                   : `Data will be automatically purged in ${daysDisplay} ${daysDisplay === 1 ? 'day' : 'days'}.`
@@ -124,6 +134,7 @@ export function Dashboard() {
               </div>
             );
           })}
+
         </>
       )}
     </div>

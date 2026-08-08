@@ -10,7 +10,7 @@ import { CompleteProfile } from './pages/CompleteProfile';
 import { Dashboard } from './pages/Dashboard';
 import { Scanner } from './pages/Scanner';
 import { Roster } from './pages/Roster';
-import { Sessions } from './pages/Sessions';
+import { Events } from './pages/Events';
 import { Billing } from './pages/Billing';
 
 export default function App() {
@@ -52,12 +52,16 @@ export default function App() {
                     } 
                   />
                   <Route 
-                    path="/sessions" 
+                    path="/events" 
                     element={
                       <ProtectedRoute allowedRoles={['badge_scanner', 'troop_admin', 'billing_admin', 'global_admin']}>
-                        <Sessions />
+                        <Events />
                       </ProtectedRoute>
                     } 
+                  />
+                  <Route 
+                    path="/sessions" 
+                    element={<Navigate to="/events" replace />} 
                   />
                   <Route 
                     path="/billing" 

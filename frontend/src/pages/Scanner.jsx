@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
-import { SessionSelector } from '../components/SessionSelector';
+import { EventSelector } from '../components/EventSelector';
 import { useScanLogic } from '../hooks/useScanLogic';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { useConfirm } from '../components/common/ConfirmContext';
@@ -597,7 +597,7 @@ export function Scanner() {
               )}
             </div>
           </header>
-          <SessionSelector troopId={troopId} onSessionSelect={setSession} />
+          <EventSelector troopId={troopId} onEventSelect={setSession} />
         </div>
       ) : (
         <>
@@ -617,8 +617,8 @@ export function Scanner() {
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <span className="badge badge-pending" title="Offline Queue">{attendance.filter(s => s.message === 'Saved Offline').length}</span>
               {isAdminOrLeader && !session.ended_at && (
-                <button onClick={handleEndSession} className="btn btn-destructive" style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}>
-                  End Session
+                <button onClick={handleEndSession} className="btn btn-close" style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}>
+                  Close Event
                 </button>
               )}
               <button onClick={() => setSession(null)} className="btn btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}>
@@ -654,13 +654,13 @@ export function Scanner() {
               </>
             ) : (
               <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--foreground)' }}>
-                <h2>Session Ended</h2>
+                <h2>Event Closed</h2>
                 <p>No further scans can be recorded.</p>
                 {isAdminOrLeader && (
                   session.synced_at ? (
-                    <button onClick={handleResetSyncSession} className="btn btn-action" style={{ marginTop: 'var(--spacing-md)' }}>Reset Sync Status</button>
+                    <button onClick={handleResetSyncSession} className="btn btn-reset-sync" style={{ marginTop: 'var(--spacing-md)' }}>Reset Sync</button>
                   ) : (
-                    <button onClick={handleReenableSession} className="btn btn-primary" style={{ marginTop: 'var(--spacing-md)' }}>Reenable Session</button>
+                    <button onClick={handleReenableSession} className="btn btn-reopen" style={{ marginTop: 'var(--spacing-md)' }}>Reopen Event</button>
                   )
                 )}
               </div>
@@ -671,11 +671,12 @@ export function Scanner() {
             <div className="scanner-action-bar" style={{ gridTemplateColumns: '1fr 1fr 1fr', flexShrink: 0 }}>
               <button
                 onClick={isScanning ? stopScanner : startScanner}
-                className={`btn ${isScanning ? 'btn-destructive' : 'btn-primary'}`}
+                className={`btn ${isScanning ? 'btn-destructive' : 'btn-start'}`}
                 style={{ padding: 'var(--spacing-lg) var(--spacing-md)', fontSize: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem' }}
               >
                 {isScanning ? '⏹ Stop Scan' : '📷 Start Scan'}
               </button>
+
               <div style={{ position: 'relative', overflow: 'hidden', display: 'flex' }}>
                 <button className="btn btn-secondary" style={{ width: '100%', padding: 'var(--spacing-lg) var(--spacing-md)', fontSize: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem' }}>
                   📁 Load Photos

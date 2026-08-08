@@ -47,7 +47,7 @@ export function SidebarLayout() {
   const allNavLinks = [
     { path: '/dashboard', label: 'Dashboard', allowedRoles: ['troop_admin', 'billing_admin', 'global_admin'] },
     { path: '/roster', label: 'Roster', allowedRoles: ['troop_admin', 'billing_admin', 'global_admin'] },
-    { path: '/sessions', label: 'Sessions', allowedRoles: ['badge_scanner', 'troop_admin', 'billing_admin', 'global_admin'] },
+    { path: '/events', label: 'Events', allowedRoles: ['badge_scanner', 'troop_admin', 'billing_admin', 'global_admin'] },
     { path: '/scanner', label: 'Scanner', allowedRoles: ['badge_scanner', 'troop_admin', 'billing_admin', 'global_admin'] },
     { path: '/billing', label: 'Billing', allowedRoles: ['billing_admin', 'global_admin'] },
     { path: '/complete-profile', label: 'Profile', allowedRoles: ['badge_scanner', 'troop_admin', 'billing_admin', 'global_admin'] },

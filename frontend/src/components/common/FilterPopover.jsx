@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 
 /**
  * FilterPopover component for desktop table column filtering.
@@ -11,6 +11,11 @@ import React, { useEffect, useRef } from 'react';
  * - value: any (string for text, {from, to} for daterange, Array<string> for multiselect)
  * - onChange: (newValue: any) => void
  * - options: Array<{ label: string, value: string }> (for multiselect)
+ * - sortConfig: { key: string|null, direction: 'asc'|'desc' }
+ * - columnKey: string
+ * - onSort: (direction: 'asc'|'desc') => void
+ * - sortAscLabel: string
+ * - sortDescLabel: string
  */
 export function FilterPopover({
   isOpen,
@@ -19,9 +24,15 @@ export function FilterPopover({
   type,
   value,
   onChange,
-  options = []
+  options = [],
+  sortConfig,
+  columnKey,
+  onSort,
+  sortAscLabel,
+  sortDescLabel
 }) {
   const popoverRef = useRef(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     if (!isOpen) return;
@@ -46,7 +57,21 @@ export function FilterPopover({
     };
   }, [isOpen, onClose]);
 
+  // Reset local search term when popover opens/closes
+  useEffect(() => {
+    if (!isOpen) setSearchTerm('');
+  }, [isOpen]);
+
+  const visibleOptions = useMemo(() => {
+    if (!searchTerm.trim()) return options;
+    const lower = searchTerm.toLowerCase();
+    return options.filter(opt => opt.label.toLowerCase().includes(lower));
+  }, [options, searchTerm]);
+
   if (!isOpen) return null;
+
+  const isSortedAsc = sortConfig?.key === columnKey && sortConfig?.direction === 'asc';
+  const isSortedDesc = sortConfig?.key === columnKey && sortConfig?.direction === 'desc';
 
   const handleMultiselectToggle = (optVal) => {
     const current = Array.isArray(value) ? value : [];
@@ -58,11 +83,20 @@ export function FilterPopover({
   };
 
   const handleSelectAll = () => {
-    onChange(options.map(o => o.value));
+    const current = Array.isArray(value) ? value : [];
+    const visibleValues = visibleOptions.map(o => o.value);
+    const combined = Array.from(new Set([...current, ...visibleValues]));
+    onChange(combined);
   };
 
   const handleClearMultiselect = () => {
-    onChange([]);
+    if (!searchTerm.trim()) {
+      onChange([]);
+    } else {
+      const visibleValues = visibleOptions.map(o => o.value);
+      const current = Array.isArray(value) ? value : [];
+      onChange(current.filter(v => !visibleValues.includes(v)));
+    }
   };
 
   return (
@@ -84,6 +118,34 @@ export function FilterPopover({
       </div>
 
       <div className="filter-popover-body">
+        {/* Sort Section */}
+        {onSort && (
+          <div className="filter-popover-sort-section">
+            <button
+              type="button"
+              className={`filter-sort-btn ${isSortedAsc ? 'active' : ''}`}
+              onClick={() => {
+                onSort('asc');
+                onClose();
+              }}
+            >
+              <span style={{ fontSize: '0.85rem' }}>↑</span>
+              <span>{sortAscLabel || 'Sort Ascending'}</span>
+            </button>
+            <button
+              type="button"
+              className={`filter-sort-btn ${isSortedDesc ? 'active' : ''}`}
+              onClick={() => {
+                onSort('desc');
+                onClose();
+              }}
+            >
+              <span style={{ fontSize: '0.85rem' }}>↓</span>
+              <span>{sortDescLabel || 'Sort Descending'}</span>
+            </button>
+          </div>
+        )}
+
         {type === 'text' && (
           <div>
             <input
@@ -146,6 +208,16 @@ export function FilterPopover({
 
         {type === 'multiselect' && (
           <div>
+            <div style={{ marginBottom: '0.5rem' }}>
+              <input
+                type="text"
+                placeholder="Search values..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="filter-input"
+                style={{ fontSize: '0.8rem', padding: '0.35rem 0.5rem' }}
+              />
+            </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.75rem' }}>
               <button type="button" className="btn-link" onClick={handleSelectAll}>
                 Select All
@@ -155,12 +227,12 @@ export function FilterPopover({
               </button>
             </div>
             <div className="filter-multiselect-list">
-              {options.length === 0 ? (
+              {visibleOptions.length === 0 ? (
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', padding: '0.5rem 0' }}>
                   No options available
                 </div>
               ) : (
-                options.map((opt) => {
+                visibleOptions.map((opt) => {
                   const checked = (Array.isArray(value) ? value : []).includes(opt.value);
                   return (
                     <label key={opt.value} className="filter-multiselect-item">
