@@ -800,16 +800,10 @@ export function Events() {
 
               {/* Event Name Header */}
               <div role="columnheader" className="column-header-cell">
-                <button type="button" className="column-header-btn" onClick={() => handleSortToggle('event_name')}>
-                  Event Name {sortConfig.key === 'event_name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                </button>
-                <button
-                  type="button"
-                  className={`filter-funnel-btn ${columnFilters.event_name?.length > 0 ? 'active' : ''}`}
-                  onClick={() => setActivePopover(activePopover === 'event_name' ? null : 'event_name')}
-                  title="Filter by Event Name"
-                >
-                  🌪️
+                <button type="button" className="column-header-btn" onClick={() => setActivePopover(activePopover === 'event_name' ? null : 'event_name')}>
+                  Event Name 
+                  {sortConfig.key === 'event_name' && (sortConfig.direction === 'asc' ? ' ↑' : ' ↓')}
+                  {columnFilters.event_name?.length > 0 && ' 🌪️'}
                 </button>
                 {activePopover === 'event_name' && (
                   <FilterPopover
@@ -820,22 +814,21 @@ export function Events() {
                     value={columnFilters.event_name || []}
                     onChange={(val) => setColumnFilters(prev => ({ ...prev, event_name: val }))}
                     onClose={() => setActivePopover(null)}
+                    sortConfig={sortConfig}
+                    columnKey="event_name"
+                    onSort={(dir) => setSortConfig({ key: 'event_name', direction: dir })}
+                    sortAscLabel="Sort A to Z"
+                    sortDescLabel="Sort Z to A"
                   />
                 )}
               </div>
 
               {/* Date Header */}
               <div role="columnheader" className="column-header-cell">
-                <button type="button" className="column-header-btn" onClick={() => handleSortToggle('event_date')}>
-                  Date {sortConfig.key === 'event_date' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                </button>
-                <button
-                  type="button"
-                  className={`filter-funnel-btn ${(columnFilters.event_date?.from || columnFilters.event_date?.to) ? 'active' : ''}`}
-                  onClick={() => setActivePopover(activePopover === 'event_date' ? null : 'event_date')}
-                  title="Filter by Date Range"
-                >
-                  🌪️
+                <button type="button" className="column-header-btn" onClick={() => setActivePopover(activePopover === 'event_date' ? null : 'event_date')}>
+                  Date 
+                  {sortConfig.key === 'event_date' && (sortConfig.direction === 'asc' ? ' ↑' : ' ↓')}
+                  {(columnFilters.event_date?.from || columnFilters.event_date?.to) && ' 🌪️'}
                 </button>
                 {activePopover === 'event_date' && (
                   <FilterPopover
@@ -845,22 +838,21 @@ export function Events() {
                     value={columnFilters.event_date || { from: '', to: '' }}
                     onChange={(val) => setColumnFilters(prev => ({ ...prev, event_date: val }))}
                     onClose={() => setActivePopover(null)}
+                    sortConfig={sortConfig}
+                    columnKey="event_date"
+                    onSort={(dir) => setSortConfig({ key: 'event_date', direction: dir })}
+                    sortAscLabel="Sort Oldest to Newest"
+                    sortDescLabel="Sort Newest to Oldest"
                   />
                 )}
               </div>
 
               {/* Status Header */}
               <div role="columnheader" className="column-header-cell">
-                <button type="button" className="column-header-btn" onClick={() => handleSortToggle('status')}>
-                  Status {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                </button>
-                <button
-                  type="button"
-                  className={`filter-funnel-btn ${columnFilters.status?.length > 0 ? 'active' : ''}`}
-                  onClick={() => setActivePopover(activePopover === 'status' ? null : 'status')}
-                  title="Filter by Status"
-                >
-                  🌪️
+                <button type="button" className="column-header-btn" onClick={() => setActivePopover(activePopover === 'status' ? null : 'status')}>
+                  Status 
+                  {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? ' ↑' : ' ↓')}
+                  {columnFilters.status?.length > 0 && ' 🌪️'}
                 </button>
                 {activePopover === 'status' && (
                   <FilterPopover
@@ -875,22 +867,21 @@ export function Events() {
                     value={columnFilters.status || []}
                     onChange={(val) => setColumnFilters(prev => ({ ...prev, status: val }))}
                     onClose={() => setActivePopover(null)}
+                    sortConfig={sortConfig}
+                    columnKey="status"
+                    onSort={(dir) => setSortConfig({ key: 'status', direction: dir })}
+                    sortAscLabel="Sort A to Z"
+                    sortDescLabel="Sort Z to A"
                   />
                 )}
               </div>
 
               {/* Synced By Header */}
               <div role="columnheader" className="column-header-cell">
-                <button type="button" className="column-header-btn" onClick={() => handleSortToggle('synced_by')}>
-                  Synced By {sortConfig.key === 'synced_by' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                </button>
-                <button
-                  type="button"
-                  className={`filter-funnel-btn ${columnFilters.synced_by?.length > 0 ? 'active' : ''}`}
-                  onClick={() => setActivePopover(activePopover === 'synced_by' ? null : 'synced_by')}
-                  title="Filter by Synced By"
-                >
-                  🌪️
+                <button type="button" className="column-header-btn" onClick={() => setActivePopover(activePopover === 'synced_by' ? null : 'synced_by')}>
+                  Synced By 
+                  {sortConfig.key === 'synced_by' && (sortConfig.direction === 'asc' ? ' ↑' : ' ↓')}
+                  {columnFilters.synced_by?.length > 0 && ' 🌪️'}
                 </button>
                 {activePopover === 'synced_by' && (
                   <FilterPopover
@@ -901,6 +892,11 @@ export function Events() {
                     value={columnFilters.synced_by || []}
                     onChange={(val) => setColumnFilters(prev => ({ ...prev, synced_by: val }))}
                     onClose={() => setActivePopover(null)}
+                    sortConfig={sortConfig}
+                    columnKey="synced_by"
+                    onSort={(dir) => setSortConfig({ key: 'synced_by', direction: dir })}
+                    sortAscLabel="Sort A to Z"
+                    sortDescLabel="Sort Z to A"
                   />
                 )}
               </div>
