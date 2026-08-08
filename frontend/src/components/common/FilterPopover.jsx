@@ -105,17 +105,7 @@ export function FilterPopover({
       className="filter-popover glass-card"
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="filter-popover-header">
-        <span>Filter {title}</span>
-        <button
-          type="button"
-          className="filter-popover-close"
-          onClick={onClose}
-          aria-label="Close filter"
-        >
-          &times;
-        </button>
-      </div>
+
 
       <div className="filter-popover-body">
         {/* Sort Section */}
@@ -179,6 +169,7 @@ export function FilterPopover({
                 type="date"
                 value={value?.from || ''}
                 onChange={(e) => onChange({ ...value, from: e.target.value })}
+                onClick={(e) => { try { e.target.showPicker?.(); } catch (_) {} }}
                 className="filter-input"
               />
             </div>
@@ -190,14 +181,134 @@ export function FilterPopover({
                 type="date"
                 value={value?.to || ''}
                 onChange={(e) => onChange({ ...value, to: e.target.value })}
+                onClick={(e) => { try { e.target.showPicker?.(); } catch (_) {} }}
                 className="filter-input"
               />
             </div>
-            {(value?.from || value?.to) && (
+            <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
+              <button
+                type="button"
+                className="filter-preset-chip"
+                onClick={() => {
+                  const today = new Date().toISOString().split('T')[0];
+                  onChange({ ...value, from: today, to: today });
+                }}
+              >
+                Today
+              </button>
+              <button
+                type="button"
+                className="filter-preset-chip"
+                onClick={() => {
+                  const now = new Date();
+                  const dayOfWeek = now.getDay();
+                  const first = new Date(now);
+                  first.setDate(now.getDate() - dayOfWeek);
+                  const from = first.toISOString().split('T')[0];
+                  const to = new Date().toISOString().split('T')[0];
+                  onChange({ ...value, from, to });
+                }}
+              >
+                This Week
+              </button>
+              <button
+                type="button"
+                className="filter-preset-chip"
+                onClick={() => {
+                  const now = new Date();
+                  const first = new Date(now.getFullYear(), now.getMonth(), 1);
+                  const from = first.toISOString().split('T')[0];
+                  const to = new Date().toISOString().split('T')[0];
+                  onChange({ ...value, from, to });
+                }}
+              >
+                This Month
+              </button>
+            </div>
+
+            {/* Multi-select Specific Dates appearing in table */}
+            {options.length > 0 && (
+              <div style={{ marginTop: '0.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '0.5rem' }}>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--foreground)', marginBottom: '0.35rem' }}>
+                  Select Specific Dates:
+                </label>
+                {options.length > 5 && (
+                  <div style={{ marginBottom: '0.35rem' }}>
+                    <input
+                      type="text"
+                      placeholder="Search dates..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="filter-input"
+                      style={{ fontSize: '0.75rem', padding: '0.3rem 0.5rem' }}
+                    />
+                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem', fontSize: '0.75rem' }}>
+                  <button
+                    type="button"
+                    className="btn-link"
+                    onClick={() => {
+                      const current = Array.isArray(value?.dates) ? value.dates : [];
+                      const visibleValues = visibleOptions.map(o => o.value);
+                      const combined = Array.from(new Set([...current, ...visibleValues]));
+                      onChange({ ...value, dates: combined });
+                    }}
+                  >
+                    Select All
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-link"
+                    onClick={() => {
+                      if (!searchTerm.trim()) {
+                        onChange({ ...value, dates: [] });
+                      } else {
+                        const visibleValues = visibleOptions.map(o => o.value);
+                        const current = Array.isArray(value?.dates) ? value.dates : [];
+                        onChange({ ...value, dates: current.filter(v => !visibleValues.includes(v)) });
+                      }
+                    }}
+                  >
+                    Clear
+                  </button>
+                </div>
+                <div className="filter-multiselect-list" style={{ maxHeight: '130px' }}>
+                  {visibleOptions.length === 0 ? (
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', padding: '0.25rem 0' }}>
+                      No matching dates
+                    </div>
+                  ) : (
+                    visibleOptions.map((opt) => {
+                      const selectedDates = Array.isArray(value?.dates) ? value.dates : [];
+                      const checked = selectedDates.includes(opt.value);
+                      return (
+                        <label key={opt.value} className="filter-multiselect-item">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => {
+                              const current = Array.isArray(value?.dates) ? value.dates : [];
+                              const updated = current.includes(opt.value)
+                                ? current.filter(v => v !== opt.value)
+                                : [...current, opt.value];
+                              onChange({ ...value, dates: updated });
+                            }}
+                          />
+                          <span>{opt.label}</span>
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
+
+            {(value?.from || value?.to || (value?.dates && value.dates.length > 0)) && (
               <button
                 type="button"
                 className="btn-link"
-                onClick={() => onChange({ from: '', to: '' })}
+                onClick={() => onChange({ from: '', to: '', dates: [] })}
                 style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}
               >
                 Clear date filter

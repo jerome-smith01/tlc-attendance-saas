@@ -957,6 +957,43 @@ button:active, .btn-primary:active, .btn-action:active {
   color: var(--foreground);
 }
 
+.filter-input[type="date"],
+input[type="date"].filter-input {
+  color-scheme: dark;
+  cursor: pointer;
+}
+
+.filter-input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="date"].filter-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(0.8) sepia(1) saturate(5) hue-rotate(185deg);
+  opacity: 0.85;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+}
+
+.filter-input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="date"].filter-input::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.filter-preset-chip {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  padding: 0.2rem 0.45rem;
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-preset-chip:hover {
+  background: var(--bg-elevated);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
 .filter-multiselect-list {
   max-height: 160px;
   overflow-y: auto;

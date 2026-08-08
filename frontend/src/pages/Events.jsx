@@ -38,9 +38,10 @@ export function Events() {
 
   const defaultFilters = {
     event_name: [],
-    event_date: { from: '', to: '' },
+    event_date: { from: '', to: '', dates: [] },
     status: [],
-    synced_by: []
+    synced_by: [],
+    actions: []
   };
 
   const defaultSort = { key: null, direction: 'asc' };
@@ -272,6 +273,12 @@ export function Events() {
     return [...new Set(names)].sort();
   }, [events]);
 
+  const uniqueDates = useMemo(() => {
+    const dates = events.map(s => s.event_date).filter(Boolean);
+    const unique = [...new Set(dates)].sort((a, b) => b.localeCompare(a));
+    return unique.map(d => ({ label: d, value: d }));
+  }, [events]);
+
   const uniqueSyncedBy = useMemo(() => {
     const ids = events.map(s => s.synced_by).filter(Boolean);
     const uniqueIds = [...new Set(ids)];
@@ -280,6 +287,22 @@ export function Events() {
       name: usersMap[id] || id
     })).sort((a, b) => a.name.localeCompare(b.name));
   }, [events, usersMap]);
+
+  const uniqueStatuses = useMemo(() => {
+    const statuses = events.map(s => getStatusLabel(s)).filter(Boolean);
+    const unique = [...new Set(statuses)].sort();
+    return unique.map(st => ({ label: st, value: st }));
+  }, [events]);
+
+  const uniqueActions = useMemo(() => {
+    const actions = new Set();
+    events.forEach(s => {
+      if (!s.synced_at && !s.ended_at) actions.add('Close');
+      if (!s.synced_at && s.ended_at) actions.add('Reopen');
+      if (s.synced_at) actions.add('Reset Sync');
+    });
+    return Array.from(actions).map(act => ({ label: act, value: act }));
+  }, [events]);
 
   // Filter & Sort Logic
   const processedEvents = useMemo(() => {
@@ -310,6 +333,10 @@ export function Events() {
       result = result.filter(s => s.event_date <= columnFilters.event_date.to);
     }
 
+    if (columnFilters.event_date?.dates && columnFilters.event_date.dates.length > 0) {
+      result = result.filter(s => columnFilters.event_date.dates.includes(s.event_date));
+    }
+
     if (columnFilters.status && columnFilters.status.length > 0) {
       result = result.filter(s => columnFilters.status.includes(getStatusLabel(s)));
     }
@@ -319,6 +346,19 @@ export function Events() {
         if (!s.synced_by) return false;
         const name = usersMap[s.synced_by] || s.synced_by;
         return columnFilters.synced_by.includes(name);
+      });
+    }
+
+    if (columnFilters.actions && columnFilters.actions.length > 0) {
+      result = result.filter(s => {
+        const canClose = !s.synced_at && !s.ended_at;
+        const canReopen = !s.synced_at && s.ended_at;
+        const canResetSync = Boolean(s.synced_at);
+
+        if (columnFilters.actions.includes('Close') && canClose) return true;
+        if (columnFilters.actions.includes('Reopen') && canReopen) return true;
+        if (columnFilters.actions.includes('Reset Sync') && canResetSync) return true;
+        return false;
       });
     }
 
@@ -533,13 +573,94 @@ export function Events() {
     }
   };
 
+  // Single-row: Close
+  const handleCloseEvent = async (eventObj) => {
+    if (await confirm(`Are you sure you want to close the event "${eventObj.event_name}"? This will approve all pending scans for this event.`)) {
+      const now = new Date().toISOString();
+      let { error: eventError } = await supabase
+        .from('events')
+        .update({ ended_at: now })
+        .eq('id', eventObj.id);
+
+      if (eventError && (eventError.code === '42P01' || eventError.message.includes('events'))) {
+        const res = await supabase
+          .from('sessions')
+          .update({ ended_at: now })
+          .eq('id', eventObj.id);
+        eventError = res.error;
+      }
+
+      if (eventError) {
+        toast("Error closing event: " + eventError.message, 'error');
+        return;
+      }
+
+      let { error: scansError } = await supabase
+        .from('scans')
+        .update({ status: 'approved' })
+        .eq('event_id', eventObj.id)
+        .eq('status', 'pending');
+
+      if (scansError && scansError.message.includes('event_id')) {
+        const res = await supabase
+          .from('scans')
+          .update({ status: 'approved' })
+          .eq('session_id', eventObj.id)
+          .eq('status', 'pending');
+        scansError = res.error;
+      }
+
+      if (scansError) {
+        toast("Error approving scans: " + scansError.message, 'error');
+        return;
+      }
+
+      setEvents(prev => prev.map(s => s.id === eventObj.id ? { ...s, ended_at: now } : s));
+      toast(`Event closed`, 'success');
+    }
+  };
+
+  // Single-row: Reopen
+  const handleReopenEvent = async (eventObj) => {
+    if (await confirm(`Are you sure you want to reopen the event "${eventObj.event_name}"?`)) {
+      let { error } = await supabase
+        .from('events')
+        .update({ ended_at: null })
+        .eq('id', eventObj.id);
+
+      if (error && (error.code === '42P01' || error.message.includes('events'))) {
+        const res = await supabase
+          .from('sessions')
+          .update({ ended_at: null })
+          .eq('id', eventObj.id);
+        error = res.error;
+      }
+
+      if (error) {
+        toast("Error reopening event: " + error.message, 'error');
+      } else {
+        setEvents(prev => prev.map(s => s.id === eventObj.id ? { ...s, ended_at: null } : s));
+        toast(`Event reopened`, 'success');
+      }
+    }
+  };
+
   // Single-row: Reset Sync
   const handleResetSyncEvent = async (eventId) => {
     if (await confirm('Reset sync status for this event? It will be marked as unsynced and can be synced again.')) {
-      const { error } = await supabase
+      let { error } = await supabase
         .from('events')
         .update({ synced_at: null, synced_by: null, purge_after: null })
         .eq('id', eventId);
+
+      if (error && (error.code === '42P01' || error.message.includes('events'))) {
+        const res = await supabase
+          .from('sessions')
+          .update({ synced_at: null, synced_by: null, purge_after: null })
+          .eq('id', eventId);
+        error = res.error;
+      }
+
       if (error) {
         toast('Error resetting sync: ' + error.message, 'error');
       } else {
@@ -552,7 +673,11 @@ export function Events() {
   // Single-row: Delete
   const handleDeleteEvent = async (eventId) => {
     if (await confirm('Delete this event? This will also delete all associated scans and cannot be undone.')) {
-      const { error } = await supabase.from('events').delete().eq('id', eventId);
+      let { error } = await supabase.from('events').delete().eq('id', eventId);
+      if (error && (error.code === '42P01' || error.message.includes('events'))) {
+        const res = await supabase.from('sessions').delete().eq('id', eventId);
+        error = res.error;
+      }
       if (error) {
         toast('Error deleting event: ' + error.message, 'error');
       } else {
@@ -587,19 +712,22 @@ export function Events() {
       });
     }
 
-    if (columnFilters.event_date?.from || columnFilters.event_date?.to) {
-      let text = 'Date: ';
+    if (columnFilters.event_date?.from || columnFilters.event_date?.to || (columnFilters.event_date?.dates && columnFilters.event_date.dates.length > 0)) {
+      const parts = [];
       if (columnFilters.event_date.from && columnFilters.event_date.to) {
-        text += `${columnFilters.event_date.from} to ${columnFilters.event_date.to}`;
+        parts.push(`${columnFilters.event_date.from} to ${columnFilters.event_date.to}`);
       } else if (columnFilters.event_date.from) {
-        text += `From ${columnFilters.event_date.from}`;
-      } else {
-        text += `Until ${columnFilters.event_date.to}`;
+        parts.push(`From ${columnFilters.event_date.from}`);
+      } else if (columnFilters.event_date.to) {
+        parts.push(`Until ${columnFilters.event_date.to}`);
+      }
+      if (columnFilters.event_date.dates && columnFilters.event_date.dates.length > 0) {
+        parts.push(`Dates: ${columnFilters.event_date.dates.join(', ')}`);
       }
       chips.push({
         id: 'event_date',
-        label: text,
-        onRemove: () => setColumnFilters(prev => ({ ...prev, event_date: { from: '', to: '' } }))
+        label: `Date: ${parts.join(' | ')}`,
+        onRemove: () => setColumnFilters(prev => ({ ...prev, event_date: { from: '', to: '', dates: [] } }))
       });
     }
 
@@ -616,6 +744,14 @@ export function Events() {
         id: 'synced_by',
         label: `Synced By: ${columnFilters.synced_by.join(', ')}`,
         onRemove: () => setColumnFilters(prev => ({ ...prev, synced_by: [] }))
+      });
+    }
+
+    if (columnFilters.actions && columnFilters.actions.length > 0) {
+      chips.push({
+        id: 'actions',
+        label: `Action: ${columnFilters.actions.join(', ')}`,
+        onRemove: () => setColumnFilters(prev => ({ ...prev, actions: [] }))
       });
     }
 
@@ -828,14 +964,15 @@ export function Events() {
                 <button type="button" className="column-header-btn" onClick={() => setActivePopover(activePopover === 'event_date' ? null : 'event_date')}>
                   Date 
                   {sortConfig.key === 'event_date' && (sortConfig.direction === 'asc' ? ' ↑' : ' ↓')}
-                  {(columnFilters.event_date?.from || columnFilters.event_date?.to) && ' 🌪️'}
+                  {(columnFilters.event_date?.from || columnFilters.event_date?.to || columnFilters.event_date?.dates?.length > 0) && ' 🌪️'}
                 </button>
                 {activePopover === 'event_date' && (
                   <FilterPopover
                     isOpen={true}
                     title="Date"
                     type="daterange"
-                    value={columnFilters.event_date || { from: '', to: '' }}
+                    options={uniqueDates}
+                    value={columnFilters.event_date || { from: '', to: '', dates: [] }}
                     onChange={(val) => setColumnFilters(prev => ({ ...prev, event_date: val }))}
                     onClose={() => setActivePopover(null)}
                     sortConfig={sortConfig}
@@ -859,11 +996,7 @@ export function Events() {
                     isOpen={true}
                     title="Status"
                     type="multiselect"
-                    options={[
-                      { label: 'Open', value: 'Open' },
-                      { label: 'Closed', value: 'Closed' },
-                      { label: 'Synced', value: 'Synced' }
-                    ]}
+                    options={uniqueStatuses}
                     value={columnFilters.status || []}
                     onChange={(val) => setColumnFilters(prev => ({ ...prev, status: val }))}
                     onClose={() => setActivePopover(null)}
@@ -902,7 +1035,29 @@ export function Events() {
               </div>
 
               {/* Actions Header — admin only */}
-              {canManage && <div role="columnheader" style={{ textAlign: 'right' }}>Actions</div>}
+              {canManage && (
+                <div role="columnheader" className="column-header-cell">
+                  <button
+                    type="button"
+                    className="column-header-btn"
+                    onClick={() => setActivePopover(activePopover === 'actions' ? null : 'actions')}
+                  >
+                    Actions 
+                    {columnFilters.actions?.length > 0 && ' 🌪️'}
+                  </button>
+                  {activePopover === 'actions' && (
+                    <FilterPopover
+                      isOpen={true}
+                      title="Actions"
+                      type="multiselect"
+                      options={uniqueActions}
+                      value={columnFilters.actions || []}
+                      onChange={(val) => setColumnFilters(prev => ({ ...prev, actions: val }))}
+                      onClose={() => setActivePopover(null)}
+                    />
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Table Rows / Cards */}
@@ -911,102 +1066,176 @@ export function Events() {
                 No events found matching criteria.
               </div>
             ) : (
-              processedEvents.map(eventObj => (
-                <div
-                  key={eventObj.id}
-                  className="grid-table-row"
-                  style={{ gridTemplateColumns: canManage ? '48px 1.5fr 1fr 1fr 1fr 1.5fr' : '1.5fr 1fr 1fr 1fr' }}
-                  role="row"
-                >
-                  {/* Selection Cell */}
-                  {canManage && (
-                    <div className="grid-table-cell" role="cell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', paddingLeft: '1rem' }}>
-                      <input
-                        type="checkbox"
-                        checked={selectedEventIds.includes(eventObj.id)}
-                        onChange={() => handleToggleSelectRow(eventObj.id)}
-                        style={{ margin: 0, cursor: 'pointer', width: '18px', height: '18px' }}
-                      />
+              processedEvents.map(eventObj => {
+                const canCloseRow = !eventObj.synced_at && !eventObj.ended_at;
+                const canReopenRow = !eventObj.synced_at && eventObj.ended_at;
+                const canResetSyncRow = Boolean(eventObj.synced_at);
+
+                return (
+                  <div
+                    key={eventObj.id}
+                    className="grid-table-row"
+                    style={{ gridTemplateColumns: canManage ? '48px 1.5fr 1fr 1fr 1fr 1.5fr' : '1.5fr 1fr 1fr 1fr' }}
+                    role="row"
+                  >
+                    {/* Selection Cell */}
+                    {canManage && (
+                      <div className="grid-table-cell" role="cell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', paddingLeft: '1rem' }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedEventIds.includes(eventObj.id)}
+                          onChange={() => handleToggleSelectRow(eventObj.id)}
+                          style={{ margin: 0, cursor: 'pointer', width: '18px', height: '18px' }}
+                        />
+                      </div>
+                    )}
+
+                    {/* Event Name — clickable link */}
+                    <div className="grid-table-cell" role="cell">
+                      <span className="grid-table-label">Event Name</span>
+                      <button
+                        type="button"
+                        className="btn-link"
+                        onClick={() => handleViewAttendees(eventObj)}
+                        title="Click to view attendees"
+                      >
+                        {eventObj.event_name}
+                      </button>
                     </div>
-                  )}
 
-                  {/* Event Name — clickable link */}
-                  <div className="grid-table-cell" role="cell">
-                    <span className="grid-table-label">Event Name</span>
-                    <button
-                      type="button"
-                      className="btn-link"
-                      onClick={() => handleViewAttendees(eventObj)}
-                      title="Click to view attendees"
-                    >
-                      {eventObj.event_name}
-                    </button>
-                  </div>
-
-                  {/* Date */}
-                  <div className="grid-table-cell" role="cell">
-                    <span className="grid-table-label">Date</span>
-                    <span>{eventObj.event_date}</span>
-                  </div>
-
-                  {/* Status */}
-                  <div className="grid-table-cell" role="cell">
-                    <span className="grid-table-label">Status</span>
-                    <div>
-                      <span className={`badge ${getStatusBadgeClass(eventObj)}`}>
-                        {getStatusLabel(eventObj)}
-                      </span>
+                    {/* Date */}
+                    <div className="grid-table-cell" role="cell">
+                      <span className="grid-table-label">Date</span>
+                      <span>{eventObj.event_date}</span>
                     </div>
-                  </div>
 
-                  {/* Synced By */}
-                  <div className="grid-table-cell" role="cell">
-                    <span className="grid-table-label">Synced By</span>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                      {eventObj.synced_by ? (usersMap[eventObj.synced_by] || 'Admin') : '-'}
-                    </span>
-                  </div>
-
-                  {/* Actions — admin only */}
-                  {canManage && (
-                    <div className="grid-table-cell" role="cell" style={{ justifyContent: 'flex-end' }}>
-                      <span className="grid-table-label">Actions</span>
-                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                        <button
-                          type="button"
-                          className="btn btn-secondary"
-                          onClick={() => handleViewAttendees(eventObj)}
-                          style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
-                        >
-                          View Attendees
-                        </button>
-                        {eventObj.synced_at && (
-                          <button
-                            type="button"
-                            className="btn btn-reset-sync"
-                            onClick={() => handleResetSyncEvent(eventObj.id)}
-                            style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
-                            title="Reset Sync Status"
-                          >
-                            Reset Sync
-                          </button>
-                        )}
-                        {!eventObj.synced_at && eventObj.ended_at && (
-                          <button
-                            type="button"
-                            className="btn btn-destructive"
-                            onClick={() => handleDeleteEvent(eventObj.id)}
-                            style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
-                            title="Delete Event"
-                          >
-                            Delete
-                          </button>
-                        )}
+                    {/* Status */}
+                    <div className="grid-table-cell" role="cell">
+                      <span className="grid-table-label">Status</span>
+                      <div>
+                        <span className={`badge ${getStatusBadgeClass(eventObj)}`}>
+                          {getStatusLabel(eventObj)}
+                        </span>
                       </div>
                     </div>
-                  )}
-                </div>
-              ))
+
+                    {/* Synced By */}
+                    <div className="grid-table-cell" role="cell">
+                      <span className="grid-table-label">Synced By</span>
+                      <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                        {eventObj.synced_by ? (usersMap[eventObj.synced_by] || 'Admin') : '-'}
+                      </span>
+                    </div>
+
+                    {/* Actions — admin only */}
+                    {canManage && (
+                      <div className="grid-table-cell" role="cell" style={{ justifyContent: 'flex-start' }}>
+                        <span className="grid-table-label">Actions</span>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-start', alignItems: 'center' }}>
+                          {/* Close Action */}
+                          <button
+                            type="button"
+                            disabled={!canCloseRow}
+                            onClick={() => canCloseRow && handleCloseEvent(eventObj)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              padding: '6px',
+                              borderRadius: 'var(--radius-sm, 4px)',
+                              border: '1px solid var(--border-color)',
+                              background: 'transparent',
+                              color: canCloseRow ? 'var(--foreground)' : 'var(--text-secondary)',
+                              opacity: canCloseRow ? 1 : 0.35,
+                              cursor: canCloseRow ? 'pointer' : 'not-allowed'
+                            }}
+                            title={canCloseRow ? "Close Event" : "Close unavailable: event is already closed or synced"}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                            </svg>
+                          </button>
+
+                          {/* Reopen Action */}
+                          <button
+                            type="button"
+                            disabled={!canReopenRow}
+                            onClick={() => canReopenRow && handleReopenEvent(eventObj)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              padding: '6px',
+                              borderRadius: 'var(--radius-sm, 4px)',
+                              border: '1px solid var(--border-color)',
+                              background: 'transparent',
+                              color: canReopenRow ? 'var(--foreground)' : 'var(--text-secondary)',
+                              opacity: canReopenRow ? 1 : 0.35,
+                              cursor: canReopenRow ? 'pointer' : 'not-allowed'
+                            }}
+                            title={canReopenRow ? "Reopen Event" : "Reopen unavailable: event is open or already synced"}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                              <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+                            </svg>
+                          </button>
+
+                          {/* Reset Sync Action */}
+                          <button
+                            type="button"
+                            disabled={!canResetSyncRow}
+                            onClick={() => canResetSyncRow && handleResetSyncEvent(eventObj.id)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              padding: '6px',
+                              borderRadius: 'var(--radius-sm, 4px)',
+                              border: '1px solid var(--border-color)',
+                              background: 'transparent',
+                              color: canResetSyncRow ? 'var(--foreground)' : 'var(--text-secondary)',
+                              opacity: canResetSyncRow ? 1 : 0.35,
+                              cursor: canResetSyncRow ? 'pointer' : 'not-allowed'
+                            }}
+                            title={canResetSyncRow ? "Reset Sync Status" : "Reset Sync unavailable: event has not been synced yet"}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="23 4 23 10 17 10" />
+                              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                            </svg>
+                          </button>
+
+                          {/* Delete Action */}
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteEvent(eventObj.id)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              padding: '6px',
+                              borderRadius: 'var(--radius-sm, 4px)',
+                              border: '1px solid var(--border-color)',
+                              background: 'transparent',
+                              color: 'var(--foreground)',
+                              opacity: 1,
+                              cursor: 'pointer'
+                            }}
+                            title="Delete Event"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="3 6 5 6 21 6" />
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
             )}
           </div>
         </div>
@@ -1146,6 +1375,70 @@ export function Events() {
                   </label>
                 ))}
               </div>
+
+              {/* Date Filter */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ fontWeight: 700, fontSize: '0.85rem', display: 'block', marginBottom: '0.5rem' }}>
+                  Date Range:
+                </label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
+                      From:
+                    </label>
+                    <input
+                      type="date"
+                      className="filter-input"
+                      value={columnFilters.event_date?.from || ''}
+                      onChange={e => setColumnFilters(prev => ({ ...prev, event_date: { ...prev.event_date, from: e.target.value } }))}
+                      onClick={e => { try { e.target.showPicker?.(); } catch (_) {} }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
+                      To:
+                    </label>
+                    <input
+                      type="date"
+                      className="filter-input"
+                      value={columnFilters.event_date?.to || ''}
+                      onChange={e => setColumnFilters(prev => ({ ...prev, event_date: { ...prev.event_date, to: e.target.value } }))}
+                      onClick={e => { try { e.target.showPicker?.(); } catch (_) {} }}
+                    />
+                  </div>
+                </div>
+
+                {uniqueDates.length > 0 && (
+                  <div style={{ marginTop: '0.75rem' }}>
+                    <label style={{ fontWeight: 600, fontSize: '0.8rem', display: 'block', marginBottom: '0.35rem', color: 'var(--foreground)' }}>
+                      Specific Dates:
+                    </label>
+                    <div className="filter-multiselect-list" style={{ maxHeight: '120px' }}>
+                      {uniqueDates.map(opt => {
+                        const selected = Array.isArray(columnFilters.event_date?.dates) ? columnFilters.event_date.dates : [];
+                        const checked = selected.includes(opt.value);
+                        return (
+                          <label key={opt.value} className="filter-multiselect-item">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={e => {
+                                const current = Array.isArray(columnFilters.event_date?.dates) ? columnFilters.event_date.dates : [];
+                                if (e.target.checked) {
+                                  setColumnFilters(prev => ({ ...prev, event_date: { ...prev.event_date, dates: [...current, opt.value] } }));
+                                } else {
+                                  setColumnFilters(prev => ({ ...prev, event_date: { ...prev.event_date, dates: current.filter(x => x !== opt.value) } }));
+                                }
+                              }}
+                            />
+                            <span>{opt.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
@@ -1200,6 +1493,7 @@ export function Events() {
                 type="date"
                 value={newEventDate}
                 onChange={e => setNewEventDate(e.target.value)}
+                onClick={e => { try { e.target.showPicker?.(); } catch (_) {} }}
                 required
                 style={{
                   width: '100%',
@@ -1208,7 +1502,9 @@ export function Events() {
                   border: '1px solid var(--border-color)',
                   background: 'var(--bg-secondary)',
                   color: 'var(--foreground)',
-                  fontSize: '0.95rem'
+                  fontSize: '0.95rem',
+                  colorScheme: 'dark',
+                  cursor: 'pointer'
                 }}
               />
             </div>
