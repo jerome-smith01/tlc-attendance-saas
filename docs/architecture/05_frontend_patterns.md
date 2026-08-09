@@ -198,7 +198,7 @@ Allows uploading multiple photos containing QR codes from the device's camera ro
 
 **File**: `src/components/common/DataTable.jsx`
 
-A fully-featured, user-configurable standard HTML table component used for simple tabular views or secondary data lists. (Primary management screens like Events and Scanner use the Pattern 07 responsive grid table architecture). Its state is persisted to `localStorage` per-user, per-table.
+A fully-featured, user-configurable standard HTML table component used for simple tabular views or secondary data lists. (Primary management screens like Events, Sessions, and Roster use the Pattern 07 responsive grid table architecture). Its state is persisted to `localStorage` per-user, per-table.
 
 ### Props
 

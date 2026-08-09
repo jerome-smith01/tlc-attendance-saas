@@ -34,18 +34,16 @@ To maximize vertical reading space and accommodate arbitrarily long record names
 1. **Floating Container (`.grid-table-row`)**:
    - Renders as a distinct floating card with white background (`var(--bg-secondary)`), 12px rounded corners (`border-radius: var(--radius-md, 12px)`), solid border (`1px solid var(--border-color)`), and subtle drop shadow (`box-shadow: 0 2px 6px rgba(0,0,0,0.04)`).
 2. **Header Wrapper (`.grid-table-card-header`)**:
-   - Combines Cell 1 (Selection Checkbox), Cell 2 (Record Title Link / Member Name), and Cell 5 (Action Icon Button) into a single top flex container (`display: flex; align-items: center; gap: 0.6rem; width: 100%; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 0.25rem;`).
+   - Combines Cell 1 (Selection Checkbox) and Cell 2 (Record Title Link / Member Name) into a single top flex container (`display: flex; align-items: center; gap: 0.6rem; width: 100%; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 0.25rem;`).
 3. **Top-Aligned Checkbox (`.grid-table-cell-select`)**:
-   - Centered vertically on mobile with the title text and action icons (`display: flex; align-items: center;`).
+   - Centered vertically on mobile with the title text (`display: flex; align-items: center;`).
 4. **Full-Width Title Link (`.event-name-link` / `.grid-table-cell-name`)**:
    - Occupies remaining width (`flex: 1; min-width: 0;`), styled with `text-align: left !important; font-size: 0.95rem; font-weight: 600; line-height: 1.4; word-break: break-word;`.
-5. **Right-Aligned Header Action (`.grid-table-cell-actions`)**:
-   - Flexes to the far right edge of the card header row (`margin-left: auto;`).
-6. **Clean Field Values (`.grid-table-cell`)**:
-   - Field rows (Status, Scan Time, etc.) render directly against the card's surface without nested grey background boxes or heavy dividers (`padding: 0.4rem 0; border-bottom: none;`).
-7. **Desktop Grid Unwrapping (`display: contents`)**:
+5. **Clean Field Values (`.grid-table-cell`)**:
+   - Field rows (Status, Scan Time, Actions, etc.) render directly against the card's surface without nested grey background boxes or heavy dividers (`padding: 0.4rem 0; border-bottom: none;`).
+6. **Desktop Grid Unwrapping (`display: contents`)**:
    - On desktop viewports (`@media (min-width: 768px)`), `.grid-table-card-header` sets `display: contents;`.
-   - This eliminates the wrapper from the CSS grid calculation, allowing Cell 1 (checkbox), Cell 2 (title link), and Cell 5 (actions) to participate directly in the desktop multi-column CSS grid without DOM duplication.
+   - This eliminates the wrapper from the CSS grid calculation, allowing Cell 1 (checkbox) and Cell 2 (title link) to participate directly in the desktop multi-column CSS grid without DOM duplication.
 
 ---
 
@@ -208,7 +206,8 @@ Screens supporting bulk operations include a multi-select checkbox column to the
 
 ## 7. Single-Row Action Column Rules
 
-### Layout & Alignment
+### Layout & DOM Placement (CRITICAL)
+- **End of DOM Placement**: The `Actions` cell MUST be placed at the very end of the row's DOM structure (i.e. as the last child of `.grid-table-row`). Do **NOT** place the Actions cell inside `.grid-table-card-header`. Because the header uses `display: contents` on desktop, placing Actions inside it will preserve DOM order and cause the Actions cell to render prematurely in the 3rd grid column, shifting all other values to the right.
 - **Left-Aligned Action Cell**: Row action cells MUST align to the left (`justifyContent: 'flex-start'`) directly beneath the left-aligned `Actions` header text.
 - **No Separate "View Attendees" Action Button**: Do **not** render a separate "View Attendees" button in the single-row action cell. The primary record name link (e.g., Event Name) serves as the single mechanism to open attendee detail modals.
 
@@ -271,6 +270,7 @@ When building or upgrading another page (e.g. `Roster.jsx`) to use this pattern:
 - [ ] Ensure `canManage` (or role checks) is declared BEFORE `gridTemplateStyle` and `handleStartResize` hooks to prevent TDZ errors.
 - [ ] Use `selectedTroop?.currentUserRole` for permission checks (`canManage`).
 - [ ] Wrap top mobile selection cell and record title cell in `.grid-table-card-header` using `align-items: flex-start; gap: 0.6rem;` on mobile and `display: contents;` on desktop.
+- [ ] **CRITICAL**: Place the `Actions` cell at the very end of the `.grid-table-row` DOM, outside of `.grid-table-card-header`. Placing it inside the header causes desktop grid misalignment due to `display: contents`.
 - [ ] Set `margin-top: 2px` on `.grid-table-cell-select` for mobile so the top border of the checkbox box aligns with the top of the first title text line.
 - [ ] Remove standalone "Event Name" label text on mobile cards, placing the event title value link directly next to the checkbox.
 - [ ] Match status badge color tokens to action button tokens (`.badge-closed` uses `var(--color-action-close)` `#0284c7`).

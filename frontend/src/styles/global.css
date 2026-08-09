@@ -223,6 +223,31 @@ html, body, #root { height: 100%; }
   pointer-events: none;
 }
 
+/* Custom File Selector Button Styling */
+input[type="file"]::file-selector-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 0.85rem;
+  border: 1px solid var(--border-color);
+  background-color: var(--muted);
+  color: var(--foreground);
+  cursor: pointer;
+  margin-right: 0.75rem;
+  transition: background-color var(--transition-fast);
+}
+input[type="file"]::file-selector-button:hover {
+  background-color: var(--border-color);
+}
+input[type="file"] {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
 .btn-destructive {
   background-color: var(--color-error);
   color: #ffffff;
