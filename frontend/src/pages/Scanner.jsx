@@ -8,6 +8,7 @@ import { useConfirm } from '../components/common/ConfirmContext';
 import { useToast } from '../components/common/ToastContext';
 import { Modal } from '../components/common/Modal';
 import { FilterPopover } from '../components/common/FilterPopover';
+import { formatAppDate } from '../utils/date';
 
 export function Scanner() {
   const { eventId } = useParams();
@@ -1002,7 +1003,7 @@ export function Scanner() {
         <div className="grid-table-cell grid-table-cell-time" role="cell" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '0.2rem 0' }}>
           <span className="header-card-label">Event Date</span>
           <span style={{ color: 'var(--text-secondary)' }}>
-            {session.event_date || (session.created_at ? new Date(session.created_at).toLocaleDateString() : 'N/A')}
+            {session.event_date ? formatAppDate(session.event_date) : (session.created_at ? formatAppDate(session.created_at) : 'N/A')}
           </span>
         </div>
 

@@ -1239,6 +1239,7 @@ button:active, .btn-primary:active, .btn-action:active {
 }
 
 .event-name-link {
+  display: block;
   text-align: left !important;
   font-size: 0.95rem;
   font-weight: 600;
@@ -1246,6 +1247,8 @@ button:active, .btn-primary:active, .btn-action:active {
   word-break: break-word;
   white-space: normal;
   width: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 @media (min-width: 768px) {
@@ -1272,6 +1275,7 @@ button:active, .btn-primary:active, .btn-action:active {
     background: transparent;
     backdrop-filter: none;
     align-items: flex-start;
+    line-height: 1.4;
   }
 
   .grid-table-header,
@@ -1299,6 +1303,7 @@ button:active, .btn-primary:active, .btn-action:active {
     min-width: 0;
     overflow-wrap: break-word;
     word-break: break-word;
+    line-height: 1.4;
   }
 
   .grid-table-cell-select {
@@ -1306,6 +1311,7 @@ button:active, .btn-primary:active, .btn-action:active {
     align-items: flex-start;
     justify-content: flex-start;
     padding-left: 1rem;
+    padding-top: 2px;
     margin-top: 0;
   }
 
@@ -1313,6 +1319,7 @@ button:active, .btn-primary:active, .btn-action:active {
     display: block;
     padding: 0;
     border-bottom: none;
+    line-height: 1.4;
   }
 
   .grid-table-cell-actions {
@@ -1321,8 +1328,10 @@ button:active, .btn-primary:active, .btn-action:active {
   }
 
   .event-name-link {
+    display: block;
     font-size: inherit;
     width: auto;
+    line-height: 1.4;
   }
 
   .grid-table-cell > :not(.grid-table-label) {

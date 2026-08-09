@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTroop } from '../context/TroopContext';
 import { RosterList } from '../components/RosterList';
-import { InviteUser } from '../components/InviteUser';
 
 export function Roster() {
-  const { user } = useAuth();
+  const { session: authSession } = useAuth();
+  const userId = authSession?.user?.id || 'anonymous';
   const { selectedTroopId, selectedTroop, isGlobalAdmin, loadingTroops } = useTroop();
   const [activeTab, setActiveTab] = useState('leaders');
 
@@ -23,15 +23,15 @@ export function Roster() {
   }
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
-      <header style={{ marginBottom: '2rem' }}>
+    <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+      <header style={{ marginBottom: '1.5rem' }}>
         <h1 style={{ color: 'var(--foreground)' }}>Roster & Invites</h1>
         <p style={{ color: 'var(--text-secondary)' }}>
           Manage members for Troop {selectedTroop?.troop_number}
         </p>
       </header>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
         <div className="roster-tabs">
           <button 
             className={`roster-tab ${activeTab === 'leaders' ? 'active' : ''}`}
@@ -47,12 +47,10 @@ export function Roster() {
           </button>
         </div>
 
-        {activeTab === 'leaders' && <InviteUser troopId={selectedTroopId} />}
-        
         <RosterList 
           troopId={selectedTroopId} 
           currentUserRole={selectedTroop?.currentUserRole}
-          currentUserId={user?.id}
+          currentUserId={userId}
           isGlobalAdmin={isGlobalAdmin}
           activeTab={activeTab}
         />
@@ -60,3 +58,4 @@ export function Roster() {
     </div>
   );
 }
+

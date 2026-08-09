@@ -258,7 +258,7 @@ export function Events() {
   const uniqueDates = useMemo(() => {
     const dates = events.map(s => s.event_date).filter(Boolean);
     const unique = [...new Set(dates)].sort((a, b) => b.localeCompare(a));
-    return unique.map(d => ({ label: d, value: d }));
+    return unique.map(d => ({ label: formatAppDate(d), value: d }));
   }, [events]);
 
   const uniqueSyncedBy = useMemo(() => {
@@ -800,16 +800,16 @@ export function Events() {
     if (columnFilters.event_date?.from || columnFilters.event_date?.to || (columnFilters.event_date?.dates && columnFilters.event_date.dates.length > 0)) {
       const parts = [];
       if (columnFilters.event_date.from && columnFilters.event_date.to) {
-        parts.push(`${columnFilters.event_date.from} to ${columnFilters.event_date.to}`);
+        parts.push(`${formatAppDate(columnFilters.event_date.from)} to ${formatAppDate(columnFilters.event_date.to)}`);
       } else if (columnFilters.event_date.from) {
-        parts.push(`From ${columnFilters.event_date.from}`);
+        parts.push(`From ${formatAppDate(columnFilters.event_date.from)}`);
       } else if (columnFilters.event_date.to) {
-        parts.push(`Until ${columnFilters.event_date.to}`);
+        parts.push(`Until ${formatAppDate(columnFilters.event_date.to)}`);
       }
       if (columnFilters.event_date.dates && columnFilters.event_date.dates.length > 0) {
         const datesLabel = columnFilters.event_date.dates.length > 2
           ? `${columnFilters.event_date.dates.length} selected`
-          : columnFilters.event_date.dates.join(', ');
+          : columnFilters.event_date.dates.map(formatAppDate).join(', ');
         parts.push(datesLabel);
       }
       chips.push({

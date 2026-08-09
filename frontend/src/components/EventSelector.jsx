@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { DataTable } from './common/DataTable';
+import { formatAppDate } from '../utils/date';
 
 export function EventSelector({ troopId, onEventSelect }) {
   const [events, setEvents] = useState([]);
@@ -105,7 +106,7 @@ export function EventSelector({ troopId, onEventSelect }) {
 
   const columns = [
     { key: 'event_name', label: 'Event Name' },
-    { key: 'event_date', label: 'Date' },
+    { key: 'event_date', label: 'Date', render: (val) => formatAppDate(val) },
     { 
       key: 'ended_at', 
       label: 'Status', 

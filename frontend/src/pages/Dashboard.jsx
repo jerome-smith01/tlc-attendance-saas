@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useTroop } from '../context/TroopContext';
 import { Link } from 'react-router-dom';
+import { formatAppDate } from '../utils/date';
 
 export function Dashboard() {
   const { selectedTroopId, selectedTroop, loadingTroops, error } = useTroop();
@@ -126,7 +127,7 @@ export function Dashboard() {
                 <strong style={{ color: labelColor }}>
                   {isUrgent ? 'Urgent Warning:' : 'Warning:'}
                 </strong>{' '}
-                Event "{eventObj.event_name}" ({eventObj.event_date}) has not been synced to TLC.{' '}
+                Event "{eventObj.event_name}" ({formatAppDate(eventObj.event_date)}) has not been synced to TLC.{' '}
                 {daysLeft <= 0
                   ? 'Data is overdue for auto-purge!'
                   : `Data will be automatically purged in ${daysDisplay} ${daysDisplay === 1 ? 'day' : 'days'}.`

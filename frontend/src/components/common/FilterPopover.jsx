@@ -65,7 +65,7 @@ export function FilterPopover({
   const visibleOptions = useMemo(() => {
     if (!searchTerm.trim()) return options;
     const lower = searchTerm.toLowerCase();
-    return options.filter(opt => opt.label.toLowerCase().includes(lower));
+    return options.filter(opt => opt.label.toLowerCase().includes(lower) || (opt.value && String(opt.value).toLowerCase().includes(lower)));
   }, [options, searchTerm]);
 
   const { enabledOptions, disabledOptions } = useMemo(() => {
