@@ -31,6 +31,8 @@ export function Scanner() {
   const [showWarning, setShowWarning] = useState(false);
   const [currentUserRole, setCurrentUserRole] = useState(null);
   const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
+  const [showStatusMenu, setShowStatusMenu] = useState(false);
+  const scannerContainerRef = useRef(null);
 
   // Table Filter, Sort & Column Resizing states
   const [activePopover, setActivePopover] = useState(null);
@@ -222,10 +224,33 @@ export function Scanner() {
 
   useEffect(() => {
     return () => {
-      if (qrEngineRef.current && qrEngineRef.current.getState() === 2) {
-        qrEngineRef.current.stop().catch(console.error);
+      if (qrEngineRef.current) {
+        const state = qrEngineRef.current.getState();
+        if (state === 2 || state === 3) {
+          qrEngineRef.current.stop().catch(console.error);
+        }
       }
     };
+  }, []);
+
+  // Pause camera when scrolled out of viewport
+  useEffect(() => {
+    if (!scannerContainerRef.current) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (qrEngineRef.current) {
+          const state = qrEngineRef.current.getState();
+          if (!entry.isIntersecting && state === 2) {
+            qrEngineRef.current.pause(true);
+          } else if (entry.isIntersecting && state === 3) {
+            qrEngineRef.current.resume();
+          }
+        }
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(scannerContainerRef.current);
+    return () => observer.disconnect();
   }, []);
 
   async function fetchRoster(tId) {
@@ -304,6 +329,23 @@ export function Scanner() {
       } else {
         addToast({ type: 'success', message: "Sync status reset." });
         setSession({ ...session, synced_at: null, synced_by: null, purge_after: null });
+      }
+    }
+  };
+
+  const handleDeleteSession = async () => {
+    if (await confirm({ title: 'Delete Event', message: 'Are you sure you want to delete this event? This will also delete all associated scans and cannot be undone.', isDestructive: true })) {
+      let { error } = await supabase.from('events').delete().eq('id', session.id);
+      if (error && (error.code === '42P01' || error.message?.includes('events'))) {
+        const res = await supabase.from('sessions').delete().eq('id', session.id);
+        error = res.error;
+      }
+      if (error) {
+        addToast({ type: 'error', message: 'Error deleting event: ' + error.message });
+      } else {
+        addToast({ type: 'success', message: 'Event deleted' });
+        await stopScanner();
+        navigate('/events');
       }
     }
   };
@@ -829,35 +871,116 @@ export function Scanner() {
   }
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', flex: 1 }}>
+    <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column', position: 'relative', flex: 1 }}>
       {/* Top Status Bar */}
-      <div className="glass-card" style={{ padding: 'var(--spacing-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 10 }}>
-        <div>
-          <h2 className="app-title" style={{ fontSize: '1.2rem', margin: 0 }}>{session.event_name}</h2>
-          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
-            <span className={`badge ${session.ended_at ? 'badge-error' : 'badge-success'}`}>
-              {session.ended_at ? 'Ended' : 'Active'}
-            </span>
-            <span className={`badge ${session.synced_at ? 'badge-neutral' : 'badge-warning'}`}>
-              {session.synced_at ? 'Synced' : 'Unsynced'}
+      <div
+        className="glass-card"
+        style={{
+          padding: 'var(--spacing-md)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 'var(--spacing-xs, 0.5rem)',
+          position: 'sticky',
+          top: 0,
+          zIndex: 50,
+          backdropFilter: 'blur(12px)',
+        }}
+      >
+        {/* Row 1: Back Icon & Title */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%' }}>
+          <Link
+            to="/events"
+            className="btn btn-secondary"
+            style={{ padding: '0.35rem 0.5rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+            title="Back to Events"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-move-left-icon lucide-move-left">
+              <path d="M6 8L2 12L6 16" />
+              <path d="M2 12H22" />
+            </svg>
+          </Link>
+          <h2 className="app-title" style={{ fontSize: '1.2rem', margin: 0, flex: 1, wordBreak: 'break-word' }}>
+            {session.event_name}
+          </h2>
+        </div>
+
+        {/* Row 2: Status & Actions */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '8px' }}>
+          {/* Status cell with dropdown popover */}
+          <div style={{ position: 'relative' }}>
+            <div
+              className="grid-table-cell"
+              role="cell"
+              onClick={() => setShowStatusMenu(prev => !prev)}
+              style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <span className="grid-table-label">Status</span>
+              <div>
+                <span className={`badge ${session.ended_at ? (session.synced_at ? 'badge-neutral' : 'badge-error') : 'badge-success'}`}>
+                  {session.ended_at ? (session.synced_at ? 'Synced' : 'Closed') : 'Open'}
+                </span>
+              </div>
+            </div>
+
+            {showStatusMenu && (
+              <div className="status-popover-menu">
+                {isAdminOrLeader && !session.ended_at && (
+                  <button
+                    type="button"
+                    className="status-popover-item"
+                    onClick={() => { setShowStatusMenu(false); handleEndSession(); }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                    </svg>
+                    Close Event
+                  </button>
+                )}
+
+                {isAdminOrLeader && session.ended_at && !session.synced_at && (
+                  <button
+                    type="button"
+                    className="status-popover-item"
+                    onClick={() => { setShowStatusMenu(false); handleReenableSession(); }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                      <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+                    </svg>
+                    Reopen Event
+                  </button>
+                )}
+
+                {isAdminOrLeader && (
+                  <button
+                    type="button"
+                    className="status-popover-item"
+                    style={{ color: 'var(--color-error)' }}
+                    onClick={() => { setShowStatusMenu(false); handleDeleteSession(); }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    </svg>
+                    Delete Event
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Right side: Offline count */}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <span className="badge badge-pending" title="Offline Queue">
+              {attendance.filter(s => s.message === 'Saved Offline').length}
             </span>
           </div>
-        </div>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <span className="badge badge-pending" title="Offline Queue">{attendance.filter(s => s.message === 'Saved Offline').length}</span>
-          {isAdminOrLeader && !session.ended_at && (
-            <button onClick={handleEndSession} className="btn btn-close" style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}>
-              Close Event
-            </button>
-          )}
-          <Link to="/events" className="btn btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', textDecoration: 'none' }}>
-            &larr; Events
-          </Link>
         </div>
       </div>
 
       {/* Camera Viewfinder (Top Half) */}
-      <div className="scanner-viewfinder" style={{ flex: isTableVisible ? '0 0 45%' : '1', minHeight: 0 }}>
+      <div ref={scannerContainerRef} className="scanner-viewfinder" style={{ width: '100%', flexShrink: 0 }}>
         {!session.ended_at ? (
           <>
             <div id="qr-reader" style={{ width: '100%', maxWidth: '500px', margin: '0 auto' }}></div>
@@ -924,7 +1047,7 @@ export function Scanner() {
       )}
 
       {/* Inline Table & Collapsible Panel */}
-      <div style={{ flex: isTableVisible ? 1 : 'none', display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)', transition: 'flex 0.3s cubic-bezier(0.4, 0, 0.2, 1)', minHeight: 0, flexShrink: 0 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)', flexShrink: 0 }}>
 
         {/* Interactive Header to Toggle Table */}
         <div
@@ -957,11 +1080,9 @@ export function Scanner() {
           display: 'grid',
           gridTemplateRows: isTableVisible ? '1fr' : '0fr',
           transition: 'grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-          flex: isTableVisible ? 1 : 'none',
-          minHeight: 0
         }}>
-          <div style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '0 var(--spacing-md)' }}>
+          <div style={{ overflow: 'hidden' }}>
+            <div style={{ padding: '0 var(--spacing-md)' }}>
               {attendance.length === 0 ? (
                 <div className="glass-card scan-empty-state" style={{ marginTop: 'var(--spacing-md)' }}>
                   <p>No people scanned in yet.</p>

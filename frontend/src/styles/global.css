@@ -1605,4 +1605,51 @@ input[type="date"].filter-input::-webkit-calendar-picker-indicator:hover {
   background: var(--bg-secondary);
 }
 
+/* Status Popover Menu */
+.status-popover-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  background-color: var(--bg-card, #ffffff);
+  color: var(--foreground);
+  border: 1px solid var(--border-color, rgba(0, 0, 0, 0.15));
+  border-radius: var(--radius-md, 8px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  padding: 0.5rem;
+  z-index: 100;
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.dark .status-popover-menu,
+[data-theme='dark'] .status-popover-menu {
+  background-color: var(--bg-secondary, #1e293b);
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+}
+
+.status-popover-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: var(--radius-sm, 6px);
+  border: none;
+  background: transparent;
+  color: var(--foreground);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: background-color 0.15s ease;
+}
+
+.status-popover-item:hover {
+  background-color: var(--muted, rgba(0, 0, 0, 0.05));
+}
+
+
 

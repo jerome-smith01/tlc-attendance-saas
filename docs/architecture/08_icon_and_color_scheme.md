@@ -66,8 +66,7 @@ Action icons rendered inside table rows use `.btn-icon-action` combined with the
 ## 3. Icon System Architecture
 
 ### 3.1 Icon Conventions
-- Action buttons may include leading emoji or SVG icons for quick scanning (e.g., `+`, `📷`, `⏹`, `📁`, `✏️`).
-- Icon-only or inline decorative icons use inline SVG or standard Unicode icons.
+- Use Lucide icons for all icons across the application.
 - All SVG icons inherit text color via `stroke="currentColor"` or `fill="currentColor"`.
 
 ---

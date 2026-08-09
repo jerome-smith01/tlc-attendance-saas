@@ -99,6 +99,13 @@ function handleScan(rawPayload) {
 }
 ```
 
+### 4.1 Camera Viewport Optimization
+
+To prevent excessive CPU/GPU usage and battery drain on mobile devices, live camera feeds are monitored using an `IntersectionObserver`. 
+- When the camera container (`#qr-reader`) scrolls out of the visible viewport, `html5QrCode.pause()` is invoked to suspend video processing.
+- When it re-enters the viewport, `html5QrCode.resume()` is called to seamlessly resume scanning.
+- Upon page unmount / navigation away, `html5QrCode.stop()` is triggered to release the camera hardware completely.
+
 ---
 
 ## 5. Design System & Theming
