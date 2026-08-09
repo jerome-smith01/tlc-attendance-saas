@@ -113,6 +113,7 @@
   border-radius: var(--radius-pill);
   text-transform: uppercase;
   letter-spacing: 0.03em;
+  white-space: nowrap;
 }
 
 .badge-success, .badge-approved, .badge-complete {
@@ -712,6 +713,57 @@ button:active, .btn-primary:active, .btn-action:active {
 }
 
 /* ── Scanner Utilities ── */
+.scanner-sticky-title {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  background: var(--background);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.scanner-header-card {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md, 12px);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  padding: 1rem;
+  margin: 0.5rem 1rem 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.header-card-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.header-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+/* Compact Button Variant */
+.btn-compact {
+  padding: 0.4rem 0.85rem !important;
+  font-size: 0.85rem !important;
+  gap: 0.35rem !important;
+  border-radius: var(--radius-sm, 8px) !important;
+  text-transform: none !important;
+}
+
 .scanner-viewfinder {
   background: var(--muted);
   position: relative;
@@ -743,25 +795,33 @@ button:active, .btn-primary:active, .btn-action:active {
   background: color-mix(in srgb, var(--color-warning) 10%, transparent);
 }
 
-.scanner-action-bar {
-  padding: var(--spacing-md);
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  border-top: 1px solid var(--glass-border);
-  display: grid;
-  gap: var(--spacing-md);
-}
-
-.scanner-panel-header {
-  padding: var(--spacing-sm) var(--spacing-md);
+.attendance-section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: var(--bg-secondary);
-  border-top: 1px solid var(--border-color);
-  border-bottom: 1px solid var(--border-color);
-  cursor: pointer;
+  padding: 0.5rem 1rem;
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
   user-select: none;
+}
+
+.btn-collapse-toggle {
+  background: transparent;
+  border: none;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.btn-collapse-toggle:hover {
+  color: var(--foreground);
 }
 
 /* ── DataTable Utilities ── */
@@ -1087,13 +1147,13 @@ button:active, .btn-primary:active, .btn-action:active {
 .grid-table-row {
   display: flex;
   flex-direction: column;
-  padding: 1.25rem;
-  margin-bottom: 1rem;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  transition: background var(--transition-fast), border-color var(--transition-fast);
+  border-radius: var(--radius-md, 12px);
+  background: var(--bg-secondary);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  transition: background var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
   width: 100%;
   box-sizing: border-box;
 }
@@ -1101,10 +1161,10 @@ button:active, .btn-primary:active, .btn-action:active {
 .grid-table-cell {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
   gap: 0.75rem;
-  padding: 0.625rem 0;
-  border-bottom: 1px dashed var(--border-color);
+  padding: 0.4rem 0;
+  border-bottom: none;
 }
 
 .grid-table-cell > :not(.grid-table-label) {
@@ -1134,11 +1194,11 @@ button:active, .btn-primary:active, .btn-action:active {
 /* Mobile Card Event Title Header Layout: Checkbox + Event Name Link */
 .grid-table-card-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.6rem;
   width: 100%;
-  padding-bottom: 0.625rem;
-  border-bottom: 1px dashed var(--border-color);
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
   margin-bottom: 0.25rem;
 }
 

@@ -19,30 +19,33 @@ The app uses two table presentation strategies depending on UI density and mobil
 
 ## 1.1 Mobile Card Direct Title Header Pattern (`.grid-table-card-header`)
 
-To maximize vertical reading space and accommodate arbitrarily long record names on mobile (< 768px), cards replace separate column labels ("EVENT NAME") with a **Direct Record Title Header** pattern:
+To maximize vertical reading space and accommodate arbitrarily long record names on mobile (< 768px), cards replace separate column labels ("EVENT NAME") with a **Direct Record Title Header** pattern rendered as a clean **Floating Card**:
 
 ```
 +--------------------------------------------------------+
-| [x] Really Long Event Title Value That Wraps           |
-|     Across Multiple Lines                              |
-| - - - - - - - - - - - - - - - - - - - - - - - - - - - -|
-| DATE                                        2026-08-08 |
-| STATUS                                          CLOSED |
-| SYNCED BY                                            - |
-| ACTIONS                                  [🔒] [🔓] [🗑️] |
+| [x] Aaron K                                       [🗑️] |
+| ------------------------------------------------------ |
+| STATUS                                      SCANNED IN |
+| SCAN TIME                                  03:06:25 PM |
 +--------------------------------------------------------+
 ```
 
-### Mobile Card Header Architecture
-1. **Header Wrapper (`.grid-table-card-header`)**:
-   - Combines Cell 1 (Selection Checkbox) and Cell 2 (Record Title Link) into a single top flex container (`display: flex; align-items: flex-start; gap: 0.6rem; width: 100%; border-bottom: 1px dashed var(--border-color); padding-bottom: 0.625rem;`).
-2. **Top-Aligned Checkbox (`.grid-table-cell-select`)**:
-   - Uses `margin-top: 2px` on mobile so the top border of the 18px checkbox aligns pixel-perfect with the cap height (top edge) of the first line of the record title.
-3. **Full-Width Title Link (`.event-name-link`)**:
+### Mobile Card Architecture
+1. **Floating Container (`.grid-table-row`)**:
+   - Renders as a distinct floating card with white background (`var(--bg-secondary)`), 12px rounded corners (`border-radius: var(--radius-md, 12px)`), solid border (`1px solid var(--border-color)`), and subtle drop shadow (`box-shadow: 0 2px 6px rgba(0,0,0,0.04)`).
+2. **Header Wrapper (`.grid-table-card-header`)**:
+   - Combines Cell 1 (Selection Checkbox), Cell 2 (Record Title Link / Member Name), and Cell 5 (Action Icon Button) into a single top flex container (`display: flex; align-items: center; gap: 0.6rem; width: 100%; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 0.25rem;`).
+3. **Top-Aligned Checkbox (`.grid-table-cell-select`)**:
+   - Centered vertically on mobile with the title text and action icons (`display: flex; align-items: center;`).
+4. **Full-Width Title Link (`.event-name-link` / `.grid-table-cell-name`)**:
    - Occupies remaining width (`flex: 1; min-width: 0;`), styled with `text-align: left !important; font-size: 0.95rem; font-weight: 600; line-height: 1.4; word-break: break-word;`.
-4. **Desktop Grid Unwrapping (`display: contents`)**:
+5. **Right-Aligned Header Action (`.grid-table-cell-actions`)**:
+   - Flexes to the far right edge of the card header row (`margin-left: auto;`).
+6. **Clean Field Values (`.grid-table-cell`)**:
+   - Field rows (Status, Scan Time, etc.) render directly against the card's surface without nested grey background boxes or heavy dividers (`padding: 0.4rem 0; border-bottom: none;`).
+7. **Desktop Grid Unwrapping (`display: contents`)**:
    - On desktop viewports (`@media (min-width: 768px)`), `.grid-table-card-header` sets `display: contents;`.
-   - This eliminates the wrapper from the CSS grid calculation, allowing Cell 1 (checkbox) and Cell 2 (title link) to participate directly as Columns 1 and 2 in the desktop 6-column CSS grid without DOM duplication.
+   - This eliminates the wrapper from the CSS grid calculation, allowing Cell 1 (checkbox), Cell 2 (title link), and Cell 5 (actions) to participate directly in the desktop multi-column CSS grid without DOM duplication.
 
 ---
 

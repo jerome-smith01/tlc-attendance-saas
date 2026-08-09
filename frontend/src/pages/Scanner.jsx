@@ -287,6 +287,15 @@ export function Scanner() {
     return () => observer.disconnect();
   }, [loadingEvent]);
 
+  // Auto-scroll to camera viewfinder when scanning starts
+  useEffect(() => {
+    if (isScanning && scannerContainerRef.current) {
+      setTimeout(() => {
+        scannerContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 150);
+    }
+  }, [isScanning]);
+
   async function fetchRoster(tId) {
     const { data } = await supabase.from('roster').select('*').eq('troop_id', tId);
     if (data) setRoster(data);
@@ -906,147 +915,211 @@ export function Scanner() {
 
   return (
     <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column', position: 'relative', flex: 1 }}>
-      {/* Top Status Bar */}
-      <div
-        className="glass-card"
-        style={{
-          padding: 'var(--spacing-md)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 'var(--spacing-xs, 0.5rem)',
-          position: 'sticky',
-          top: 0,
-          zIndex: 50,
-          backdropFilter: 'blur(12px)',
-        }}
-      >
-        {/* Row 1: Back Icon & Title */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%' }}>
-          <Link
-            to="/events"
-            className="btn btn-secondary"
-            style={{ padding: '0.35rem 0.5rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-            title="Back to Events"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-move-left-icon lucide-move-left">
-              <path d="M6 8L2 12L6 16" />
-              <path d="M2 12H22" />
-            </svg>
-          </Link>
-          <h2 className="app-title" style={{ fontSize: '1.2rem', margin: 0, flex: 1, wordBreak: 'break-word' }}>
-            {session.event_name}
-          </h2>
-        </div>
-
-        {/* Row 2: Status & Actions */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '8px' }}>
-          {/* Status cell with dropdown popover */}
-          <div ref={statusMenuRef} style={{ position: 'relative' }}>
-            <div
-              className="grid-table-cell"
-              role="cell"
-              onClick={() => setShowStatusMenu(prev => !prev)}
-              style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-            >
-              <span className="grid-table-label">Status</span>
-              <div>
-                <span className={`badge ${session.ended_at ? (session.synced_at ? 'badge-neutral' : 'badge-error') : 'badge-success'}`}>
-                  {session.ended_at ? (session.synced_at ? 'Synced' : 'Closed') : 'Open'}
-                </span>
-              </div>
-            </div>
-
-            {showStatusMenu && (
-              <div className="status-popover-menu">
-                {isAdminOrLeader && !session.ended_at && (
-                  <button
-                    type="button"
-                    className="status-popover-item"
-                    onClick={() => { setShowStatusMenu(false); handleEndSession(); }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                    </svg>
-                    Close Event
-                  </button>
-                )}
-
-                {isAdminOrLeader && session.ended_at && !session.synced_at && (
-                  <button
-                    type="button"
-                    className="status-popover-item"
-                    onClick={() => { setShowStatusMenu(false); handleReenableSession(); }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                      <path d="M7 11V7a5 5 0 0 1 9.9-1" />
-                    </svg>
-                    Reopen Event
-                  </button>
-                )}
-
-                {isAdminOrLeader && (
-                  <button
-                    type="button"
-                    className="status-popover-item"
-                    style={{ color: 'var(--color-error)' }}
-                    onClick={() => { setShowStatusMenu(false); handleDeleteSession(); }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="3 6 5 6 21 6" />
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                    </svg>
-                    Delete Event
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Right side: Offline Queue Indicator with Popover */}
-          <div ref={offlineInfoRef} style={{ position: 'relative' }}>
-            <div
-              className="grid-table-cell"
-              role="cell"
-              onClick={() => setShowOfflineInfo(prev => !prev)}
-              style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-              title="Click to view Offline Queue details"
-            >
-              <span className="grid-table-label">Offline Queue</span>
-              <div>
-                <span className="badge badge-pending">
-                  {attendance.filter(s => s.message === 'Saved Offline').length}
-                </span>
-              </div>
-            </div>
-
-            {showOfflineInfo && (
-              <div className="status-popover-menu" style={{ right: 0, left: 'auto', minWidth: '220px', maxWidth: '280px', padding: '0.75rem' }}>
-                <div style={{ fontWeight: '600', fontSize: '0.85rem', marginBottom: '0.35rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span>Offline Queue</span>
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); setShowOfflineInfo(false); }}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-foreground)', fontSize: '0.9rem', padding: 0 }}
-                  >
-                    ✕
-                  </button>
-                </div>
-                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-                  Scans taken while offline or during weak network conditions are saved locally on your device.
-                </p>
-                <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border-color)', fontSize: '0.75rem', color: 'var(--muted-foreground)' }}>
-                  <strong>How to resolve:</strong> Reconnect to the internet and the app will automatically sync queued scans to the server.
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+      {/* Top Sticky Pinned Title Bar (Floating, No Card) */}
+      <div className="scanner-sticky-title">
+        <Link
+          to="/events"
+          className="btn btn-secondary"
+          style={{ padding: '0.35rem 0.5rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+          title="Back to Events"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-move-left-icon lucide-move-left">
+            <path d="M6 8L2 12L6 16" />
+            <path d="M2 12H22" />
+          </svg>
+        </Link>
+        <h2 className="app-title" style={{ fontSize: '1.2rem', margin: 0, flex: 1, wordBreak: 'break-word' }}>
+          {session.event_name}
+        </h2>
+        <ThemeToggle />
       </div>
 
-      {/* Camera Viewfinder (Top Half) */}
-      <div ref={scannerContainerRef} className="scanner-viewfinder" style={{ width: '100%', flexShrink: 0 }}>
+      {/* Header Card (Scrolls Away) */}
+      <div className="scanner-header-card">
+        {/* Status Row */}
+        <div ref={statusMenuRef} style={{ position: 'relative' }}>
+          <div
+            className="grid-table-cell"
+            role="cell"
+            onClick={() => setShowStatusMenu(prev => !prev)}
+            style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '0.2rem 0' }}
+          >
+            <span className="grid-table-label">Status</span>
+            <div>
+              <span className={`badge ${session.ended_at ? (session.synced_at ? 'badge-neutral' : 'badge-error') : 'badge-success'}`}>
+                {session.ended_at ? (session.synced_at ? 'Synced' : 'Closed') : 'Open'}
+              </span>
+            </div>
+          </div>
+
+          {showStatusMenu && (
+            <div className="status-popover-menu">
+              {isAdminOrLeader && !session.ended_at && (
+                <button
+                  type="button"
+                  className="status-popover-item"
+                  onClick={() => { setShowStatusMenu(false); handleEndSession(); }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                  Close Event
+                </button>
+              )}
+
+              {isAdminOrLeader && session.ended_at && !session.synced_at && (
+                <button
+                  type="button"
+                  className="status-popover-item"
+                  onClick={() => { setShowStatusMenu(false); handleReenableSession(); }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+                  </svg>
+                  Reopen Event
+                </button>
+              )}
+
+              {isAdminOrLeader && (
+                <button
+                  type="button"
+                  className="status-popover-item"
+                  style={{ color: 'var(--color-error)' }}
+                  onClick={() => { setShowStatusMenu(false); handleDeleteSession(); }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3 6 5 6 21 6" />
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  </svg>
+                  Delete Event
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Offline Queue Row */}
+        {(() => {
+          const offlineCount = attendance.filter(s => s.message === 'Saved Offline').length;
+          return (
+            <div ref={offlineInfoRef} style={{ position: 'relative' }}>
+              <div
+                className="grid-table-cell"
+                role="cell"
+                onClick={() => setShowOfflineInfo(prev => !prev)}
+                style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '0.2rem 0' }}
+                title="Click to view Offline Queue details"
+              >
+                <span className="grid-table-label">Offline Queue</span>
+                <div>
+                  {offlineCount > 0 ? (
+                    <span className="badge badge-pending">{offlineCount}</span>
+                  ) : (
+                    <span style={{ color: 'var(--text-secondary)' }}>0</span>
+                  )}
+                </div>
+              </div>
+
+              {showOfflineInfo && (
+                <div className="status-popover-menu" style={{ right: 0, left: 'auto', minWidth: '220px', maxWidth: '280px', padding: '0.75rem' }}>
+                  <div style={{ fontWeight: '600', fontSize: '0.85rem', marginBottom: '0.35rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span>Offline Queue</span>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setShowOfflineInfo(false); }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-foreground)', fontSize: '0.9rem', padding: 0 }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                    Scans taken while offline or during weak network conditions are saved locally on your device.
+                  </p>
+                  <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border-color)', fontSize: '0.75rem', color: 'var(--muted-foreground)' }}>
+                    <strong>How to resolve:</strong> Reconnect to the internet and the app will automatically sync queued scans to the server.
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* Row 2: Action Buttons */}
+        {!session.ended_at && (
+          <div className="header-card-actions">
+            <button
+              type="button"
+              onClick={isScanning ? stopScanner : startScanner}
+              className={`btn btn-compact ${isScanning ? 'btn-destructive' : 'btn-start'}`}
+            >
+              {isScanning ? (
+                <>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                  </svg>
+                  Stop Scan
+                </>
+              ) : (
+                <>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 7V5a2 2 0 0 1 2-2h2"/>
+                    <path d="M17 3h2a2 2 0 0 1 2 2v2"/>
+                    <path d="M21 17v2a2 2 0 0 1-2 2h-2"/>
+                    <path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
+                    <rect x="7" y="7" width="10" height="10" rx="1"/>
+                  </svg>
+                  Scan
+                </>
+              )}
+            </button>
+
+            <div style={{ position: 'relative', display: 'inline-flex' }}>
+              <button
+                type="button"
+                className="btn btn-secondary btn-compact"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                  <circle cx="8.5" cy="8.5" r="1.5"/>
+                  <polyline points="21 15 16 10 5 21"/>
+                </svg>
+                Photos
+              </button>
+              <input type="file" multiple accept="image/*" onChange={handleBulkPhotos} style={{ position: 'absolute', top: 0, left: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }} />
+            </div>
+
+            <button
+              type="button"
+              className="btn btn-secondary btn-compact"
+              onClick={() => setIsManualEntryOpen(true)}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              Add
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Expandable Camera Viewfinder */}
+      <div
+        ref={scannerContainerRef}
+        className="scanner-viewfinder"
+        style={{
+          width: '100%',
+          maxWidth: '100%',
+          overflow: 'hidden',
+          maxHeight: isScanning || session.ended_at ? '500px' : '0px',
+          opacity: isScanning || session.ended_at ? 1 : 0,
+          transition: 'max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease, margin 0.3s ease',
+          marginBottom: isScanning || session.ended_at ? '1rem' : '0px',
+          flexShrink: 0
+        }}
+      >
         {!session.ended_at ? (
           <>
             <div id="qr-reader" style={{ width: '100%', maxWidth: '500px', margin: '0 auto' }}></div>
@@ -1085,58 +1158,47 @@ export function Scanner() {
         )}
       </div>
 
-      {/* Action Bar */}
-      {!session.ended_at && (
-        <div className="scanner-action-bar" style={{ gridTemplateColumns: '1fr 1fr 1fr', flexShrink: 0 }}>
-          <button
-            onClick={isScanning ? stopScanner : startScanner}
-            className={`btn ${isScanning ? 'btn-destructive' : 'btn-start'}`}
-            style={{ padding: 'var(--spacing-lg) var(--spacing-md)', fontSize: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem' }}
-          >
-            {isScanning ? '⏹ Stop Scan' : '📷 Start Scan'}
-          </button>
-
-          <div style={{ position: 'relative', overflow: 'hidden', display: 'flex' }}>
-            <button className="btn btn-secondary" style={{ width: '100%', padding: 'var(--spacing-lg) var(--spacing-md)', fontSize: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem' }}>
-              📁 Load Photos
-            </button>
-            <input type="file" multiple accept="image/*" onChange={handleBulkPhotos} style={{ position: 'absolute', top: 0, left: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }} />
-          </div>
-          <button
-            className="btn btn-secondary"
-            onClick={() => setIsManualEntryOpen(true)}
-            style={{ padding: 'var(--spacing-lg) var(--spacing-md)', fontSize: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem' }}
-          >
-            ✏️ Manual Entry
-          </button>
-        </div>
-      )}
-
-      {/* Inline Table & Collapsible Panel */}
-      <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)', flexShrink: 0 }}>
-
-        {/* Interactive Header to Toggle Table */}
-        <div
-          className="scanner-panel-header glass-card"
-          onClick={() => setIsTableVisible(!isTableVisible)}
-        >
+      {/* Floating Attendance Section Header */}
+      <div style={{ display: 'flex', flexDirection: 'column', background: 'transparent', flexShrink: 0 }}>
+        <div className="attendance-section-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <h3 style={{ margin: 0, fontSize: '1rem' }}>Attendance</h3>
-            <span className="badge badge-success">{attendance.length}</span>
+            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>Attendance</h3>
+            <span className="badge badge-success" style={{ borderRadius: '9999px', padding: '0.15rem 0.6rem' }}>{attendance.length}</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {isAdminOrLeader && (
-              <label onClick={(e) => e.stopPropagation()} style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+              <label onClick={(e) => e.stopPropagation()} style={{ fontSize: '0.85rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
                 <input
                   type="checkbox"
                   onChange={handleSelectAll}
                   checked={processedAttendance.length > 0 && processedAttendance.every(s => selectedScans.has(s.id))}
+                  style={{ width: '16px', height: '16px', cursor: 'pointer' }}
                 />
                 All
               </label>
             )}
-            <button className="btn" style={{ background: 'transparent', padding: '4px 8px' }}>
-              {isTableVisible ? '⌄ Collapse' : '⌃ Expand'}
+            <button
+              type="button"
+              className="btn-collapse-toggle"
+              onClick={() => setIsTableVisible(!isTableVisible)}
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{
+                  transform: isTableVisible ? 'rotate(0deg)' : 'rotate(180deg)',
+                  transition: 'transform 0.2s ease'
+                }}
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+              {isTableVisible ? 'COLLAPSE' : 'EXPAND'}
             </button>
           </div>
         </div>
@@ -1318,21 +1380,20 @@ export function Scanner() {
                             <strong style={{ color: 'var(--text-primary)' }}>{memberName}</strong>
                           </div>
 
-                          {isAdminOrLeader && scan.id && !String(scan.id).startsWith('temp-') && (
-                            <div className="grid-table-cell grid-table-cell-actions" role="cell">
-                              <button
-                                type="button"
-                                className="btn-icon-action btn-icon-destructive"
-                                onClick={() => handleDeleteSingleScan(scan.id)}
-                                title="Remove scan"
-                              >
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <polyline points="3 6 5 6 21 6"></polyline>
-                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                </svg>
-                              </button>
-                            </div>
-                          )}
+                          <div className="grid-table-cell grid-table-cell-actions" role="cell">
+                            <button
+                              type="button"
+                              className="btn-icon-action btn-icon-destructive"
+                              onClick={() => handleDeleteSingleScan(scan.id)}
+                              title={!isAdminOrLeader ? "Delete unavailable: requires admin role" : (!scan.id || String(scan.id).startsWith('temp-') ? "Delete unavailable: scan not saved yet" : "Remove scan")}
+                              disabled={!isAdminOrLeader || !scan.id || String(scan.id).startsWith('temp-')}
+                            >
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                              </svg>
+                            </button>
+                          </div>
                         </div>
 
                         <div className="grid-table-cell" role="cell">

@@ -148,15 +148,16 @@ The `supabaseClient.js` singleton does not expose the Supabase URL or anon key i
 
 The Scanner UI contains features to augment standard QR scanning alongside the live-camera flow:
 
-### Manual Entry Modal
+### Manual Entry Modal ("Add" Button)
 Allows users to add attendance for someone who forgot their badge or is a new guest.
+- Triggered by the compact **"Add"** button (`+`) in the header card.
 - Displayed via `Modal` component controlled by `isManualEntryOpen` state.
 - **Existing Member**: Selects an existing roster member (where `attendance` does not already contain a scan for that `roster_id`), inserting a `scans` row immediately.
 - **New Member/Guest**: Performs a `supabase.from('roster').insert()` to create the member record, retrieves the newly generated `id`, updates local roster state, and then records the scan.
 
-### Photo Scan / Bulk Upload (`handleBulkPhotos` → `scanFile`)
+### Photo Scan / Bulk Upload ("Photos" Button)
 Allows uploading multiple photos containing QR codes from the device's camera roll or local files.
-- Triggered via an invisible file input (`<input type="file" multiple accept="image/*">`) wrapped by the "Photo Mode" button.
+- Triggered via an invisible file input (`<input type="file" multiple accept="image/*">`) wrapped by the **"Photos"** button in the header card.
 - Processed sequentially via `handleBulkPhotos`: for each selected file, an instance of `Html5Qrcode` is created (or reused) and `html5Qrcode.scanFile(file, true)` is invoked to decode the QR code payload without activating camera video feeds.
 - Extracted payloads are passed directly into `handleScan` / `processScanPayload`, triggering the exact same validation, lookup, offline queueing, and state update pipeline as live scanning.
 
