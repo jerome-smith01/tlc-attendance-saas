@@ -17,13 +17,11 @@ export function InviteUser({ troopId }) {
     setError(null);
 
     try {
-      // Call our Supabase Edge Function
       const { data, error } = await supabase.functions.invoke('invite-user', {
         body: { email, role, troop_id: troopId }
       });
 
       if (error) {
-        // FunctionsHttpError wraps the real response — read the JSON body for the actual message
         let errMsg = error.message;
         try {
           const body = await error.context?.json?.();
@@ -36,7 +34,6 @@ export function InviteUser({ troopId }) {
       setEmail('');
     } catch (err) {
       console.error('Invite error:', err);
-      // Translate obscure Edge Function errors into a friendly message
       if (err.message && err.message.includes('non-2xx status code')) {
         setError('This email is already invited or registered with TLC Attendance.');
       } else {
@@ -48,40 +45,50 @@ export function InviteUser({ troopId }) {
   }
 
   return (
-    <div className="glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
-      <h3 style={{ marginTop: 0, marginBottom: '0.5rem', color: 'var(--foreground)' }}>Invite Troop Leaders</h3>
-      <p style={{ fontSize: '0.875rem', marginBottom: '1rem', color: 'var(--muted-foreground)' }}>
-        Send an email invitation to add a new leader to this troop.
-      </p>
-      {error && <div style={{ color: 'var(--color-error)', marginBottom: '1rem', fontSize: '0.875rem' }}>{error}</div>}
-      {message && <div style={{ color: 'var(--color-success)', marginBottom: '1rem', fontSize: '0.875rem' }}>{message}</div>}
+    <div className="glass-card" style={{ padding: '1.25rem', marginBottom: '1.5rem' }}>
+      <h3 style={{ marginTop: 0, marginBottom: '0.75rem', fontSize: '1rem', fontWeight: 600, color: 'var(--foreground)' }}>
+        Invite Troop Leaders
+      </h3>
 
-      <form onSubmit={handleInvite} style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
-        <input 
-          type="email" 
-          placeholder="Email address" 
-          value={email} 
+      {error && (
+        <div style={{ color: 'var(--color-error)', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
+          {error}
+        </div>
+      )}
+      {message && (
+        <div style={{ color: 'var(--color-success)', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
+          {message}
+        </div>
+      )}
+
+      <form onSubmit={handleInvite} style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <input
+          type="email"
+          placeholder="Email address"
+          value={email}
           onChange={e => setEmail(e.target.value)}
           required
-          style={{ 
+          style={{
             flex: 1,
-            minWidth: '220px', 
-            padding: '0.6rem 0.75rem', 
-            background: 'var(--bg-secondary)', 
-            color: 'var(--foreground)', 
-            border: '1px solid var(--border-color)', 
-            borderRadius: 'var(--radius-sm)' 
+            minWidth: '220px',
+            padding: '0.75rem',
+            background: 'var(--bg-secondary)',
+            color: 'var(--foreground)',
+            border: '1px solid var(--border-color)',
+            borderRadius: 'var(--radius-sm)',
+            fontSize: '0.875rem'
           }}
         />
-        <select 
-          value={role} 
+        <select
+          value={role}
           onChange={e => setRole(e.target.value)}
-          style={{ 
-            padding: '0.6rem 0.75rem', 
-            background: 'var(--bg-secondary)', 
-            color: 'var(--foreground)', 
-            border: '1px solid var(--border-color)', 
-            borderRadius: 'var(--radius-sm)' 
+          style={{
+            padding: '0.75rem',
+            background: 'var(--bg-secondary)',
+            color: 'var(--foreground)',
+            border: '1px solid var(--border-color)',
+            borderRadius: 'var(--radius-sm)',
+            fontSize: '0.875rem'
           }}
         >
           <option value="badge_scanner">Badge Scanner</option>

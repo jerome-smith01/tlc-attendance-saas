@@ -1378,7 +1378,7 @@ export function Scanner() {
                       >
                         <div className="grid-table-card-header">
                           {isAdminOrLeader && (
-                            <div className="grid-table-cell grid-table-cell-select" role="cell">
+                            <div className="grid-table-cell grid-table-cell-select" role="cell" style={{ gridColumn: 1 }}>
                               {scan.id && !String(scan.id).startsWith('temp-') && (
                                 <input
                                   type="checkbox"
@@ -1390,7 +1390,7 @@ export function Scanner() {
                             </div>
                           )}
 
-                          <div className="grid-table-cell grid-table-cell-name" role="cell">
+                          <div className="grid-table-cell grid-table-cell-name" role="cell" style={{ gridColumn: isAdminOrLeader ? 2 : 1 }}>
                             <strong style={{ color: 'var(--text-primary)' }}>{memberName}</strong>
                           </div>
 

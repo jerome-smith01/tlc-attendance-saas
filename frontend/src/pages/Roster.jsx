@@ -4,10 +4,10 @@ import { useTroop } from '../context/TroopContext';
 import { RosterList } from '../components/RosterList';
 
 export function Roster() {
-  const { session: authSession } = useAuth();
-  const userId = authSession?.user?.id || 'anonymous';
+  const { user, session: authSession } = useAuth();
   const { selectedTroopId, selectedTroop, isGlobalAdmin, loadingTroops } = useTroop();
   const [activeTab, setActiveTab] = useState('leaders');
+  const userId = authSession?.user?.id || 'anonymous';
 
   if (loadingTroops) {
     return <div style={{ padding: '2rem' }}>Loading roster...</div>;
@@ -23,23 +23,23 @@ export function Roster() {
   }
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+    <div style={{ width: '100%', maxWidth: '1400px', margin: '0 auto', boxSizing: 'border-box', padding: '2rem' }}>
       <header style={{ marginBottom: '1.5rem' }}>
-        <h1 style={{ color: 'var(--foreground)' }}>Roster & Invites</h1>
-        <p style={{ color: 'var(--text-secondary)' }}>
+        <h1 style={{ color: 'var(--foreground)', margin: 0 }}>Roster &amp; Invites</h1>
+        <p style={{ color: 'var(--text-secondary)', marginTop: '0.25rem', marginBottom: 0 }}>
           Manage members for Troop {selectedTroop?.troop_number}
         </p>
       </header>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-        <div className="roster-tabs">
-          <button 
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+        <div className="roster-tabs" style={{ marginBottom: '1.5rem' }}>
+          <button
             className={`roster-tab ${activeTab === 'leaders' ? 'active' : ''}`}
             onClick={() => setActiveTab('leaders')}
           >
             Leaders
           </button>
-          <button 
+          <button
             className={`roster-tab ${activeTab === 'members' ? 'active' : ''}`}
             onClick={() => setActiveTab('members')}
           >
@@ -47,15 +47,15 @@ export function Roster() {
           </button>
         </div>
 
-        <RosterList 
-          troopId={selectedTroopId} 
+        <RosterList
+          troopId={selectedTroopId}
           currentUserRole={selectedTroop?.currentUserRole}
-          currentUserId={userId}
+          currentUserId={user?.id}
           isGlobalAdmin={isGlobalAdmin}
           activeTab={activeTab}
+          userId={userId}
         />
       </div>
     </div>
   );
 }
-

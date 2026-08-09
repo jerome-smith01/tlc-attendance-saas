@@ -1274,7 +1274,7 @@ button:active, .btn-primary:active, .btn-action:active {
     border-radius: 0;
     background: transparent;
     backdrop-filter: none;
-    align-items: flex-start;
+    align-items: center;
     line-height: 1.4;
   }
 
@@ -1298,6 +1298,8 @@ button:active, .btn-primary:active, .btn-action:active {
 
   .grid-table-cell {
     display: block;
+    grid-row: 1;
+    align-self: center;
     padding: 0;
     border-bottom: none;
     min-width: 0;
@@ -1308,10 +1310,10 @@ button:active, .btn-primary:active, .btn-action:active {
 
   .grid-table-cell-select {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: flex-start;
     padding-left: 1rem;
-    padding-top: 2px;
+    padding-top: 0;
     margin-top: 0;
   }
 
