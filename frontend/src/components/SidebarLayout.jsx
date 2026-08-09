@@ -179,7 +179,7 @@ export function SidebarLayout() {
                   transition: 'all var(--transition-fast)'
                 }}
               >
-                <span>{selectedTroop ? `Troop ${selectedTroop.troop_number}` : 'Select Troop'}</span>
+                <span>{selectedTroop ? selectedTroop.troop_number : 'Select Troop'}</span>
                 <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>{troopDropdownOpen ? '▲' : '▼'}</span>
               </button>
 
@@ -214,7 +214,7 @@ export function SidebarLayout() {
                         transition: 'background-color var(--transition-fast)'
                       }}
                     >
-                      Troop {t.troop_number}
+                      {t.troop_number}
                     </div>
                   ))}
                 </div>

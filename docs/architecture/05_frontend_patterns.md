@@ -180,7 +180,7 @@ The Scanner UI contains features to augment standard QR scanning alongside the l
 - When active, the Scan button transforms into a red **"Stop Scan"** button (`.btn-destructive`).
 
 ### Manual Entry Modal ("Add" Button)
-Allows users to add attendance for someone who forgot their badge or is a new guest.
+Allows users to add attendance for someone who forgot their badge or is a new guest. (See [09_popup_modals.md](./09_popup_modals.md) for overall popup modal architecture).
 - Triggered by the compact **"Add"** button (`+`) in the header card.
 - Displayed via `Modal` component controlled by `isManualEntryOpen` state.
 - **Existing Member**: Selects an existing roster member (where `attendance` does not already contain a scan for that `roster_id`), inserting a `scans` row immediately.

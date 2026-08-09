@@ -8,6 +8,9 @@ import { Modal } from '../components/common/Modal';
 import { FilterPopover } from '../components/common/FilterPopover';
 import { useConfirm } from '../components/common/ConfirmContext';
 import { useToast } from '../components/common/ToastContext';
+import { DateInput } from '../components/common/DateInput';
+import { formatAppDate } from '../utils/date';
+
 
 export function Events() {
   const navigate = useNavigate();
@@ -145,7 +148,7 @@ export function Events() {
         eventsData = res.data;
         eventsError = res.error;
       }
-        
+
       if (!eventsError && eventsData) {
         setEvents(eventsData);
 
@@ -804,7 +807,7 @@ export function Events() {
         parts.push(`Until ${columnFilters.event_date.to}`);
       }
       if (columnFilters.event_date.dates && columnFilters.event_date.dates.length > 0) {
-        const datesLabel = columnFilters.event_date.dates.length > 2 
+        const datesLabel = columnFilters.event_date.dates.length > 2
           ? `${columnFilters.event_date.dates.length} selected`
           : columnFilters.event_date.dates.join(', ');
         parts.push(datesLabel);
@@ -871,8 +874,8 @@ export function Events() {
     { key: 'name', label: 'Member Name' },
     { key: 'memberId', label: 'Member ID / TLC ID' },
     { key: 'time', label: 'Scan Time' },
-    { 
-      key: 'status', 
+    {
+      key: 'status',
       label: 'Status',
       render: (val) => (
         <span className={`badge ${val === 'approved' ? 'badge-success' : val === 'complete' ? 'badge-approved' : 'badge-warning'}`}>
@@ -899,16 +902,13 @@ export function Events() {
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 className="app-title" style={{ margin: 0 }}>Events</h1>
-          <p style={{ margin: '0.25rem 0 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-            {selectedTroop ? `Troop ${selectedTroop.troop_number}` : ''}
-          </p>
         </div>
-        <button 
+        <button
           onClick={() => setIsCreateModalOpen(true)}
           className="btn btn-start"
           style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}
         >
-          + Start New Event
+          + Create
         </button>
       </header>
 
@@ -1036,7 +1036,7 @@ export function Events() {
               {/* Event Name Header */}
               <div role="columnheader" className="column-header-cell">
                 <button type="button" className="column-header-btn" onClick={() => setActivePopover(activePopover === 'event_name' ? null : 'event_name')}>
-                  Event Name 
+                  Event Name
                   {sortConfig.key === 'event_name' && (sortConfig.direction === 'asc' ? ' ↑' : ' ↓')}
                   {columnFilters.event_name?.length > 0 && ' 🌪️'}
                 </button>
@@ -1045,8 +1045,8 @@ export function Events() {
                     isOpen={true}
                     title="Event Name"
                     type="multiselect"
-                    options={uniqueNames.map(name => ({ 
-                      label: name, 
+                    options={uniqueNames.map(name => ({
+                      label: name,
                       value: name,
                       disabled: !availableEventNames.has(name)
                     }))}
@@ -1070,7 +1070,7 @@ export function Events() {
               {/* Date Header */}
               <div role="columnheader" className="column-header-cell">
                 <button type="button" className="column-header-btn" onClick={() => setActivePopover(activePopover === 'event_date' ? null : 'event_date')}>
-                  Date 
+                  Date
                   {sortConfig.key === 'event_date' && (sortConfig.direction === 'asc' ? ' ↑' : ' ↓')}
                   {(columnFilters.event_date?.from || columnFilters.event_date?.to || columnFilters.event_date?.dates?.length > 0) && ' 🌪️'}
                 </button>
@@ -1100,7 +1100,7 @@ export function Events() {
               {/* Status Header */}
               <div role="columnheader" className="column-header-cell">
                 <button type="button" className="column-header-btn" onClick={() => setActivePopover(activePopover === 'status' ? null : 'status')}>
-                  Status 
+                  Status
                   {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? ' ↑' : ' ↓')}
                   {columnFilters.status?.length > 0 && ' 🌪️'}
                 </button>
@@ -1130,7 +1130,7 @@ export function Events() {
               {/* Synced By Header */}
               <div role="columnheader" className="column-header-cell">
                 <button type="button" className="column-header-btn" onClick={() => setActivePopover(activePopover === 'synced_by' ? null : 'synced_by')}>
-                  Synced By 
+                  Synced By
                   {sortConfig.key === 'synced_by' && (sortConfig.direction === 'asc' ? ' ↑' : ' ↓')}
                   {columnFilters.synced_by?.length > 0 && ' 🌪️'}
                 </button>
@@ -1139,8 +1139,8 @@ export function Events() {
                     isOpen={true}
                     title="Synced By"
                     type="multiselect"
-                    options={uniqueSyncedBy.map(u => ({ 
-                      label: u.name, 
+                    options={uniqueSyncedBy.map(u => ({
+                      label: u.name,
                       value: u.name,
                       disabled: !availableSyncedBy.has(u.name)
                     }))}
@@ -1171,7 +1171,7 @@ export function Events() {
                     className="column-header-btn"
                     onClick={() => setActivePopover(activePopover === 'actions' ? null : 'actions')}
                   >
-                    Actions 
+                    Actions
                     {columnFilters.actions?.length > 0 && ' 🌪️'}
                   </button>
                   {activePopover === 'actions' && (
@@ -1238,7 +1238,7 @@ export function Events() {
                     {/* Date */}
                     <div className="grid-table-cell" role="cell">
                       <span className="grid-table-label">Date</span>
-                      <span>{eventObj.event_date}</span>
+                      <span>{formatAppDate(eventObj.event_date)}</span>
                     </div>
 
                     {/* Status */}
@@ -1572,7 +1572,7 @@ export function Events() {
                       className="filter-input"
                       value={columnFilters.event_date?.from || ''}
                       onChange={e => setColumnFilters(prev => ({ ...prev, event_date: { ...prev.event_date, from: e.target.value } }))}
-                      onClick={e => { try { e.target.showPicker?.(); } catch (_) {} }}
+                      onClick={e => { try { e.target.showPicker?.(); } catch (_) { } }}
                     />
                   </div>
                   <div>
@@ -1584,7 +1584,7 @@ export function Events() {
                       className="filter-input"
                       value={columnFilters.event_date?.to || ''}
                       onChange={e => setColumnFilters(prev => ({ ...prev, event_date: { ...prev.event_date, to: e.target.value } }))}
-                      onClick={e => { try { e.target.showPicker?.(); } catch (_) {} }}
+                      onClick={e => { try { e.target.showPicker?.(); } catch (_) { } }}
                     />
                   </div>
                 </div>
@@ -1636,12 +1636,12 @@ export function Events() {
         </div>
       )}
 
-      {/* Start New Event Modal */}
+      {/* Create New Event Modal */}
       {isCreateModalOpen && (
         <Modal
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
-          title="Start New Event"
+          title="Create New Event"
         >
           <form onSubmit={handleCreateEvent} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div>
@@ -1653,6 +1653,7 @@ export function Events() {
                 placeholder="e.g. Weekly Troop Meeting"
                 value={newEventName}
                 onChange={e => setNewEventName(e.target.value)}
+                maxLength={100}
                 required
                 style={{
                   width: '100%',
@@ -1670,23 +1671,10 @@ export function Events() {
               <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.9rem' }}>
                 Event Date:
               </label>
-              <input
-                type="date"
+              <DateInput
                 value={newEventDate}
                 onChange={e => setNewEventDate(e.target.value)}
-                onClick={e => { try { e.target.showPicker?.(); } catch (_) {} }}
                 required
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--border-color)',
-                  background: 'var(--bg-secondary)',
-                  color: 'var(--foreground)',
-                  fontSize: '0.95rem',
-                  colorScheme: 'dark',
-                  cursor: 'pointer'
-                }}
               />
             </div>
 
@@ -1703,7 +1691,7 @@ export function Events() {
                 className="btn btn-start"
                 disabled={creatingEvent}
               >
-                {creatingEvent ? 'Creating...' : 'Start Event'}
+                {creatingEvent ? 'Creating...' : 'CREATE EVENT'}
               </button>
             </div>
           </form>

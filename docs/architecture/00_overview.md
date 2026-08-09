@@ -88,6 +88,10 @@ Uses `HashRouter` for Cloudflare Pages static SPA compatibility (`/#/login`, `/#
 - [04_scan_lifecycle.md](./04_scan_lifecycle.md) — Scan status flow, session lifecycle, purge logic, and sync
 - [05_frontend_patterns.md](./05_frontend_patterns.md) — Key frontend patterns: auth, troop context, scan logic
 - [06_chrome_extension.md](./06_chrome_extension.md) — Chrome Extension architecture, auth, and sync mechanics
+- [07_table_patterns.md](./07_table_patterns.md) — Responsive Grid Morph Table architecture and column width controls
+- [08_icon_and_color_scheme.md](./08_icon_and_color_scheme.md) — Icon set and standard visual color coding for actions
+- [09_popup_modals.md](./09_popup_modals.md) — Popup modal patterns, animations, and height handling
+- [10_forms_and_inputs.md](./10_forms_and_inputs.md) — Forms, DateInput component, and m/d/yy date formatting
 - [../auth_flow.md](../auth_flow.md) — Supabase JWT lifecycle, AuthContext, PWA behavior
 - [../hosting.md](../hosting.md) — Cloudflare Pages deployment and environment config
 
