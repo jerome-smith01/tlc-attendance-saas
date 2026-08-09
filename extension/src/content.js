@@ -70,12 +70,12 @@ function injectSyncButton() {
   const btn = document.createElement('button');
   btn.id = 'tlc-sync-btn';
   btn.innerHTML = '⚡ Sync TLC Attendance';
-  
+
   btn.addEventListener('click', handleSyncClick);
 
   container.appendChild(btn);
   firstPanel.parentNode.insertBefore(container, firstPanel);
-  
+
   return true;
 }
 
@@ -90,7 +90,7 @@ async function handleSyncClick() {
       showLoginModal(btn);
       return;
     }
-    
+
     // Fetch ended sessions
     chrome.runtime.sendMessage({ action: 'GET_ENDED_SESSIONS' }, (response) => {
       if (chrome.runtime.lastError || response?.error) {
@@ -98,7 +98,7 @@ async function handleSyncClick() {
         resetBtn(btn);
         return;
       }
-      
+
       const sessions = response.data || [];
       if (sessions.length === 0) {
         alert('No sessions pending sync were found. Make sure you have clicked "End" on a session in the dashboard first.');
@@ -118,7 +118,7 @@ async function handleSyncClick() {
 function showLoginModal(btn) {
   const overlay = document.createElement('div');
   overlay.id = 'tlc-modal-overlay';
-  
+
   overlay.innerHTML = `
     <div id="tlc-modal" style="max-width: 360px;">
       <h2>Log In to TLC Attendance</h2>
@@ -179,9 +179,9 @@ function showLoginModal(btn) {
 function showSessionSelectorModal(sessions, btn) {
   const overlay = document.createElement('div');
   overlay.id = 'tlc-modal-overlay';
-  
+
   let optionsHtml = sessions.map(s => `<option value="${s.id}">${s.event_name} (${s.event_date})</option>`).join('');
-  
+
   overlay.innerHTML = `
     <div id="tlc-modal">
       <h2>Select Session to Sync</h2>
@@ -234,14 +234,14 @@ function checkMember(tlcId, eventId) {
 
 function performSync(sessionId, sessionName, btn) {
   btn.innerHTML = '⏳ Syncing...';
-  
+
   chrome.runtime.sendMessage({ action: 'SYNC_ATTENDANCE', sessionId }, (response) => {
     if (chrome.runtime.lastError || response?.error) {
       alert('Sync failed: ' + (chrome.runtime.lastError?.message || response?.error));
       resetBtn(btn);
       return;
     }
-    
+
     const scans = response.data || [];
     console.log('[TLC Sync] Scans received from Supabase:', scans);
 

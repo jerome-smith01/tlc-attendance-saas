@@ -194,7 +194,8 @@ export function SidebarLayout() {
                     zIndex: 1000,
                     padding: '0.4rem 0',
                     maxHeight: '200px',
-                    overflowY: 'auto'
+                    overflowY: 'auto',
+                    backgroundColor: 'var(--bg-elevated)'
                   }}
                 >
                   {troops.map(t => (

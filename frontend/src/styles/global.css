@@ -85,9 +85,11 @@
   --glass-blur:          blur(16px);
 
   /* Custom variables for theme UI elements in dark mode */
-  --border-color:      rgba(255, 255, 255, 0.12);
-  --bg-secondary:      #1e293b;
-  --bg-elevated:       #334155;
+  --border-color:      rgba(255, 255, 255, 0.18);
+  --bg-secondary:      #243347;
+  --bg-elevated:       #2d3f55;
+  --glass-bg:          rgba(36, 51, 71, 0.75);
+  --glass-border:      rgba(255, 255, 255, 0.14);
 }
 
 /* ── Glassmorphism Utility ── */
@@ -833,7 +835,7 @@ button:active, .btn-primary:active, .btn-action:active {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.5rem 1rem;
+  padding: 0.5rem 0;
   margin-top: 0.25rem;
   margin-bottom: 0.25rem;
   user-select: none;

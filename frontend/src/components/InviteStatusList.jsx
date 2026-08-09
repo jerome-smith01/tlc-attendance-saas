@@ -21,7 +21,7 @@ export function InviteStatusList({ troopId }) {
   useEffect(() => {
     try {
       localStorage.setItem('tlc_invite_status_section_open', String(isOpen));
-    } catch (_) {}
+    } catch (_) { }
   }, [isOpen]);
 
   // TODO: wire to real invite log data via Supabase when available
@@ -181,19 +181,22 @@ export function InviteStatusList({ troopId }) {
     <div style={{ marginBottom: '1.5rem' }}>
       {/* Section Header */}
       <div
-        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', userSelect: 'none', marginBottom: '0.75rem' }}
+        className="attendance-section-header"
+        style={{ cursor: 'pointer', userSelect: 'none' }}
         onClick={() => setIsOpen(v => !v)}
       >
-        <svg
-          width="16" height="16" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-          style={{ transition: 'transform 0.2s', transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)', flexShrink: 0 }}
-        >
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-        <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: 'var(--foreground)' }}>
-          Invite Status ({processedInvites.length})
-        </h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <svg
+            width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+            style={{ transition: 'transform 0.2s', transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)', flexShrink: 0 }}
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+          <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: 'var(--foreground)' }}>
+            Invite Status - <span style={{ color: 'red', fontWeight: 400 }}>THIS SECTION IS DEV PLACEHOLDER TEXT</span> ({processedInvites.length})
+          </h3>
+        </div>
       </div>
 
       {isOpen && (

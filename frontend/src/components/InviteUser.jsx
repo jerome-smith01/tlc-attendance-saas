@@ -4,7 +4,7 @@ import { useToast } from './common/ToastContext';
 
 export function InviteUser({ troopId }) {
   const toast = useToast();
-  
+
   const [isOpen, setIsOpen] = useState(() => {
     try {
       const saved = localStorage.getItem('tlc_invite_section_open');
@@ -22,8 +22,27 @@ export function InviteUser({ troopId }) {
   useEffect(() => {
     try {
       localStorage.setItem('tlc_invite_section_open', String(isOpen));
-    } catch (_) {}
+    } catch (_) { }
   }, [isOpen]);
+
+  // Helper to extract email addresses from formatted strings like "Name <email@domain.com>" or delimited email lists
+  function extractEmails(text) {
+    if (!text || typeof text !== 'string') return [];
+    
+    // 1. Match valid email addresses (e.g. from "Name <email@domain.com>" or plain email lists)
+    const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+    const matches = text.match(emailRegex);
+    
+    if (matches && matches.length > 0) {
+      return matches.map(e => e.trim());
+    }
+
+    // 2. Fallback: split by delimiters and strip angle brackets/quotes
+    return text
+      .split(/[;, \r\n]+/)
+      .map(part => part.replace(/[<>"'\s]/g, '').trim())
+      .filter(Boolean);
+  }
 
   function handleEmailChange(id, value) {
     setRows(prev => prev.map(row => row.id === id ? { ...row, email: value, error: null } : row));
@@ -41,14 +60,13 @@ export function InviteUser({ troopId }) {
       const targetRow = prevRows[index];
       const trimmed = (targetRow.email || '').trim();
 
-      // Split by semicolons, commas, or spaces
-      const parts = trimmed.split(/[;, ]+/).filter(Boolean);
+      const parts = extractEmails(trimmed);
 
       let updated = [...prevRows];
 
       if (parts.length > 1) {
         const newSplitRows = parts.map((partEmail, i) => ({
-          id: i === 0 ? targetRow.id : `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          id: i === 0 ? targetRow.id : `${Date.now()}_${Math.random().toString(36).substring(2, 7)}_${i}`,
           email: partEmail,
           role: targetRow.role,
           error: null
@@ -89,8 +107,19 @@ export function InviteUser({ troopId }) {
     e.preventDefault();
     if (!troopId) return;
 
-    // Filter valid non-empty email rows
-    const validRows = rows.filter(r => r.email.trim() !== '');
+    // Process and expand any un-blurred email inputs
+    let validRows = [];
+    rows.forEach(row => {
+      const trimmed = row.email.trim();
+      if (!trimmed) return;
+      const extracted = extractEmails(trimmed);
+      if (extracted.length > 0) {
+        extracted.forEach(email => {
+          validRows.push({ ...row, email });
+        });
+      }
+    });
+
     if (validRows.length === 0) {
       toast('Please enter at least one email address.', 'error');
       return;
@@ -116,7 +145,7 @@ export function InviteUser({ troopId }) {
           try {
             const body = await error.context?.json?.();
             if (body?.error) errMsg = body.error;
-          } catch (_) {}
+          } catch (_) { }
           if (errMsg.includes('non-2xx status code')) {
             errMsg = 'Already invited or registered with TLC Attendance.';
           }
@@ -167,19 +196,22 @@ export function InviteUser({ troopId }) {
     <div style={{ marginBottom: '1.5rem' }}>
       {/* Collapsible section title above card */}
       <div
-        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', userSelect: 'none', marginBottom: '0.75rem' }}
+        className="attendance-section-header"
+        style={{ cursor: 'pointer', userSelect: 'none' }}
         onClick={() => setIsOpen(v => !v)}
       >
-        <svg
-          width="16" height="16" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-          style={{ transition: 'transform 0.2s', transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)', flexShrink: 0 }}
-        >
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-        <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: 'var(--foreground)' }}>
-          Invite Troop Leaders
-        </h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <svg
+            width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+            style={{ transition: 'transform 0.2s', transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)', flexShrink: 0 }}
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+          <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: 'var(--foreground)' }}>
+            Invite Troop Leaders
+          </h3>
+        </div>
       </div>
 
       {isOpen && (
@@ -193,8 +225,9 @@ export function InviteUser({ troopId }) {
                   <div key={row.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                     <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
                       <input
-                        type="email"
-                        placeholder="Email address"
+                        type="text"
+                        inputMode="email"
+                        placeholder="Email address(es)"
                         value={row.email}
                         onChange={e => handleEmailChange(row.id, e.target.value)}
                         onBlur={() => handleBlur(row.id)}
@@ -268,6 +301,11 @@ export function InviteUser({ troopId }) {
                 );
               })}
             </div>
+
+            {/* Helper footnote */}
+            <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+              Separate by commas, semi-colons, or spaces.
+            </p>
 
             {/* Bottom action bar */}
             <div>
