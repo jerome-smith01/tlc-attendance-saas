@@ -32,7 +32,28 @@ export function Scanner() {
   const [currentUserRole, setCurrentUserRole] = useState(null);
   const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
   const [showStatusMenu, setShowStatusMenu] = useState(false);
+  const [showOfflineInfo, setShowOfflineInfo] = useState(false);
   const scannerContainerRef = useRef(null);
+  const statusMenuRef = useRef(null);
+  const offlineInfoRef = useRef(null);
+
+  // Auto-close popovers when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (statusMenuRef.current && !statusMenuRef.current.contains(event.target)) {
+        setShowStatusMenu(false);
+      }
+      if (offlineInfoRef.current && !offlineInfoRef.current.contains(event.target)) {
+        setShowOfflineInfo(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, []);
 
   // Table Filter, Sort & Column Resizing states
   const [activePopover, setActivePopover] = useState(null);
@@ -907,7 +928,7 @@ export function Scanner() {
         {/* Row 2: Status & Actions */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '8px' }}>
           {/* Status cell with dropdown popover */}
-          <div style={{ position: 'relative' }}>
+          <div ref={statusMenuRef} style={{ position: 'relative' }}>
             <div
               className="grid-table-cell"
               role="cell"
@@ -970,11 +991,43 @@ export function Scanner() {
             )}
           </div>
 
-          {/* Right side: Offline count */}
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <span className="badge badge-pending" title="Offline Queue">
-              {attendance.filter(s => s.message === 'Saved Offline').length}
-            </span>
+          {/* Right side: Offline Queue Indicator with Popover */}
+          <div ref={offlineInfoRef} style={{ position: 'relative' }}>
+            <div
+              className="grid-table-cell"
+              role="cell"
+              onClick={() => setShowOfflineInfo(prev => !prev)}
+              style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              title="Click to view Offline Queue details"
+            >
+              <span className="grid-table-label">Offline Queue</span>
+              <div>
+                <span className="badge badge-pending">
+                  {attendance.filter(s => s.message === 'Saved Offline').length}
+                </span>
+              </div>
+            </div>
+
+            {showOfflineInfo && (
+              <div className="status-popover-menu" style={{ right: 0, left: 'auto', minWidth: '220px', maxWidth: '280px', padding: '0.75rem' }}>
+                <div style={{ fontWeight: '600', fontSize: '0.85rem', marginBottom: '0.35rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span>Offline Queue</span>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setShowOfflineInfo(false); }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-foreground)', fontSize: '0.9rem', padding: 0 }}
+                  >
+                    ✕
+                  </button>
+                </div>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                  Scans taken while offline or during weak network conditions are saved locally on your device.
+                </p>
+                <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border-color)', fontSize: '0.75rem', color: 'var(--muted-foreground)' }}>
+                  <strong>How to resolve:</strong> Reconnect to the internet and the app will automatically sync queued scans to the server.
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
