@@ -1159,6 +1159,16 @@ button:active, .btn-primary:active, .btn-action:active {
   border-bottom: none;
 }
 
+.grid-table-cell-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 0;
+  border-bottom: none;
+}
+
 .event-name-link {
   text-align: left !important;
   font-size: 0.95rem;
@@ -1234,6 +1244,12 @@ button:active, .btn-primary:active, .btn-action:active {
     display: block;
     padding: 0;
     border-bottom: none;
+  }
+
+  .grid-table-cell-actions {
+    grid-column: 5;
+    margin-left: 0;
+    justify-content: flex-start;
   }
 
   .event-name-link {

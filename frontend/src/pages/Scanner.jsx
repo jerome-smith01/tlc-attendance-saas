@@ -256,15 +256,28 @@ export function Scanner() {
 
   // Pause camera when scrolled out of viewport
   useEffect(() => {
-    if (!scannerContainerRef.current) return;
+    if (loadingEvent || !scannerContainerRef.current) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (qrEngineRef.current) {
           const state = qrEngineRef.current.getState();
+          // state 2 = SCANNING, state 3 = PAUSED
           if (!entry.isIntersecting && state === 2) {
-            qrEngineRef.current.pause(true);
+            console.log('[Camera Observer] Pausing camera (scrolled out of view)');
+            try {
+              qrEngineRef.current.pause(true);
+              setScannerStatus('Camera Paused (Out of view)');
+            } catch (e) {
+              console.warn('[Camera Observer] Failed to pause camera:', e);
+            }
           } else if (entry.isIntersecting && state === 3) {
-            qrEngineRef.current.resume();
+            console.log('[Camera Observer] Resuming camera (scrolled into view)');
+            try {
+              qrEngineRef.current.resume();
+              setScannerStatus('Camera Active - Ready to scan');
+            } catch (e) {
+              console.warn('[Camera Observer] Failed to resume camera:', e);
+            }
           }
         }
       },
@@ -272,7 +285,7 @@ export function Scanner() {
     );
     observer.observe(scannerContainerRef.current);
     return () => observer.disconnect();
-  }, []);
+  }, [loadingEvent]);
 
   async function fetchRoster(tId) {
     const { data } = await supabase.from('roster').select('*').eq('troop_id', tId);
@@ -1304,6 +1317,22 @@ export function Scanner() {
                           <div className="grid-table-cell grid-table-cell-name" role="cell">
                             <strong style={{ color: 'var(--text-primary)' }}>{memberName}</strong>
                           </div>
+
+                          {isAdminOrLeader && scan.id && !String(scan.id).startsWith('temp-') && (
+                            <div className="grid-table-cell grid-table-cell-actions" role="cell">
+                              <button
+                                type="button"
+                                className="btn-icon-action btn-icon-destructive"
+                                onClick={() => handleDeleteSingleScan(scan.id)}
+                                title="Remove scan"
+                              >
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="3 6 5 6 21 6"></polyline>
+                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                </svg>
+                              </button>
+                            </div>
+                          )}
                         </div>
 
                         <div className="grid-table-cell" role="cell">
@@ -1316,23 +1345,6 @@ export function Scanner() {
                         <div className="grid-table-cell" role="cell">
                           <span className="grid-table-label">Scan Time</span>
                           <span style={{ color: 'var(--text-secondary)' }}>{scan.time}</span>
-                        </div>
-
-                        <div className="grid-table-cell" role="cell" style={{ justifyContent: 'flex-start' }}>
-                          <span className="grid-table-label">Actions</span>
-                          {isAdminOrLeader && scan.id && !String(scan.id).startsWith('temp-') && (
-                            <button
-                              type="button"
-                              className="btn-icon-action btn-icon-destructive"
-                              onClick={() => handleDeleteSingleScan(scan.id)}
-                              title="Remove scan"
-                            >
-                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="3 6 5 6 21 6"></polyline>
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                              </svg>
-                            </button>
-                          )}
                         </div>
                       </div>
                     );
