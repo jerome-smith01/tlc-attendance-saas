@@ -1,103 +1,293 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { useToast } from './common/ToastContext';
 
 export function InviteUser({ troopId }) {
-  const [email, setEmail] = useState('');
-  const [role, setRole] = useState('badge_scanner');
+  const toast = useToast();
+  
+  const [isOpen, setIsOpen] = useState(() => {
+    try {
+      const saved = localStorage.getItem('tlc_invite_section_open');
+      return saved !== 'false';
+    } catch (_) {
+      return true;
+    }
+  });
+
+  const [rows, setRows] = useState([
+    { id: 'initial_row', email: '', role: 'badge_scanner', error: null }
+  ]);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState(null);
-  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('tlc_invite_section_open', String(isOpen));
+    } catch (_) {}
+  }, [isOpen]);
+
+  function handleEmailChange(id, value) {
+    setRows(prev => prev.map(row => row.id === id ? { ...row, email: value, error: null } : row));
+  }
+
+  function handleRoleChange(id, role) {
+    setRows(prev => prev.map(row => row.id === id ? { ...row, role } : row));
+  }
+
+  function handleBlur(id) {
+    setRows(prevRows => {
+      const index = prevRows.findIndex(r => r.id === id);
+      if (index === -1) return prevRows;
+
+      const targetRow = prevRows[index];
+      const trimmed = (targetRow.email || '').trim();
+
+      // Split by semicolons, commas, or spaces
+      const parts = trimmed.split(/[;, ]+/).filter(Boolean);
+
+      let updated = [...prevRows];
+
+      if (parts.length > 1) {
+        const newSplitRows = parts.map((partEmail, i) => ({
+          id: i === 0 ? targetRow.id : `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          email: partEmail,
+          role: targetRow.role,
+          error: null
+        }));
+        updated.splice(index, 1, ...newSplitRows);
+      } else if (parts.length === 1) {
+        updated[index] = { ...targetRow, email: parts[0] };
+      } else {
+        updated[index] = { ...targetRow, email: '' };
+      }
+
+      // Automatically append a new blank row if the last row is non-empty
+      const lastRow = updated[updated.length - 1];
+      if (lastRow && lastRow.email.trim() !== '') {
+        updated.push({
+          id: `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          email: '',
+          role: 'badge_scanner',
+          error: null
+        });
+      }
+
+      return updated;
+    });
+  }
+
+  function handleRemoveRow(id) {
+    setRows(prev => {
+      const filtered = prev.filter(r => r.id !== id);
+      if (filtered.length === 0) {
+        return [{ id: `${Date.now()}`, email: '', role: 'badge_scanner', error: null }];
+      }
+      return filtered;
+    });
+  }
 
   async function handleInvite(e) {
     e.preventDefault();
-    if (!email || !troopId) return;
+    if (!troopId) return;
+
+    // Filter valid non-empty email rows
+    const validRows = rows.filter(r => r.email.trim() !== '');
+    if (validRows.length === 0) {
+      toast('Please enter at least one email address.', 'error');
+      return;
+    }
 
     setLoading(true);
-    setMessage(null);
-    setError(null);
 
-    try {
-      const { data, error } = await supabase.functions.invoke('invite-user', {
-        body: { email, role, troop_id: troopId }
-      });
+    // Reset errors on all rows
+    setRows(prev => prev.map(r => ({ ...r, error: null })));
 
-      if (error) {
-        let errMsg = error.message;
-        try {
-          const body = await error.context?.json?.();
-          if (body?.error) errMsg = body.error;
-        } catch (_) {}
-        throw new Error(errMsg);
-      }
+    let successCount = 0;
+    const failedIds = new Set();
+    const rowErrors = {};
 
-      setMessage(`Successfully sent invite to ${email}`);
-      setEmail('');
-    } catch (err) {
-      console.error('Invite error:', err);
-      if (err.message && err.message.includes('non-2xx status code')) {
-        setError('This email is already invited or registered with TLC Attendance.');
+    const results = await Promise.allSettled(
+      validRows.map(async row => {
+        const { data, error } = await supabase.functions.invoke('invite-user', {
+          body: { email: row.email.trim(), role: row.role, troop_id: troopId }
+        });
+
+        if (error) {
+          let errMsg = error.message;
+          try {
+            const body = await error.context?.json?.();
+            if (body?.error) errMsg = body.error;
+          } catch (_) {}
+          if (errMsg.includes('non-2xx status code')) {
+            errMsg = 'Already invited or registered with TLC Attendance.';
+          }
+          throw { rowId: row.id, message: errMsg };
+        }
+        return { rowId: row.id, email: row.email };
+      })
+    );
+
+    results.forEach(res => {
+      if (res.status === 'fulfilled') {
+        successCount++;
       } else {
-        setError(err.message);
+        const reason = res.reason;
+        if (reason && reason.rowId) {
+          failedIds.add(reason.rowId);
+          rowErrors[reason.rowId] = reason.message || 'Failed to send invite.';
+        }
       }
-    } finally {
-      setLoading(false);
+    });
+
+    if (successCount > 0) {
+      toast(`Successfully sent invite to ${successCount} leader${successCount > 1 ? 's' : ''}`, 'success');
     }
+
+    // Keep failed rows with their inline error messages, remove successful rows
+    setRows(prev => {
+      const remaining = prev.filter(r => failedIds.has(r.id) || r.email.trim() === '');
+      const updated = remaining.map(r => rowErrors[r.id] ? { ...r, error: rowErrors[r.id] } : r);
+
+      // Ensure trailing blank row exists
+      const last = updated[updated.length - 1];
+      if (!last || last.email.trim() !== '') {
+        updated.push({
+          id: `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          email: '',
+          role: 'badge_scanner',
+          error: null
+        });
+      }
+      return updated;
+    });
+
+    setLoading(false);
   }
 
   return (
-    <div className="glass-card" style={{ padding: '1.25rem', marginBottom: '1.5rem' }}>
-      <h3 style={{ marginTop: 0, marginBottom: '0.75rem', fontSize: '1rem', fontWeight: 600, color: 'var(--foreground)' }}>
-        Invite Troop Leaders
-      </h3>
-
-      {error && (
-        <div style={{ color: 'var(--color-error)', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
-          {error}
-        </div>
-      )}
-      {message && (
-        <div style={{ color: 'var(--color-success)', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
-          {message}
-        </div>
-      )}
-
-      <form onSubmit={handleInvite} style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-        <input
-          type="email"
-          placeholder="Email address"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          required
-          style={{
-            flex: 1,
-            minWidth: '220px',
-            padding: '0.75rem',
-            background: 'var(--bg-secondary)',
-            color: 'var(--foreground)',
-            border: '1px solid var(--border-color)',
-            borderRadius: 'var(--radius-sm)',
-            fontSize: '0.875rem'
-          }}
-        />
-        <select
-          value={role}
-          onChange={e => setRole(e.target.value)}
-          style={{
-            padding: '0.75rem',
-            background: 'var(--bg-secondary)',
-            color: 'var(--foreground)',
-            border: '1px solid var(--border-color)',
-            borderRadius: 'var(--radius-sm)',
-            fontSize: '0.875rem'
-          }}
+    <div style={{ marginBottom: '1.5rem' }}>
+      {/* Collapsible section title above card */}
+      <div
+        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', userSelect: 'none', marginBottom: '0.75rem' }}
+        onClick={() => setIsOpen(v => !v)}
+      >
+        <svg
+          width="16" height="16" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+          style={{ transition: 'transform 0.2s', transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)', flexShrink: 0 }}
         >
-          <option value="badge_scanner">Badge Scanner</option>
-          <option value="troop_admin">Troop Admin</option>
-        </select>
-        <button type="submit" disabled={!troopId || loading} className="btn btn-primary">
-          {loading ? 'Sending...' : 'Send Invite'}
-        </button>
-      </form>
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+        <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: 'var(--foreground)' }}>
+          Invite Troop Leaders
+        </h3>
+      </div>
+
+      {isOpen && (
+        <div className="glass-card" style={{ padding: '1.25rem' }}>
+          <form onSubmit={handleInvite} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {rows.map((row, index) => {
+                const canDelete = rows.length > 1 || row.email.trim() !== '';
+
+                return (
+                  <div key={row.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <input
+                        type="email"
+                        placeholder="Email address"
+                        value={row.email}
+                        onChange={e => handleEmailChange(row.id, e.target.value)}
+                        onBlur={() => handleBlur(row.id)}
+                        style={{
+                          flex: '1 1 240px',
+                          minWidth: '200px',
+                          padding: '0.65rem 0.75rem',
+                          background: 'var(--bg-secondary)',
+                          color: 'var(--foreground)',
+                          border: row.error ? '1px solid var(--color-error, #ef4444)' : '1px solid var(--border-color)',
+                          borderRadius: 'var(--radius-sm)',
+                          fontSize: '0.875rem'
+                        }}
+                      />
+
+                      {/* Radio button group for role */}
+                      <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'center' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem', userSelect: 'none', color: 'var(--foreground)' }}>
+                          <input
+                            type="radio"
+                            name={`role_${row.id}`}
+                            value="badge_scanner"
+                            checked={row.role === 'badge_scanner'}
+                            onChange={() => handleRoleChange(row.id, 'badge_scanner')}
+                            style={{ accentColor: 'var(--color-primary)', cursor: 'pointer' }}
+                          />
+                          Badge Scanner
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem', userSelect: 'none', color: 'var(--foreground)' }}>
+                          <input
+                            type="radio"
+                            name={`role_${row.id}`}
+                            value="troop_admin"
+                            checked={row.role === 'troop_admin'}
+                            onChange={() => handleRoleChange(row.id, 'troop_admin')}
+                            style={{ accentColor: 'var(--color-primary)', cursor: 'pointer' }}
+                          />
+                          Troop Admin
+                        </label>
+                      </div>
+
+                      {/* Remove row button */}
+                      {canDelete && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveRow(row.id)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--text-secondary)',
+                            cursor: 'pointer',
+                            fontSize: '1.2rem',
+                            lineHeight: 1,
+                            padding: '0.2rem 0.4rem',
+                            borderRadius: 'var(--radius-sm)'
+                          }}
+                          title="Remove row"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Inline error for this row */}
+                    {row.error && (
+                      <div style={{ color: 'var(--color-error, #ef4444)', fontSize: '0.78rem', paddingLeft: '0.25rem' }}>
+                        {row.error}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Bottom action bar */}
+            <div>
+              <button
+                type="submit"
+                disabled={!troopId || loading}
+                className="btn btn-compact btn-start"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 2L11 13" />
+                  <path d="M22 2l-7 20-4-9-9-4 20-7z" />
+                </svg>
+                {loading ? 'Sending...' : 'Invite'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }
+

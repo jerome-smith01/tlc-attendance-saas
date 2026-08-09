@@ -45,3 +45,17 @@ All inputs share global CSS design tokens defined in `global.css`:
 - Border Radius: `var(--radius-sm)`
 - Padding: `0.75rem`
 - **Text Length Constraints**: Standard text inputs for named entities (e.g., Event Name) enforce a 100-character maximum (`maxLength={100}`) to preserve data integrity and visual alignment.
+
+---
+
+## 4. Custom File Upload Inputs
+
+Standard browser `<input type="file">` controls render unstyled native buttons (`[Choose File] No file chosen`) that conflict with the application's design system.
+
+### 4.1 Custom File Upload Pattern
+To ensure a consistent, user-friendly UI across browsers and themes:
+1. **Hidden Input**: Hide the native file input (`style={{ display: 'none' }}`) and attach a React `useRef` handle.
+2. **Styled Trigger Button**: Use a styled `.btn .btn-secondary` (or primary CTA) button featuring an SVG upload icon to trigger the hidden file input via `fileInputRef.current?.click()`.
+3. **Selected Filename Feedback**: Render a adjacent text label displaying the selected file name (`selectedFileName || "No file chosen"`), styled with `var(--text-secondary)` or `var(--foreground)`.
+4. **Global CSS Fallback**: `input[type="file"]::file-selector-button` in `global.css` is styled using design tokens (`var(--muted)`, `var(--border-color)`, `var(--radius-sm)`) as a fallback for any unhandled native file inputs.
+

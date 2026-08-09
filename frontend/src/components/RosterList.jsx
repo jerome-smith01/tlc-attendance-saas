@@ -4,6 +4,7 @@ import { parseTlcRosterCsv } from '../utils/csvParser';
 import { Modal } from './common/Modal';
 import { FilterPopover } from './common/FilterPopover';
 import { InviteUser } from './InviteUser';
+import { InviteStatusList } from './InviteStatusList';
 import { useToast } from './common/ToastContext';
 import { useConfirm } from './common/ConfirmContext';
 
@@ -402,9 +403,12 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
   return (
     <div className="roster-list">
 
-      {/* ── Leaders tab: Invite form ───────────────────────────────────── */}
+      {/* ── Leaders tab: Invite form & Invite Status ───────────────────── */}
       {activeTab === 'leaders' && (
-        <InviteUser troopId={troopId} />
+        <>
+          <InviteUser troopId={troopId} />
+          <InviteStatusList troopId={troopId} />
+        </>
       )}
 
       {/* ── Members tab: CSV import ────────────────────────────────────── */}
