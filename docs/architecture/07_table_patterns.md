@@ -200,7 +200,8 @@ Screens supporting bulk operations include a multi-select checkbox column to the
 ### Selection Behavior & Alignment
 - **Master Checkbox (Header)**: Toggles selection on all currently visible (filtered) rows. Uses `input.indeterminate = isSomeSelected` for partial selection.
 - **Row Checkbox**: Toggles selection for individual row IDs.
-- **Pixel-Perfect Alignment**: Both the header selection cell and row selection cell MUST use identical padding and flex alignment (`display: flex; align-items: center; justify-content: flex-start; padding-left: 1rem; width: 48px;`) on desktop.
+- **Pixel-Perfect Alignment**: Both the header selection cell (`.grid-table-header-select`) and row selection cell (`.grid-table-cell-select`) MUST use identical padding and flex alignment (`display: flex; align-items: flex-start; justify-content: flex-start; padding-left: 1rem; width: 48px;`) on desktop.
+- **Top Vertical Row Alignment**: On desktop (`@media (min-width: 768px)`), `.grid-table-row` MUST specify `align-items: flex-start;` so all cells in the row align to the top. This ensures that text-heavy columns (such as Event Name) wrapping to multiple lines do not push adjacent cells (checkboxes, dates, badges, actions) to be vertically centered.
 - **Mobile Alignment**: On mobile cards (< 768px), `.grid-table-cell-select` uses `margin-top: 2px` to align the top edge of the checkbox flush with the first line of the title text.
 
 ---

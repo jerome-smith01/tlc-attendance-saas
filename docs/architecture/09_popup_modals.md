@@ -40,4 +40,4 @@ Modals are built using a two-part layout: an overlay container (`.app-modal-over
 
 All popups should follow standard accessibility and interaction rules:
 1. **Escape key & Overlay click**: Closes the active modal unless explicitly blocked by a pending action/saving state.
-2. **Action Buttons**: Placed at the bottom right of the modal body or form with `display: flex; justify-content: flex-end; gap: 0.75rem; marginTop: 1rem;`. Primary positive actions use `.btn-primary` or `.btn-success`, while cancellation uses `.btn-secondary`.
+2. **Action Buttons**: Placed at the bottom right of the modal body or form with `display: flex; justify-content: flex-end; gap: 0.75rem; marginTop: 1rem;`. Primary positive submit actions use `.btn-primary` or `.btn-start` / `.btn-success` with uppercase labels (e.g., `CREATE EVENT`), while trigger buttons use standard Title Case (e.g., `+ Create Event`). Cancellation uses `.btn-secondary` (`Cancel`).

@@ -44,3 +44,4 @@ All inputs share global CSS design tokens defined in `global.css`:
 - Text Color: `var(--foreground)`
 - Border Radius: `var(--radius-sm)`
 - Padding: `0.75rem`
+- **Text Length Constraints**: Standard text inputs for named entities (e.g., Event Name) enforce a 100-character maximum (`maxLength={100}`) to preserve data integrity and visual alignment.

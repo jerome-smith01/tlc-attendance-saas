@@ -1271,7 +1271,7 @@ button:active, .btn-primary:active, .btn-action:active {
     border-radius: 0;
     background: transparent;
     backdrop-filter: none;
-    align-items: center;
+    align-items: flex-start;
   }
 
   .grid-table-header,
@@ -1303,7 +1303,7 @@ button:active, .btn-primary:active, .btn-action:active {
 
   .grid-table-cell-select {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: flex-start;
     padding-left: 1rem;
     margin-top: 0;
@@ -1350,6 +1350,18 @@ button:active, .btn-primary:active, .btn-action:active {
   align-items: center;
   justify-content: space-between;
   user-select: none;
+}
+
+.column-header-cell.grid-table-header-select {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-left: 1rem;
+}
+
+.column-header-cell.grid-table-header-actions {
+  display: flex;
+  justify-content: flex-start;
 }
 
 /* Column Resizer Handle */

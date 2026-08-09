@@ -17,7 +17,7 @@ export function Events() {
   const { selectedTroopId, selectedTroop, isGlobalAdmin, loadingTroops } = useTroop();
   const { session: authSession } = useAuth();
   const userId = authSession?.user?.id || 'anonymous';
-  const storageKey = `tlc_events_filters_${userId}`;
+  const storageKey = `tlc_table_events_${userId}`;
 
   const [events, setEvents] = useState([]);
   const [usersMap, setUsersMap] = useState({});
@@ -439,11 +439,11 @@ export function Events() {
   const gridTemplateStyle = useMemo(() => {
     if (canManage) {
       return {
-        gridTemplateColumns: `48px ${columnWidths.event_name || 2.5}fr ${columnWidths.event_date || 1.0}fr ${columnWidths.status || 1.0}fr ${columnWidths.synced_by || 1.0}fr ${columnWidths.actions || 1.3}fr`
+        gridTemplateColumns: `48px minmax(0, ${columnWidths.event_name || 2.5}fr) minmax(0, ${columnWidths.event_date || 1.0}fr) minmax(0, ${columnWidths.status || 1.0}fr) minmax(0, ${columnWidths.synced_by || 1.0}fr) minmax(0, ${columnWidths.actions || 1.3}fr)`
       };
     }
     return {
-      gridTemplateColumns: `${columnWidths.event_name || 2.5}fr ${columnWidths.event_date || 1.0}fr ${columnWidths.status || 1.0}fr ${columnWidths.synced_by || 1.0}fr`
+      gridTemplateColumns: `minmax(0, ${columnWidths.event_name || 2.5}fr) minmax(0, ${columnWidths.event_date || 1.0}fr) minmax(0, ${columnWidths.status || 1.0}fr) minmax(0, ${columnWidths.synced_by || 1.0}fr)`
     };
   }, [canManage, columnWidths]);
 
@@ -925,7 +925,7 @@ export function Events() {
             <div style={{ flex: '1', minWidth: '240px', position: 'relative' }}>
               <input
                 type="text"
-                placeholder="Search events (name, date, status, synced by)..."
+                placeholder="Search event details..."
                 value={eventSearch}
                 onChange={e => setEventSearch(e.target.value)}
                 style={{
@@ -1021,7 +1021,7 @@ export function Events() {
 
               {/* Selection Header */}
               {canManage && (
-                <div role="columnheader" className="column-header-cell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', paddingLeft: '1rem' }}>
+                <div role="columnheader" className="column-header-cell grid-table-header-select">
                   <input
                     type="checkbox"
                     checked={isAllSelected}
@@ -1165,7 +1165,7 @@ export function Events() {
 
               {/* Actions Header — admin only */}
               {canManage && (
-                <div role="columnheader" className="column-header-cell">
+                <div role="columnheader" className="column-header-cell grid-table-header-actions">
                   <button
                     type="button"
                     className="column-header-btn"
