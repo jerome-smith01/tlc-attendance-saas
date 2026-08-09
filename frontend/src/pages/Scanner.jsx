@@ -4,7 +4,6 @@ import { Html5Qrcode } from 'html5-qrcode';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { useScanLogic } from '../hooks/useScanLogic';
-import { ThemeToggle } from '../components/ThemeToggle';
 import { useConfirm } from '../components/common/ConfirmContext';
 import { useToast } from '../components/common/ToastContext';
 import { Modal } from '../components/common/Modal';
@@ -223,7 +222,7 @@ export function Scanner() {
             id: s.id,
             roster_id: s.roster_id,
             member: s.roster,
-            time: new Date(s.scan_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+            time: new Date(s.scan_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
             status: 'success',
             message: 'Scanned In'
           });
@@ -540,7 +539,7 @@ export function Scanner() {
                 id: newId,
                 roster_id: rId,
                 member: result.member,
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+                time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
                 status: 'success',
                 message: result.status === 'offline_queued' ? 'Saved Offline' : 'Scanned In'
               };
@@ -572,7 +571,7 @@ export function Scanner() {
         await processPayload(text);
       } catch (err) {
         setAttendance(prev => [
-          { id: 'temp-' + Date.now(), member: null, time: new Date().toLocaleTimeString(), status: 'error', message: 'No QR found in image' },
+          { id: 'temp-' + Date.now(), member: null, time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }), status: 'error', message: 'No QR found in image' },
           ...prev
         ]);
       }
@@ -643,7 +642,7 @@ export function Scanner() {
             return prev;
           }
           return [
-            { id: data[0].id, roster_id: targetRosterId, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }), status: 'success', message: 'Scanned In', member: targetMember },
+            { id: data[0].id, roster_id: targetRosterId, time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }), status: 'success', message: 'Scanned In', member: targetMember },
             ...prev
           ];
         });
@@ -749,7 +748,7 @@ export function Scanner() {
         triggerRowHighlight(data[0].id);
         setAttendance(prev => {
           return [
-            { id: data[0].id, roster_id: targetRosterId, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }), status: 'success', message: 'Scanned In', member: targetMember },
+            { id: data[0].id, roster_id: targetRosterId, time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }), status: 'success', message: 'Scanned In', member: targetMember },
             ...prev
           ];
         });
@@ -931,7 +930,6 @@ export function Scanner() {
         <h2 className="app-title" style={{ fontSize: '1.2rem', margin: 0, flex: 1, wordBreak: 'break-word' }}>
           {session.event_name}
         </h2>
-        <ThemeToggle />
       </div>
 
       {/* Header Card (Scrolls Away) */}
@@ -1000,6 +998,24 @@ export function Scanner() {
           )}
         </div>
 
+        {/* Event Date Row */}
+        <div className="grid-table-cell" role="cell" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '0.2rem 0' }}>
+          <span className="grid-table-label">Event Date</span>
+          <span style={{ color: 'var(--text-secondary)' }}>
+            {session.event_date || (session.created_at ? new Date(session.created_at).toLocaleDateString() : 'N/A')}
+          </span>
+        </div>
+
+        {/* Scanned In Count Row */}
+        <div className="grid-table-cell" role="cell" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '0.2rem 0' }}>
+          <span className="grid-table-label">Scanned In</span>
+          <div>
+            <span className="badge badge-success" style={{ borderRadius: '9999px', padding: '0.15rem 0.6rem' }}>
+              {attendance.length}
+            </span>
+          </div>
+        </div>
+
         {/* Offline Queue Row */}
         {(() => {
           const offlineCount = attendance.filter(s => s.message === 'Saved Offline').length;
@@ -1017,7 +1033,7 @@ export function Scanner() {
                   {offlineCount > 0 ? (
                     <span className="badge badge-pending">{offlineCount}</span>
                   ) : (
-                    <span style={{ color: 'var(--text-secondary)' }}>0</span>
+                    <span className="badge badge-success">0</span>
                   )}
                 </div>
               </div>
@@ -1161,13 +1177,33 @@ export function Scanner() {
       {/* Floating Attendance Section Header */}
       <div style={{ display: 'flex', flexDirection: 'column', background: 'transparent', flexShrink: 0 }}>
         <div className="attendance-section-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div
+            onClick={() => setIsTableVisible(!isTableVisible)}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', userSelect: 'none' }}
+            title={isTableVisible ? "Click to collapse" : "Click to expand"}
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{
+                transform: isTableVisible ? 'rotate(0deg)' : 'rotate(-90deg)',
+                transition: 'transform 0.2s ease',
+                color: 'var(--muted-foreground)'
+              }}
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
             <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>Attendance</h3>
-            <span className="badge badge-success" style={{ borderRadius: '9999px', padding: '0.15rem 0.6rem' }}>{attendance.length}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {isAdminOrLeader && (
-              <label onClick={(e) => e.stopPropagation()} style={{ fontSize: '0.85rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
+              <label onClick={(e) => e.stopPropagation()} style={{ fontSize: '0.85rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', marginRight: '4px' }}>
                 <input
                   type="checkbox"
                   onChange={handleSelectAll}
@@ -1177,29 +1213,6 @@ export function Scanner() {
                 All
               </label>
             )}
-            <button
-              type="button"
-              className="btn-collapse-toggle"
-              onClick={() => setIsTableVisible(!isTableVisible)}
-            >
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                style={{
-                  transform: isTableVisible ? 'rotate(0deg)' : 'rotate(180deg)',
-                  transition: 'transform 0.2s ease'
-                }}
-              >
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-              {isTableVisible ? 'COLLAPSE' : 'EXPAND'}
-            </button>
           </div>
         </div>
 
