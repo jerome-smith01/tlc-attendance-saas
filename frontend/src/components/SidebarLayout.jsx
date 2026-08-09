@@ -30,17 +30,20 @@ export function SidebarLayout() {
     navigate('/login');
   };
 
-  const linkStyle = (path) => ({
-    display: 'block',
-    padding: '0.75rem 1rem',
-    textDecoration: 'none',
-    color: location.pathname === path ? 'var(--color-primary)' : 'var(--text-secondary)',
-    backgroundColor: location.pathname === path ? 'var(--bg-elevated)' : 'transparent',
-    borderRadius: '8px',
-    marginBottom: '0.5rem',
-    fontWeight: location.pathname === path ? '600' : '400',
-    transition: 'all var(--transition-fast)',
-  });
+  const linkStyle = (path) => {
+    const isActive = location.pathname === path || (path !== '/' && location.pathname.startsWith(path + '/'));
+    return {
+      display: 'block',
+      padding: '0.75rem 1rem',
+      textDecoration: 'none',
+      color: isActive ? 'var(--color-primary)' : 'var(--text-secondary)',
+      backgroundColor: isActive ? 'var(--bg-elevated)' : 'transparent',
+      borderRadius: '8px',
+      marginBottom: '0.5rem',
+      fontWeight: isActive ? '600' : '400',
+      transition: 'all var(--transition-fast)',
+    };
+  };
 
   const currentUserRole = selectedTroop?.currentUserRole || '';
 
