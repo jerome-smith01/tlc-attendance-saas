@@ -57,8 +57,8 @@ graph LR
 | `pages/CompleteProfile.jsx` | Post-invite onboarding page. New users set their display name (first name + last initial) and optionally set a password. |
 | `pages/Dashboard.jsx` | Troop overview: active user count, total sessions, unsynced session warnings. |
 | `pages/Roster.jsx` | Full roster management page (wraps `RosterList`). |
-| `pages/Scanner.jsx` | Live camera feed scanner. Includes session selection, scan log, unknown member resolution modal, and admin-only approval actions. |
-| `pages/Sessions.jsx` | Session history with attendee drill-down modal. Displays `synced_by` user names. |
+| `pages/Scanner.jsx` | Live camera feed scanner for a specific event (`/events/:eventId`). Includes scan log, unknown member resolution modal, and admin-only approval actions. |
+| `pages/Events.jsx` | Event history and management table. Clicking an event navigates to its dedicated Scanner page. |
 | `pages/Billing.jsx` | Billing placeholder page (deferred). |
 
 ### Routing
@@ -70,8 +70,8 @@ Uses `HashRouter` for Cloudflare Pages static SPA compatibility (`/#/login`, `/#
 | `/complete-profile` | `CompleteProfile.jsx` | Protected (any authenticated user) |
 | `/dashboard` | `Dashboard.jsx` | Protected |
 | `/roster` | `Roster.jsx` | Protected |
-| `/sessions` | `Sessions.jsx` | Protected |
-| `/scanner` | `Scanner.jsx` | Protected |
+| `/events` | `Events.jsx` | Protected |
+| `/events/:eventId` | `Scanner.jsx` | Protected |
 | `/billing` | `Billing.jsx` | Protected (deferred) |
 | `/*` | — | Redirects to `/login` |
 

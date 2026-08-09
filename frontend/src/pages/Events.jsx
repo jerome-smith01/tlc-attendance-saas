@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useTroop } from '../context/TroopContext';
 import { useAuth } from '../context/AuthContext';
@@ -9,6 +10,7 @@ import { useConfirm } from '../components/common/ConfirmContext';
 import { useToast } from '../components/common/ToastContext';
 
 export function Events() {
+  const navigate = useNavigate();
   const { selectedTroopId, selectedTroop, isGlobalAdmin, loadingTroops } = useTroop();
   const { session: authSession } = useAuth();
   const userId = authSession?.user?.id || 'anonymous';
@@ -178,55 +180,8 @@ export function Events() {
     }
   }
 
-  const handleViewAttendees = async (eventObj) => {
-    setSelectedEventModal(eventObj);
-    setLoadingAttendees(true);
-    setAttendeeSearch('');
-    try {
-      let { data, error } = await supabase
-        .from('scans')
-        .select('id, scan_time, status, roster(id, first_name, last_initial, member_id, tlc_id)')
-        .eq('event_id', eventObj.id)
-        .order('scan_time', { ascending: true });
-
-      // Fallback for pre-migration scans FK
-      if (error && error.message.includes('event_id')) {
-        const res = await supabase
-          .from('scans')
-          .select('id, scan_time, status, roster(id, first_name, last_initial, member_id, tlc_id)')
-          .eq('session_id', eventObj.id)
-          .order('scan_time', { ascending: true });
-        data = res.data;
-        error = res.error;
-      }
-
-      if (!error && data) {
-        const seen = new Set();
-        const uniqueList = [];
-        data.forEach((scan, index) => {
-          const key = scan.roster?.id || scan.id;
-          if (!seen.has(key)) {
-            seen.add(key);
-            uniqueList.push({
-              index: index + 1,
-              id: scan.id,
-              name: scan.roster ? `${scan.roster.first_name} ${scan.roster.last_initial || ''}`.trim() : 'Unknown Member',
-              memberId: scan.roster?.member_id || scan.roster?.tlc_id || '-',
-              time: scan.scan_time ? new Date(scan.scan_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-',
-              status: scan.status
-            });
-          }
-        });
-        setEventAttendees(uniqueList);
-      } else {
-        setEventAttendees([]);
-      }
-    } catch (err) {
-      console.error('Error fetching event attendees:', err);
-      setEventAttendees([]);
-    } finally {
-      setLoadingAttendees(false);
-    }
+  const handleViewAttendees = (eventObj) => {
+    navigate(`/events/${eventObj.id}`);
   };
 
   const handleCreateEvent = async (e) => {
@@ -1755,56 +1710,6 @@ export function Events() {
         </Modal>
       )}
 
-      {/* View Attendees Drill-down Modal */}
-      {selectedEventModal && (
-        <Modal
-          isOpen={!!selectedEventModal}
-          onClose={() => setSelectedEventModal(null)}
-          title={`Attendees: ${selectedEventModal.event_name} (${selectedEventModal.event_date})`}
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-              <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                Total Attendees Scanned: <strong>{eventAttendees.length}</strong>
-              </span>
-              <input
-                type="text"
-                placeholder="Search attendees..."
-                value={attendeeSearch}
-                onChange={e => setAttendeeSearch(e.target.value)}
-                style={{
-                  padding: '0.4rem 0.75rem',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--border-color)',
-                  background: 'var(--bg-secondary)',
-                  color: 'var(--foreground)',
-                  fontSize: '0.85rem'
-                }}
-              />
-            </div>
-
-            {loadingAttendees ? (
-              <p>Loading attendees...</p>
-            ) : (
-              <DataTable
-                columns={attendeeColumns}
-                data={filteredAttendees}
-                storageKey="event_attendees_modal"
-              />
-            )}
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setSelectedEventModal(null)}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
     </div>
   );
 }

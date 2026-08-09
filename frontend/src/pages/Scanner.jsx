@@ -1,21 +1,29 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Html5Qrcode } from 'html5-qrcode';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
-import { EventSelector } from '../components/EventSelector';
 import { useScanLogic } from '../hooks/useScanLogic';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { useConfirm } from '../components/common/ConfirmContext';
 import { useToast } from '../components/common/ToastContext';
 import { Modal } from '../components/common/Modal';
+import { FilterPopover } from '../components/common/FilterPopover';
 
 export function Scanner() {
+  const { eventId } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
+  const userId = user?.id || 'anonymous';
+  const storageKey = `tlc_scanner_filters_${userId}`;
+
   const [troopId, setTroopId] = useState('');
   const [session, setSession] = useState(null);
+  const [loadingEvent, setLoadingEvent] = useState(true);
   const [roster, setRoster] = useState([]);
   const [attendance, setAttendance] = useState([]);
   const [selectedScans, setSelectedScans] = useState(new Set());
+  const [recentlyScannedIds, setRecentlyScannedIds] = useState(new Set());
   const [scannerStatus, setScannerStatus] = useState('Idle');
   const [isScanning, setIsScanning] = useState(false);
   const [progressText, setProgressText] = useState('');
@@ -23,6 +31,65 @@ export function Scanner() {
   const [showWarning, setShowWarning] = useState(false);
   const [currentUserRole, setCurrentUserRole] = useState(null);
   const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
+
+  // Table Filter, Sort & Column Resizing states
+  const [activePopover, setActivePopover] = useState(null);
+  const defaultSort = { key: 'time', direction: 'desc' };
+  const defaultFilters = { name: [], status: [], time: [] };
+  const defaultColumnWidths = useMemo(() => ({
+    name: 2.5,
+    status: 1.0,
+    time: 1.0,
+    actions: 0.8
+  }), []);
+
+  const [sortConfig, setSortConfig] = useState(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.sortConfig) return parsed.sortConfig;
+      }
+    } catch (e) {
+      console.warn('Failed to load saved sort config', e);
+    }
+    return defaultSort;
+  });
+
+  const [columnFilters, setColumnFilters] = useState(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.columnFilters) return { ...defaultFilters, ...parsed.columnFilters };
+      }
+    } catch (e) {
+      console.warn('Failed to load saved column filters', e);
+    }
+    return defaultFilters;
+  });
+
+  const [columnWidths, setColumnWidths] = useState(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.columnWidths) return { ...defaultColumnWidths, ...parsed.columnWidths };
+      }
+    } catch (e) {
+      console.warn('Failed to load saved column widths', e);
+    }
+    return defaultColumnWidths;
+  });
+
+  // Persist table settings
+  useEffect(() => {
+    try {
+      localStorage.setItem(storageKey, JSON.stringify({ sortConfig, columnFilters, columnWidths }));
+    } catch (e) {
+      console.warn('Failed to persist table state', e);
+    }
+  }, [sortConfig, columnFilters, columnWidths, storageKey]);
 
   // Unknown member modal state
   const [unknownPayload, setUnknownPayload] = useState(null);
@@ -41,60 +108,65 @@ export function Scanner() {
   const { addToast } = useToast();
 
   const qrEngineRef = useRef(null);
+  const headerRef = useRef(null);
   const { handleScan } = useScanLogic(troopId, session?.id, user, roster, setRoster);
 
+  // Fetch Event details by eventId
   useEffect(() => {
-    // Load last troop
-    const savedTroop = localStorage.getItem('tlc_last_troop_id');
-    if (savedTroop) {
-      setTroopId(savedTroop);
-      fetchRoster(savedTroop);
-      fetchUserRole(savedTroop);
-    }
-  }, [user]);
-
-  // Restore last session from localStorage on mount
-  useEffect(() => {
-    async function restoreSession() {
-      const savedSessionId = localStorage.getItem('tlc_last_session_id');
-      const savedTroop = localStorage.getItem('tlc_last_troop_id');
-      if (savedSessionId && savedTroop && !session) {
-        let { data, error } = await supabase
-          .from('events')
-          .select('*')
-          .eq('id', savedSessionId)
-          .eq('troop_id', savedTroop)
-          .maybeSingle();
-
-        if (error && (error.code === '42P01' || error.message?.includes('events'))) {
-          const res = await supabase
-            .from('sessions')
-            .select('*')
-            .eq('id', savedSessionId)
-            .eq('troop_id', savedTroop)
-            .maybeSingle();
-          data = res.data;
-          error = res.error;
-        }
-
-        if (!error && data) {
-          setSession(data);
-        } else {
-          // Session no longer exists or RLS blocked it — clear stale reference
-          localStorage.removeItem('tlc_last_session_id');
-        }
+    async function loadEvent() {
+      if (!eventId) {
+        setLoadingEvent(false);
+        return;
       }
+      setLoadingEvent(true);
+      let { data, error } = await supabase
+        .from('events')
+        .select('*')
+        .eq('id', eventId)
+        .maybeSingle();
+
+      if (error && (error.code === '42P01' || error.message?.includes('events'))) {
+        const res = await supabase
+          .from('sessions')
+          .select('*')
+          .eq('id', eventId)
+          .maybeSingle();
+        data = res.data;
+        error = res.error;
+      }
+
+      if (!error && data) {
+        setSession(data);
+        if (data.troop_id) {
+          setTroopId(data.troop_id);
+          fetchRoster(data.troop_id);
+          fetchUserRole(data.troop_id);
+        }
+      } else {
+        addToast({ type: 'error', message: 'Event not found.' });
+        navigate('/events');
+      }
+      setLoadingEvent(false);
     }
-    restoreSession();
-  }, [user]); // re-run once auth is ready
+    loadEvent();
+  }, [eventId, user]);
 
   useEffect(() => {
     if (session) {
-      // Persist session selection so navigation away and back restores it
-      localStorage.setItem('tlc_last_session_id', session.id);
       fetchAttendance();
     }
   }, [session?.id]);
+
+  const triggerRowHighlight = (id) => {
+    setRecentlyScannedIds(prev => new Set(prev).add(id));
+    setTimeout(() => {
+      setRecentlyScannedIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }, 2500);
+  };
 
   async function fetchAttendance() {
     if (!session) return;
@@ -141,18 +213,14 @@ export function Scanner() {
 
   async function fetchUserRole(tId) {
     if (!user) return;
-
-    // Check global admin
     const { data: globalAdmin } = await supabase.from('global_admins').select('id').eq('user_id', user.id).maybeSingle();
     if (globalAdmin) setIsGlobalAdmin(true);
 
-    // Check troop role
     const { data } = await supabase.from('troop_users').select('role').eq('troop_id', tId).eq('user_id', user.id).maybeSingle();
     if (data) setCurrentUserRole(data.role);
   }
 
   useEffect(() => {
-    // Cleanup scanner on unmount
     return () => {
       if (qrEngineRef.current && qrEngineRef.current.getState() === 2) {
         qrEngineRef.current.stop().catch(console.error);
@@ -166,7 +234,7 @@ export function Scanner() {
   }
 
   const handleEndSession = async () => {
-    if (await confirm({ title: 'End Session', message: 'Are you sure you want to end this session? No more scans can be recorded after ending.', isDestructive: true })) {
+    if (await confirm({ title: 'End Event', message: 'Are you sure you want to end this event? No more scans can be recorded after ending.', isDestructive: true })) {
       const now = new Date().toISOString();
       let { error } = await supabase.from('events').update({ ended_at: now }).eq('id', session.id);
       if (error && (error.code === '42P01' || error.message?.includes('events'))) {
@@ -174,11 +242,10 @@ export function Scanner() {
         error = res.error;
       }
       if (error) {
-        addToast({ type: 'error', message: "Failed to end session: " + error.message });
+        addToast({ type: 'error', message: "Failed to end event: " + error.message });
         return;
       }
 
-      // Approve all pending scans so they are visible to the sync extension
       let { error: scansError } = await supabase
         .from('scans')
         .update({ status: 'approved' })
@@ -193,9 +260,9 @@ export function Scanner() {
         scansError = res.error;
       }
       if (scansError) {
-        addToast({ type: 'warning', message: "Session ended, but failed to approve scans: " + scansError.message });
+        addToast({ type: 'warning', message: "Event ended, but failed to approve scans: " + scansError.message });
       } else {
-        addToast({ type: 'success', message: "Session ended and scans approved." });
+        addToast({ type: 'success', message: "Event ended and scans approved." });
       }
 
       setSession({ ...session, ended_at: now });
@@ -204,23 +271,23 @@ export function Scanner() {
   };
 
   const handleReenableSession = async () => {
-    if (await confirm({ title: 'Reenable Session', message: "Are you sure you want to reenable this session?" })) {
+    if (await confirm({ title: 'Reenable Event', message: "Are you sure you want to reenable this event?" })) {
       let { error } = await supabase.from('events').update({ ended_at: null }).eq('id', session.id);
       if (error && (error.code === '42P01' || error.message?.includes('events'))) {
         const res = await supabase.from('sessions').update({ ended_at: null }).eq('id', session.id);
         error = res.error;
       }
       if (error) {
-        addToast({ type: 'error', message: "Failed to reenable session: " + error.message });
+        addToast({ type: 'error', message: "Failed to reenable event: " + error.message });
       } else {
-        addToast({ type: 'success', message: "Session reenabled." });
+        addToast({ type: 'success', message: "Event reenabled." });
         setSession({ ...session, ended_at: null });
       }
     }
   };
 
   const handleResetSyncSession = async () => {
-    if (await confirm({ title: 'Reset Sync Status', message: "Are you sure you want to reset the sync status for this session? This will mark it as not synced so it can be synced again." })) {
+    if (await confirm({ title: 'Reset Sync Status', message: "Are you sure you want to reset the sync status for this event? This will mark it as not synced so it can be synced again." })) {
       let { error } = await supabase
         .from('events')
         .update({ synced_at: null, synced_by: null, purge_after: null })
@@ -246,8 +313,6 @@ export function Scanner() {
     if (!(await confirm({ title: 'Remove Scans', message: `Are you sure you want to remove ${selectedScans.size} scan(s)?`, isDestructive: true }))) return;
 
     const idsToRemove = Array.from(selectedScans);
-
-    // Delete from DB
     const { error } = await supabase
       .from('scans')
       .delete()
@@ -262,6 +327,23 @@ export function Scanner() {
     }
   };
 
+  const handleDeleteSingleScan = async (scanId) => {
+    if (await confirm({ title: 'Remove Scan', message: 'Are you sure you want to remove this scan?', isDestructive: true })) {
+      const { error } = await supabase.from('scans').delete().eq('id', scanId);
+      if (error) {
+        addToast({ type: 'error', message: 'Failed to remove scan: ' + error.message });
+      } else {
+        addToast({ type: 'success', message: 'Scan removed.' });
+        setAttendance(prev => prev.filter(s => s.id !== scanId));
+        setSelectedScans(prev => {
+          const next = new Set(prev);
+          next.delete(scanId);
+          return next;
+        });
+      }
+    }
+  };
+
   const handleToggleSelect = (id) => {
     setSelectedScans(prev => {
       const newSet = new Set(prev);
@@ -273,7 +355,7 @@ export function Scanner() {
 
   const handleSelectAll = (e) => {
     if (e.target.checked) {
-      setSelectedScans(new Set(attendance.filter(s => s.id && !String(s.id).startsWith('temp-')).map(s => s.id)));
+      setSelectedScans(new Set(processedAttendance.filter(s => s.id && !String(s.id).startsWith('temp-')).map(s => s.id)));
     } else {
       setSelectedScans(new Set());
     }
@@ -324,9 +406,7 @@ export function Scanner() {
     return new Promise((resolve) => {
       handleScan(payload, (result) => {
         if (result.status === 'unknown') {
-          // Pause camera if running
           if (qrEngineRef.current?.getState() === 2) qrEngineRef.current.pause(true);
-          // Beep error
           playErrorSound();
           setUnknownPayload(result.payload);
           resolveUnknownRef.current = resolve;
@@ -335,14 +415,12 @@ export function Scanner() {
             playSuccessSound();
             setShowCheckmark(true);
 
-            // Freeze the camera feed
             if (qrEngineRef.current?.getState() === 2) {
               qrEngineRef.current.pause(true);
             }
 
             setTimeout(() => {
               setShowCheckmark(false);
-              // Resume camera if it was paused for this success freeze
               if (qrEngineRef.current?.getState() === 3 && result.status !== 'unknown' && !unknownPayload) {
                 qrEngineRef.current.resume();
               }
@@ -351,7 +429,6 @@ export function Scanner() {
             playWarningSound();
             setShowWarning(true);
 
-            // Freeze the camera feed
             if (qrEngineRef.current?.getState() === 2) {
               qrEngineRef.current.pause(true);
             }
@@ -366,15 +443,16 @@ export function Scanner() {
             playWarningSound();
           }
 
-          // Add to attendance list only if it's a valid scan and not already scanned in (no duplicate rows)
           if ((result.status === 'success' || result.status === 'offline_queued') && result.member) {
             setAttendance(prev => {
               const rId = result.member.id;
               if (prev.some(item => item.roster_id === rId || item.member?.id === rId)) {
                 return prev;
               }
+              const newId = result.scanRecord ? result.scanRecord.id : 'temp-' + Date.now();
+              triggerRowHighlight(newId);
               const newEntry = {
-                id: result.scanRecord ? result.scanRecord.id : 'temp-' + Date.now(),
+                id: newId,
                 roster_id: rId,
                 member: result.member,
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
@@ -385,7 +463,7 @@ export function Scanner() {
             });
           }
 
-          resolve(); // Resolve immediately for known members
+          resolve();
         }
       });
     });
@@ -395,7 +473,6 @@ export function Scanner() {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    // Stop live camera if running
     await stopScanner();
 
     if (!qrEngineRef.current) {
@@ -406,12 +483,9 @@ export function Scanner() {
     for (let i = 0; i < files.length; i++) {
       setProgressText(`Processing ${i + 1} of ${files.length}...`);
       try {
-        // Pass 1: Fast scan
         const text = await qrEngineRef.current.scanFile(files[i], false);
         await processPayload(text);
       } catch (err) {
-        // Pass 2 logic would go here if we implement custom canvas resize 
-        // For MVP frontend we will attempt standard scanFile
         setAttendance(prev => [
           { id: 'temp-' + Date.now(), member: null, time: new Date().toLocaleTimeString(), status: 'error', message: 'No QR found in image' },
           ...prev
@@ -429,12 +503,10 @@ export function Scanner() {
     let targetRosterId = selectedRosterId;
     let targetMember = roster.find(m => m.id === selectedRosterId);
 
-    // If manual name typed, create new roster entry
     if ((manualFirstName.trim() || manualLastInitial.trim()) && !selectedRosterId) {
       let fName = manualFirstName.trim();
       let lInitial = manualLastInitial.trim();
 
-      // If user typed space-separated full name into first name field and left last initial blank
       if (fName.includes(' ') && !lInitial) {
         const parts = fName.split(' ');
         fName = parts[0];
@@ -464,7 +536,6 @@ export function Scanner() {
         setRoster(prev => [...prev, data]);
       }
     } else if (selectedRosterId) {
-      // Update existing roster with tlc_id and member_id if available
       const updateData = { tlc_id: unknownPayload.tlcId };
       if (unknownPayload.memberId && unknownPayload.memberId !== unknownPayload.tlcId) {
         updateData.member_id = unknownPayload.memberId;
@@ -474,7 +545,6 @@ export function Scanner() {
       setRoster(prev => prev.map(m => m.id === selectedRosterId ? { ...m, ...updateData } : m));
     }
 
-    // Now insert the scan
     if (targetRosterId) {
       let { data, error } = await supabase.from('scans').insert([{ event_id: session.id, roster_id: targetRosterId, status: 'pending', scanned_by: user.id }]).select();
       if (error && (error.code === 'PGRST204' || error.message?.includes('event_id') || error.message?.includes('session_id'))) {
@@ -482,6 +552,7 @@ export function Scanner() {
         data = res.data;
       }
       if (data) {
+        triggerRowHighlight(data[0].id);
         setAttendance(prev => {
           if (prev.some(item => item.roster_id === targetRosterId || item.member?.id === targetRosterId)) {
             return prev;
@@ -494,12 +565,11 @@ export function Scanner() {
       }
     }
 
-    // Resume
     setUnknownPayload(null);
     setManualFirstName('');
     setManualLastInitial('');
     setSelectedRosterId('');
-    if (qrEngineRef.current?.getState() === 3) { // 3 = PAUSED
+    if (qrEngineRef.current?.getState() === 3) {
       qrEngineRef.current.resume();
     }
     if (resolveUnknownRef.current) {
@@ -508,14 +578,12 @@ export function Scanner() {
     }
   };
 
-  // Audio helpers
   const playSuccessSound = () => {
     try {
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       if (!AudioContext) return;
       const ctx = new AudioContext();
 
-      // Synthetic "camera shutter / click" sound
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
 
@@ -535,7 +603,7 @@ export function Scanner() {
       console.warn('Audio play failed', e);
     }
   };
-  const playErrorSound = () => { /* Add buzzer audio logic here */ };
+  const playErrorSound = () => {};
   const playWarningSound = () => {
     try {
       const audio = new Audio('/uh-oh.mp3');
@@ -543,20 +611,6 @@ export function Scanner() {
     } catch (e) {
       console.warn('Audio play failed', e);
     }
-  };
-
-  const exportOffline = () => {
-    const offline = localStorage.getItem('tlc_offline_scans');
-    if (!offline) return addToast({ type: 'warning', message: 'No offline scans to export.' });
-
-    // Create CSV blob and download
-    const blob = new Blob([offline], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `offline-scans-${new Date().toISOString()}.json`;
-    a.click();
-    addToast({ type: 'success', message: 'Exported offline scans.' });
   };
 
   const handleManualEntry = async (e) => {
@@ -607,6 +661,7 @@ export function Scanner() {
         data = res.data;
       }
       if (data) {
+        triggerRowHighlight(data[0].id);
         setAttendance(prev => {
           return [
             { id: data[0].id, roster_id: targetRosterId, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }), status: 'success', message: 'Scanned In', member: targetMember },
@@ -626,12 +681,148 @@ export function Scanner() {
   const membersWithoutIds = roster.filter(m => !m.member_id);
   const isAdminOrLeader = isGlobalAdmin || currentUserRole === 'troop_admin' || currentUserRole === 'billing_admin';
 
-  if (!troopId) {
+  // Grid Table Resizing Handle Drag Handler
+  const handleStartResize = (e, leftCol, rightCol) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!headerRef.current) return;
+
+    const containerRect = headerRef.current.getBoundingClientRect();
+    const startX = e.clientX;
+    const startLeftFr = columnWidths[leftCol] ?? defaultColumnWidths[leftCol];
+    const startRightFr = columnWidths[rightCol] ?? defaultColumnWidths[rightCol];
+
+    const activeCols = ['name', 'status', 'time', 'actions'];
+    const totalFr = activeCols.reduce((sum, col) => sum + (columnWidths[col] ?? defaultColumnWidths[col]), 0);
+    const availWidth = isAdminOrLeader ? Math.max(100, containerRect.width - 48) : containerRect.width;
+
+    const handleMouseMove = (moveEv) => {
+      const deltaX = moveEv.clientX - startX;
+      const deltaFr = (deltaX / availWidth) * totalFr;
+
+      const minFr = 0.4;
+      let newLeftFr = startLeftFr + deltaFr;
+      let newRightFr = startRightFr - deltaFr;
+
+      if (newLeftFr < minFr) {
+        newLeftFr = minFr;
+        newRightFr = startLeftFr + startRightFr - minFr;
+      } else if (newRightFr < minFr) {
+        newRightFr = minFr;
+        newLeftFr = startLeftFr + startRightFr - minFr;
+      }
+
+      setColumnWidths(prev => ({
+        ...prev,
+        [leftCol]: Number(newLeftFr.toFixed(2)),
+        [rightCol]: Number(newRightFr.toFixed(2))
+      }));
+    };
+
+    const handleMouseUp = () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const gridTemplateStyle = useMemo(() => {
+    if (isAdminOrLeader) {
+      return {
+        gridTemplateColumns: `48px minmax(0, ${columnWidths.name || 2.5}fr) minmax(0, ${columnWidths.status || 1.0}fr) minmax(0, ${columnWidths.time || 1.0}fr) minmax(0, ${columnWidths.actions || 0.8}fr)`
+      };
+    }
+    return {
+      gridTemplateColumns: `minmax(0, ${columnWidths.name || 2.5}fr) minmax(0, ${columnWidths.status || 1.0}fr) minmax(0, ${columnWidths.time || 1.0}fr) minmax(0, ${columnWidths.actions || 0.8}fr)`
+    };
+  }, [isAdminOrLeader, columnWidths]);
+
+  // Dynamic Options & Filtering for Attendance Table
+  const uniqueMemberNames = useMemo(() => {
+    const names = attendance.map(a => a.member ? `${a.member.first_name} ${a.member.last_initial}`.trim() : 'Unknown').filter(Boolean);
+    return [...new Set(names)].sort();
+  }, [attendance]);
+
+  const uniqueStatuses = useMemo(() => {
+    const statuses = attendance.map(a => a.message || 'Scanned In').filter(Boolean);
+    return [...new Set(statuses)].sort();
+  }, [attendance]);
+
+  const uniqueTimes = useMemo(() => {
+    const times = attendance.map(a => a.time).filter(Boolean);
+    return [...new Set(times)].sort((a, b) => b.localeCompare(a));
+  }, [attendance]);
+
+  const processedAttendance = useMemo(() => {
+    let result = [...attendance];
+
+    // Column Filters
+    if (columnFilters.name?.length > 0) {
+      result = result.filter(a => {
+        const name = a.member ? `${a.member.first_name} ${a.member.last_initial}`.trim() : 'Unknown';
+        return columnFilters.name.includes(name);
+      });
+    }
+
+    if (columnFilters.status?.length > 0) {
+      result = result.filter(a => columnFilters.status.includes(a.message || 'Scanned In'));
+    }
+
+    if (columnFilters.time?.length > 0) {
+      result = result.filter(a => columnFilters.time.includes(a.time));
+    }
+
+    // Sorting
+    if (sortConfig.key) {
+      result.sort((a, b) => {
+        let valA = '', valB = '';
+        if (sortConfig.key === 'name') {
+          valA = a.member ? `${a.member.first_name} ${a.member.last_initial}`.trim() : 'Unknown';
+          valB = b.member ? `${b.member.first_name} ${b.member.last_initial}`.trim() : 'Unknown';
+        } else if (sortConfig.key === 'status') {
+          valA = a.message || '';
+          valB = b.message || '';
+        } else if (sortConfig.key === 'time') {
+          valA = a.time || '';
+          valB = b.time || '';
+        }
+
+        valA = String(valA).toLowerCase();
+        valB = String(valB).toLowerCase();
+
+        if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return result;
+  }, [attendance, columnFilters, sortConfig]);
+
+  if (loadingEvent) {
     return (
       <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div className="glass-card scan-empty-state">
-          <h2>No Troop Selected</h2>
-          <p>Please select a troop in the Dashboard first.</p>
+          <h2>Loading Event...</h2>
+        </div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="glass-card scan-empty-state">
+          <h2>Event Not Found</h2>
+          <p style={{ marginBottom: '1rem' }}>The requested event could not be found.</p>
+          <Link to="/events" className="btn btn-primary">&larr; Back to Events</Link>
         </div>
       </div>
     );
@@ -639,200 +830,357 @@ export function Scanner() {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', flex: 1 }}>
-      {!session ? (
-        <div style={{ padding: 'var(--spacing-lg)', maxWidth: '800px', margin: '0 auto', width: '100%' }} className="glass-card">
-          <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-            <h1 className="app-title" style={{ margin: 0 }}>Attendance Scanner</h1>
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-              <ThemeToggle />
-              {isAdminOrLeader && (
-                <a href="#/dashboard" className="btn btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}>&larr; Back to Dashboard</a>
-              )}
-            </div>
-          </header>
-          <EventSelector troopId={troopId} onEventSelect={setSession} />
+      {/* Top Status Bar */}
+      <div className="glass-card" style={{ padding: 'var(--spacing-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 10 }}>
+        <div>
+          <h2 className="app-title" style={{ fontSize: '1.2rem', margin: 0 }}>{session.event_name}</h2>
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+            <span className={`badge ${session.ended_at ? 'badge-error' : 'badge-success'}`}>
+              {session.ended_at ? 'Ended' : 'Active'}
+            </span>
+            <span className={`badge ${session.synced_at ? 'badge-neutral' : 'badge-warning'}`}>
+              {session.synced_at ? 'Synced' : 'Unsynced'}
+            </span>
+          </div>
         </div>
-      ) : (
-        <>
-          {/* Top Status Bar */}
-          <div className="glass-card" style={{ padding: 'var(--spacing-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 10 }}>
-            <div>
-              <h2 className="app-title" style={{ fontSize: '1.2rem', margin: 0 }}>{session.event_name}</h2>
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
-                <span className={`badge ${session.ended_at ? 'badge-error' : 'badge-success'}`}>
-                  {session.ended_at ? 'Ended' : 'Active'}
-                </span>
-                <span className={`badge ${session.synced_at ? 'badge-neutral' : 'badge-warning'}`}>
-                  {session.synced_at ? 'Synced' : 'Unsynced'}
-                </span>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <span className="badge badge-pending" title="Offline Queue">{attendance.filter(s => s.message === 'Saved Offline').length}</span>
-              {isAdminOrLeader && !session.ended_at && (
-                <button onClick={handleEndSession} className="btn btn-close" style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}>
-                  Close Event
-                </button>
-              )}
-              <button onClick={() => setSession(null)} className="btn btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}>
-                Change
-              </button>
-            </div>
-          </div>
-
-          {/* Camera Viewfinder (Top Half) */}
-          <div className="scanner-viewfinder" style={{ flex: isTableVisible ? '0 0 45%' : '1', minHeight: 0 }}>
-            {!session.ended_at ? (
-              <>
-                <div id="qr-reader" style={{ width: '100%', maxWidth: '500px', margin: '0 auto' }}></div>
-                {showCheckmark && (
-                  <div className="scan-overlay scan-overlay--success">
-                    <div style={{ backgroundColor: 'var(--bg-secondary)', borderRadius: '50%', padding: '1rem', display: 'flex', boxShadow: 'var(--glass-shadow)' }}>
-                      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                      </svg>
-                    </div>
-                  </div>
-                )}
-                {showWarning && (
-                  <div className="scan-overlay scan-overlay--warning">
-                    <div style={{ backgroundColor: 'var(--bg-secondary)', borderRadius: '50%', padding: '1rem', display: 'flex', boxShadow: 'var(--glass-shadow)' }}>
-                      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--color-warning)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="12" y1="8" x2="12" y2="12"></line>
-                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                      </svg>
-                    </div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--foreground)' }}>
-                <h2>Event Closed</h2>
-                <p>No further scans can be recorded.</p>
-                {isAdminOrLeader && (
-                  session.synced_at ? (
-                    <button onClick={handleResetSyncSession} className="btn btn-reset-sync" style={{ marginTop: 'var(--spacing-md)' }}>Reset Sync</button>
-                  ) : (
-                    <button onClick={handleReenableSession} className="btn btn-reopen" style={{ marginTop: 'var(--spacing-md)' }}>Reopen Event</button>
-                  )
-                )}
-              </div>
-            )}
-          </div>
-          {/* Action Bar — sits between viewfinder and the Recent Scans panel */}
-          {!session.ended_at && (
-            <div className="scanner-action-bar" style={{ gridTemplateColumns: '1fr 1fr 1fr', flexShrink: 0 }}>
-              <button
-                onClick={isScanning ? stopScanner : startScanner}
-                className={`btn ${isScanning ? 'btn-destructive' : 'btn-start'}`}
-                style={{ padding: 'var(--spacing-lg) var(--spacing-md)', fontSize: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem' }}
-              >
-                {isScanning ? '⏹ Stop Scan' : '📷 Start Scan'}
-              </button>
-
-              <div style={{ position: 'relative', overflow: 'hidden', display: 'flex' }}>
-                <button className="btn btn-secondary" style={{ width: '100%', padding: 'var(--spacing-lg) var(--spacing-md)', fontSize: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem' }}>
-                  📁 Load Photos
-                </button>
-                <input type="file" multiple accept="image/*" onChange={handleBulkPhotos} style={{ position: 'absolute', top: 0, left: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }} />
-              </div>
-              <button
-                className="btn btn-secondary"
-                onClick={() => setIsManualEntryOpen(true)}
-                style={{ padding: 'var(--spacing-lg) var(--spacing-md)', fontSize: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem' }}
-              >
-                ✏️ Manual Entry
-              </button>
-            </div>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <span className="badge badge-pending" title="Offline Queue">{attendance.filter(s => s.message === 'Saved Offline').length}</span>
+          {isAdminOrLeader && !session.ended_at && (
+            <button onClick={handleEndSession} className="btn btn-close" style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}>
+              Close Event
+            </button>
           )}
+          <Link to="/events" className="btn btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', textDecoration: 'none' }}>
+            &larr; Events
+          </Link>
+        </div>
+      </div>
 
-          {/* Inline Table & Collapsible Panel */}
-          <div style={{ flex: isTableVisible ? 1 : 'none', display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)', transition: 'flex 0.3s cubic-bezier(0.4, 0, 0.2, 1)', minHeight: 0, flexShrink: 0 }}>
-
-            {/* Interactive Header to Toggle Table */}
-            <div
-              className="scanner-panel-header glass-card"
-              onClick={() => setIsTableVisible(!isTableVisible)}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h3 style={{ margin: 0, fontSize: '1rem' }}>Attendance</h3>
-                <span className="badge badge-success">{attendance.length}</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {isAdminOrLeader && (
-                  <label onClick={(e) => e.stopPropagation()} style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
-                    <input type="checkbox" onChange={handleSelectAll} checked={attendance.length > 0 && selectedScans.size === attendance.filter(s => s.id && !String(s.id).startsWith('temp-')).length} />
-                    All
-                  </label>
-                )}
-                <button className="btn" style={{ background: 'transparent', padding: '4px 8px' }}>
-                  {isTableVisible ? '⌄ Collapse' : '⌃ Expand'}
-                </button>
-              </div>
-            </div>
-
-            {/* Scrollable list inside table - Animated Wrapper */}
-            <div style={{
-              display: 'grid',
-              gridTemplateRows: isTableVisible ? '1fr' : '0fr',
-              transition: 'grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              flex: isTableVisible ? 1 : 'none',
-              minHeight: 0
-            }}>
-              <div style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                <div style={{ flex: 1, overflowY: 'auto', padding: '0 var(--spacing-md)' }}>
-                  {attendance.length === 0 ? (
-                    <div className="glass-card scan-empty-state" style={{ marginTop: 'var(--spacing-md)' }}>
-                      <p>No people scanned in yet.</p>
-                    </div>
-                  ) : (
-                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', marginTop: '1rem' }}>
-                      <tbody>
-                        {attendance.map((scan) => (
-                          <tr key={scan.id} id={`scan-row-${scan.id}`} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                            {(isGlobalAdmin || currentUserRole === 'troop_admin' || currentUserRole === 'billing_admin') && (
-                              <td style={{ padding: '0.75rem', width: '40px' }}>
-                                {scan.id && !String(scan.id).startsWith('temp-') && (
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedScans.has(scan.id)}
-                                    onChange={() => handleToggleSelect(scan.id)}
-                                  />
-                                )}
-                              </td>
-                            )}
-                            <td style={{ padding: '0.75rem' }}>
-                              <strong style={{ color: 'var(--text-primary)' }}>{scan.member ? `${scan.member.first_name} ${scan.member.last_initial}` : 'Unknown'}</strong>
-                            </td>
-                            <td style={{ padding: '0.75rem' }}>
-                              <span className={`badge badge-${scan.status === 'success' ? 'success' : scan.status === 'duplicate' ? 'warning' : 'error'}`}>
-                                {scan.message}
-                              </span>
-                            </td>
-                            <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{scan.time}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
+      {/* Camera Viewfinder (Top Half) */}
+      <div className="scanner-viewfinder" style={{ flex: isTableVisible ? '0 0 45%' : '1', minHeight: 0 }}>
+        {!session.ended_at ? (
+          <>
+            <div id="qr-reader" style={{ width: '100%', maxWidth: '500px', margin: '0 auto' }}></div>
+            {showCheckmark && (
+              <div className="scan-overlay scan-overlay--success">
+                <div style={{ backgroundColor: 'var(--bg-secondary)', borderRadius: '50%', padding: '1rem', display: 'flex', boxShadow: 'var(--glass-shadow)' }}>
+                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
                 </div>
               </div>
-            </div>
-
-            {/* Selected items actions */}
-            {isAdminOrLeader && selectedScans.size > 0 && (
-              <div style={{ padding: '0.5rem var(--spacing-md)', background: 'color-mix(in srgb, var(--color-error) 15%, transparent)', borderTop: '1px solid color-mix(in srgb, var(--color-error) 30%, transparent)', color: 'var(--color-error)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-                <span>{selectedScans.size} selected</span>
-                <button onClick={handleBulkRemove} className="btn btn-destructive" style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem' }}>
-                  Remove
-                </button>
+            )}
+            {showWarning && (
+              <div className="scan-overlay scan-overlay--warning">
+                <div style={{ backgroundColor: 'var(--bg-secondary)', borderRadius: '50%', padding: '1rem', display: 'flex', boxShadow: 'var(--glass-shadow)' }}>
+                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--color-warning)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                  </svg>
+                </div>
               </div>
             )}
+          </>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--foreground)' }}>
+            <h2>Event Closed</h2>
+            <p>No further scans can be recorded.</p>
+            {isAdminOrLeader && (
+              session.synced_at ? (
+                <button onClick={handleResetSyncSession} className="btn btn-reset-sync" style={{ marginTop: 'var(--spacing-md)' }}>Reset Sync</button>
+              ) : (
+                <button onClick={handleReenableSession} className="btn btn-reopen" style={{ marginTop: 'var(--spacing-md)' }}>Reopen Event</button>
+              )
+            )}
           </div>
-        </>
+        )}
+      </div>
+
+      {/* Action Bar */}
+      {!session.ended_at && (
+        <div className="scanner-action-bar" style={{ gridTemplateColumns: '1fr 1fr 1fr', flexShrink: 0 }}>
+          <button
+            onClick={isScanning ? stopScanner : startScanner}
+            className={`btn ${isScanning ? 'btn-destructive' : 'btn-start'}`}
+            style={{ padding: 'var(--spacing-lg) var(--spacing-md)', fontSize: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem' }}
+          >
+            {isScanning ? '⏹ Stop Scan' : '📷 Start Scan'}
+          </button>
+
+          <div style={{ position: 'relative', overflow: 'hidden', display: 'flex' }}>
+            <button className="btn btn-secondary" style={{ width: '100%', padding: 'var(--spacing-lg) var(--spacing-md)', fontSize: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem' }}>
+              📁 Load Photos
+            </button>
+            <input type="file" multiple accept="image/*" onChange={handleBulkPhotos} style={{ position: 'absolute', top: 0, left: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }} />
+          </div>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setIsManualEntryOpen(true)}
+            style={{ padding: 'var(--spacing-lg) var(--spacing-md)', fontSize: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem' }}
+          >
+            ✏️ Manual Entry
+          </button>
+        </div>
       )}
 
-      {/* Unknown Member Modal using our new common Modal */}
+      {/* Inline Table & Collapsible Panel */}
+      <div style={{ flex: isTableVisible ? 1 : 'none', display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)', transition: 'flex 0.3s cubic-bezier(0.4, 0, 0.2, 1)', minHeight: 0, flexShrink: 0 }}>
+
+        {/* Interactive Header to Toggle Table */}
+        <div
+          className="scanner-panel-header glass-card"
+          onClick={() => setIsTableVisible(!isTableVisible)}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h3 style={{ margin: 0, fontSize: '1rem' }}>Attendance</h3>
+            <span className="badge badge-success">{attendance.length}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {isAdminOrLeader && (
+              <label onClick={(e) => e.stopPropagation()} style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  onChange={handleSelectAll}
+                  checked={processedAttendance.length > 0 && processedAttendance.every(s => selectedScans.has(s.id))}
+                />
+                All
+              </label>
+            )}
+            <button className="btn" style={{ background: 'transparent', padding: '4px 8px' }}>
+              {isTableVisible ? '⌄ Collapse' : '⌃ Expand'}
+            </button>
+          </div>
+        </div>
+
+        {/* Scrollable list inside table - Pattern 07 Responsive Grid Table */}
+        <div style={{
+          display: 'grid',
+          gridTemplateRows: isTableVisible ? '1fr' : '0fr',
+          transition: 'grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          flex: isTableVisible ? 1 : 'none',
+          minHeight: 0
+        }}>
+          <div style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '0 var(--spacing-md)' }}>
+              {attendance.length === 0 ? (
+                <div className="glass-card scan-empty-state" style={{ marginTop: 'var(--spacing-md)' }}>
+                  <p>No people scanned in yet.</p>
+                </div>
+              ) : (
+                <div className="grid-table-container">
+                  {/* Table Header */}
+                  <div
+                    ref={headerRef}
+                    className={`grid-table-header ${!isAdminOrLeader ? 'no-manage' : ''}`}
+                    style={gridTemplateStyle}
+                    role="row"
+                  >
+                    {isAdminOrLeader && (
+                      <div role="columnheader" className="grid-table-cell-select" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', paddingLeft: '1rem', width: '48px' }}>
+                        <input
+                          type="checkbox"
+                          checked={processedAttendance.length > 0 && processedAttendance.every(s => selectedScans.has(s.id))}
+                          ref={el => {
+                            if (el) {
+                              const someSelected = processedAttendance.some(s => selectedScans.has(s.id));
+                              const allSelected = processedAttendance.length > 0 && processedAttendance.every(s => selectedScans.has(s.id));
+                              el.indeterminate = someSelected && !allSelected;
+                            }
+                          }}
+                          onChange={handleSelectAll}
+                          title="Select all"
+                          style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                        />
+                      </div>
+                    )}
+
+                    {/* Member Name Header */}
+                    <div role="columnheader" className="column-header-cell">
+                      <button
+                        type="button"
+                        className="column-header-btn"
+                        onClick={() => setActivePopover(activePopover === 'name' ? null : 'name')}
+                      >
+                        Member Name
+                        {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? ' ↑' : ' ↓')}
+                        {columnFilters.name?.length > 0 && ' 🌪️'}
+                      </button>
+                      {activePopover === 'name' && (
+                        <FilterPopover
+                          isOpen={true}
+                          title="Member Name"
+                          type="multiselect"
+                          options={uniqueMemberNames.map(n => ({ label: n, value: n }))}
+                          value={columnFilters.name || []}
+                          onChange={(val) => setColumnFilters(prev => ({ ...prev, name: val }))}
+                          onClose={() => setActivePopover(null)}
+                          sortConfig={sortConfig}
+                          columnKey="name"
+                          onSort={(dir) => setSortConfig({ key: 'name', direction: dir })}
+                          sortAscLabel="Sort A to Z"
+                          sortDescLabel="Sort Z to A"
+                        />
+                      )}
+                      <div
+                        className="column-resizer"
+                        onMouseDown={(e) => handleStartResize(e, 'name', 'status')}
+                        title="Drag to resize column"
+                      />
+                    </div>
+
+                    {/* Status Header */}
+                    <div role="columnheader" className="column-header-cell">
+                      <button
+                        type="button"
+                        className="column-header-btn"
+                        onClick={() => setActivePopover(activePopover === 'status' ? null : 'status')}
+                      >
+                        Status
+                        {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? ' ↑' : ' ↓')}
+                        {columnFilters.status?.length > 0 && ' 🌪️'}
+                      </button>
+                      {activePopover === 'status' && (
+                        <FilterPopover
+                          isOpen={true}
+                          title="Status"
+                          type="multiselect"
+                          options={uniqueStatuses.map(s => ({ label: s, value: s }))}
+                          value={columnFilters.status || []}
+                          onChange={(val) => setColumnFilters(prev => ({ ...prev, status: val }))}
+                          onClose={() => setActivePopover(null)}
+                          sortConfig={sortConfig}
+                          columnKey="status"
+                          onSort={(dir) => setSortConfig({ key: 'status', direction: dir })}
+                        />
+                      )}
+                      <div
+                        className="column-resizer"
+                        onMouseDown={(e) => handleStartResize(e, 'status', 'time')}
+                        title="Drag to resize column"
+                      />
+                    </div>
+
+                    {/* Time Header */}
+                    <div role="columnheader" className="column-header-cell">
+                      <button
+                        type="button"
+                        className="column-header-btn"
+                        onClick={() => setActivePopover(activePopover === 'time' ? null : 'time')}
+                      >
+                        Scan Time
+                        {sortConfig.key === 'time' && (sortConfig.direction === 'asc' ? ' ↑' : ' ↓')}
+                        {columnFilters.time?.length > 0 && ' 🌪️'}
+                      </button>
+                      {activePopover === 'time' && (
+                        <FilterPopover
+                          isOpen={true}
+                          title="Scan Time"
+                          type="multiselect"
+                          options={uniqueTimes.map(t => ({ label: t, value: t }))}
+                          value={columnFilters.time || []}
+                          onChange={(val) => setColumnFilters(prev => ({ ...prev, time: val }))}
+                          onClose={() => setActivePopover(null)}
+                          sortConfig={sortConfig}
+                          columnKey="time"
+                          onSort={(dir) => setSortConfig({ key: 'time', direction: dir })}
+                          sortAscLabel="Sort Newest to Oldest"
+                          sortDescLabel="Sort Oldest to Newest"
+                        />
+                      )}
+                      <div
+                        className="column-resizer"
+                        onMouseDown={(e) => handleStartResize(e, 'time', 'actions')}
+                        title="Drag to resize column"
+                      />
+                    </div>
+
+                    {/* Actions Header */}
+                    <div role="columnheader" className="column-header-cell" style={{ justifyContent: 'flex-start' }}>
+                      <span>Actions</span>
+                    </div>
+                  </div>
+
+                  {/* Grid Table Rows */}
+                  {processedAttendance.map((scan) => {
+                    const isNew = recentlyScannedIds.has(scan.id);
+                    const memberName = scan.member ? `${scan.member.first_name} ${scan.member.last_initial}`.trim() : 'Unknown';
+
+                    return (
+                      <div
+                        key={scan.id}
+                        id={`scan-row-${scan.id}`}
+                        className={`grid-table-row ${!isAdminOrLeader ? 'no-manage' : ''} ${isNew ? 'newly-scanned' : ''}`}
+                        style={gridTemplateStyle}
+                        role="row"
+                      >
+                        <div className="grid-table-card-header">
+                          {isAdminOrLeader && (
+                            <div className="grid-table-cell grid-table-cell-select" role="cell">
+                              {scan.id && !String(scan.id).startsWith('temp-') && (
+                                <input
+                                  type="checkbox"
+                                  checked={selectedScans.has(scan.id)}
+                                  onChange={() => handleToggleSelect(scan.id)}
+                                  style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+                                />
+                              )}
+                            </div>
+                          )}
+
+                          <div className="grid-table-cell grid-table-cell-name" role="cell">
+                            <strong style={{ color: 'var(--text-primary)' }}>{memberName}</strong>
+                          </div>
+                        </div>
+
+                        <div className="grid-table-cell" role="cell">
+                          <span className="grid-table-label">Status</span>
+                          <span className={`badge badge-${scan.status === 'success' ? 'success' : scan.status === 'duplicate' ? 'warning' : 'error'}`}>
+                            {scan.message || 'Scanned In'}
+                          </span>
+                        </div>
+
+                        <div className="grid-table-cell" role="cell">
+                          <span className="grid-table-label">Scan Time</span>
+                          <span style={{ color: 'var(--text-secondary)' }}>{scan.time}</span>
+                        </div>
+
+                        <div className="grid-table-cell" role="cell" style={{ justifyContent: 'flex-start' }}>
+                          <span className="grid-table-label">Actions</span>
+                          {isAdminOrLeader && scan.id && !String(scan.id).startsWith('temp-') && (
+                            <button
+                              type="button"
+                              className="btn-icon-action btn-icon-destructive"
+                              onClick={() => handleDeleteSingleScan(scan.id)}
+                              title="Remove scan"
+                            >
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Selected items actions bar */}
+        {isAdminOrLeader && selectedScans.size > 0 && (
+          <div style={{ padding: '0.5rem var(--spacing-md)', background: 'color-mix(in srgb, var(--color-error) 15%, transparent)', borderTop: '1px solid color-mix(in srgb, var(--color-error) 30%, transparent)', color: 'var(--color-error)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+            <span>{selectedScans.size} scan(s) selected</span>
+            <button onClick={handleBulkRemove} className="btn btn-destructive" style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem' }}>
+              Remove
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Unknown Member Modal */}
       <Modal
         isOpen={!!unknownPayload}
         onClose={() => {
@@ -871,7 +1219,6 @@ export function Scanner() {
               )}
               <form onSubmit={handleResolveUnknown}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
-                  {/* Left: Existing members selection list */}
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
                       Select Existing Member (no ID):
@@ -934,7 +1281,6 @@ export function Scanner() {
                     </div>
                   </div>
 
-                  {/* Right: Add new member inputs */}
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
                       Or Add New Member:
@@ -1021,41 +1367,41 @@ export function Scanner() {
                     })
                     .map(m => {
                       const isSelected = manualEntryRosterId === m.id;
-                    return (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => {
-                          if (isSelected) {
-                            setManualEntryRosterId('');
-                          } else {
-                            setManualEntryRosterId(m.id);
-                            setManualEntryFirstName('');
-                            setManualEntryLastInitial('');
-                          }
-                        }}
-                        style={{
-                          padding: '0.6rem 0.8rem',
-                          textAlign: 'left',
-                          backgroundColor: isSelected ? 'var(--color-primary)' : 'transparent',
-                          color: isSelected ? 'var(--bg-primary)' : 'inherit',
-                          border: 'none',
-                          borderBottom: '1px solid var(--border-color)',
-                          cursor: 'pointer',
-                          fontSize: '0.95rem',
-                          fontWeight: isSelected ? 600 : 400,
-                          transition: 'background-color 0.15s ease',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          flexShrink: 0
-                        }}
-                      >
-                        <span>{m.first_name} {m.last_initial}</span>
-                        {isSelected && <span style={{ marginLeft: 'auto', fontSize: '0.85rem' }}>✓</span>}
-                      </button>
-                    );
-                  })
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => {
+                            if (isSelected) {
+                              setManualEntryRosterId('');
+                            } else {
+                              setManualEntryRosterId(m.id);
+                              setManualEntryFirstName('');
+                              setManualEntryLastInitial('');
+                            }
+                          }}
+                          style={{
+                            padding: '0.6rem 0.8rem',
+                            textAlign: 'left',
+                            backgroundColor: isSelected ? 'var(--color-primary)' : 'transparent',
+                            color: isSelected ? 'var(--bg-primary)' : 'inherit',
+                            border: 'none',
+                            borderBottom: '1px solid var(--border-color)',
+                            cursor: 'pointer',
+                            fontSize: '0.95rem',
+                            fontWeight: isSelected ? 600 : 400,
+                            transition: 'background-color 0.15s ease',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            flexShrink: 0
+                          }}
+                        >
+                          <span>{m.first_name} {m.last_initial}</span>
+                          {isSelected && <span style={{ marginLeft: 'auto', fontSize: '0.85rem' }}>✓</span>}
+                        </button>
+                      );
+                    })
                 )}
               </div>
             </div>
@@ -1091,6 +1437,5 @@ export function Scanner() {
       </Modal>
 
     </div>
-
   );
 }

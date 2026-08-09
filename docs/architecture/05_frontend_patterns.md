@@ -46,7 +46,7 @@ This context is critical for any multi-user or multi-troop scenario. It:
 - Exposes a `selectedTroopId` that drives all data queries on every page.
 - Persists the selected troop in `localStorage` under `tlc_last_troop_id` so the user's selection survives page refreshes.
 
-**Key rule**: Every page component (Dashboard, Roster, Sessions, Scanner) should consume `selectedTroopId` from `TroopContext` rather than fetching it directly. This ensures the troop switcher in the sidebar header controls the entire app context.
+**Key rule**: Every page component (Dashboard, Roster, Events, Scanner) should consume `selectedTroopId` from `TroopContext` rather than fetching it directly. This ensures the troop switcher in the sidebar header controls the entire app context.
 
 ```js
 const { selectedTroopId, selectedTroop, troops, isGlobalAdmin } = useTroop();
@@ -159,7 +159,7 @@ Allows uploading multiple photos containing QR codes from the device's camera ro
 
 **File**: `src/components/common/DataTable.jsx`
 
-A fully-featured, user-configurable data table used across Sessions, Roster, and the attendee sub-modal. Its state (column visibility, column order, sort key, sort direction) is persisted to `localStorage` per-user, per-table.
+A fully-featured, user-configurable standard HTML table component used for simple tabular views or secondary data lists. (Primary management screens like Events and Scanner use the Pattern 07 responsive grid table architecture). Its state is persisted to `localStorage` per-user, per-table.
 
 ### Props
 

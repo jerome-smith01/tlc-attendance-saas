@@ -1250,6 +1250,15 @@ button:active, .btn-primary:active, .btn-action:active {
   }
 }
 
+@keyframes scanRowHighlight {
+  0% { background-color: color-mix(in srgb, var(--color-success) 35%, transparent); }
+  100% { background-color: transparent; }
+}
+
+.grid-table-row.newly-scanned {
+  animation: scanRowHighlight 2.5s ease-out forwards;
+}
+
 /* ── Filter Popover & Table Filter Controls ── */
 .column-header-cell {
   position: relative;

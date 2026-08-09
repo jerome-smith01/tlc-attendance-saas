@@ -44,7 +44,7 @@ stateDiagram-v2
 ## End-to-End Data Flow
 
 1. **Import**: Admin imports the roster CSV. Roster rows are created with `member_id` (no `tlc_id` yet).
-2. **Create Session**: A leader opens the Scanner page and selects or creates a session (event name + date). No role restriction — any authenticated troop member can do this.
+2. **Create Session / Select Event**: A leader creates or selects an event on the Events page (`/events`), then clicks into the event to open its dedicated Scanner page (`/events/:eventId`). No role restriction — any authenticated troop member can do this.
 3. **Scan**: Leader scans a badge. The QR is parsed, matched by `tlc_id` then `member_id`, and the `tlc_id` is backfilled if it was missing.
 4. **Record**: A `scans` row is inserted with `status = pending`. Database `UNIQUE(session_id, roster_id)` prevents duplicates.
 5. **Cooldown**: A 3-second frontend cooldown (`lastScanRef` in `useScanLogic.js`) prevents duplicate consecutive scans in the UI. The DB constraint is the authoritative safeguard.

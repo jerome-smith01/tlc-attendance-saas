@@ -36,7 +36,7 @@ export default function App() {
                     } 
                   />
                   <Route 
-                    path="/scanner" 
+                    path="/events/:eventId" 
                     element={
                       <ProtectedRoute allowedRoles={['badge_scanner', 'troop_admin', 'billing_admin', 'global_admin']}>
                         <Scanner />
