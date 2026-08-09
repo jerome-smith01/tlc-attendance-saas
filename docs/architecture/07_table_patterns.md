@@ -49,6 +49,21 @@ To maximize vertical reading space and accommodate arbitrarily long record names
 
 ---
 
+## 1.2 Expandable Section Headers (`.attendance-section-header`)
+
+For list sections below the primary Header Card (e.g., the Attendance list), the app uses a sticky/floating section header that acts as an accordion toggle for the table container below it.
+
+### Expandable Header Architecture
+1. **Container Alignment**: Uses `display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 1rem;`. It sits directly on the app background (transparent), visually separating the cards from the header.
+2. **Left-Aligned Toggle**: An SVG chevron (`polyline points="6 9 12 15 18 9"`) is positioned directly to the left of the section title (`<h3>`).
+3. **Interactive Toggle Area**: Both the chevron icon and the section title text are wrapped in a clickable container (`cursor: pointer`, `userSelect: 'none'`) that toggles the `isTableVisible` state.
+4. **Animated Chevron**: The SVG chevron rotates dynamically:
+   - Expanded: `transform: rotate(0deg)`
+   - Collapsed: `transform: rotate(-90deg)`
+5. **Right-Aligned Controls**: The right edge of the header accommodates bulk controls (e.g., the "All" checkbox), shifted slightly left (`margin-right: 4px`) to align pixel-perfect with the right edge of the white floating cards below it.
+
+---
+
 ## 2. Canonical Filter & Sort State Contract
 
 All screens implementing full Excel-like filtering must manage state adhering to the following structure:
@@ -144,7 +159,7 @@ Appears between toolbar and table when 1 or more column filters are active:
 To prevent layout jumping and width collapse when filtering table records or displaying rows with varying text lengths, tables MUST follow strict container width and CSS grid rules:
 
 ### 5.1 Full Width Container Enforcement (`width: 100%`)
-- **Outer Wrapper & Glass Card**: The page outer wrapper (`<div style={{ width: '100%', maxWidth: '1400px', margin: '0 auto', boxSizing: 'border-box' }}>`), `.glass-card`, `.grid-table-container`, `.grid-table-header`, `.grid-table-row`, and `.layout-main` MUST explicitly set `width: 100%` and `box-sizing: border-box`.
+- **Outer Wrapper & Glass Card**: The page outer wrapper (see [05_frontend_patterns.md Section 5.3](05_frontend_patterns.md#53-page-outer-wrapper-maxwidth-1400px) for the canonical `maxWidth: '1400px'` page container standard), `.glass-card`, `.grid-table-container`, `.grid-table-header`, `.grid-table-row`, and `.layout-main` MUST explicitly set `width: 100%` and `box-sizing: border-box`.
 - **No Shrink Collapse**: Tables must **NEVER** shrink or collapse horizontally when filtering narrows the dataset or removes long text rows. The table card and grid container must permanently remain at maximum container width on desktop.
 
 ### 5.2 Strict `minmax(0, ...)` Grid Track Definitions
@@ -277,6 +292,7 @@ When building or upgrading another page (e.g. `Roster.jsx`) to use this pattern:
 - [ ] Include high-contrast `.bulk-action-pill` with `?` help button (`.btn-icon-help`) and interactive Action Guide popover card.
 - [ ] Add active filter chips bar under toolbar area.
 - [ ] Add mobile Filter/Sort trigger button and bottom sheet drawer.
+- [ ] For nested list sections, use `.attendance-section-header` pattern with left-aligned chevron toggle and right-aligned controls aligned pixel-perfectly (`marginRight: 4px`) to the cards.
 
 
 

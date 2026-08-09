@@ -913,7 +913,7 @@ export function Scanner() {
   }
 
   return (
-    <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column', position: 'relative', flex: 1 }}>
+    <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column', position: 'relative', flex: 1, width: '100%', maxWidth: '1400px', margin: '0 auto', boxSizing: 'border-box', padding: '2rem' }}>
       {/* Top Sticky Pinned Title Bar (Floating, No Card) */}
       <div className="scanner-sticky-title">
         <Link
@@ -937,12 +937,12 @@ export function Scanner() {
         {/* Status Row */}
         <div ref={statusMenuRef} style={{ position: 'relative' }}>
           <div
-            className="grid-table-cell"
+            className="grid-table-cell grid-table-cell-status"
             role="cell"
             onClick={() => setShowStatusMenu(prev => !prev)}
             style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '0.2rem 0' }}
           >
-            <span className="grid-table-label">Status</span>
+            <span className="header-card-label">Status</span>
             <div>
               <span className={`badge ${session.ended_at ? (session.synced_at ? 'badge-neutral' : 'badge-error') : 'badge-success'}`}>
                 {session.ended_at ? (session.synced_at ? 'Synced' : 'Closed') : 'Open'}
@@ -999,8 +999,8 @@ export function Scanner() {
         </div>
 
         {/* Event Date Row */}
-        <div className="grid-table-cell" role="cell" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '0.2rem 0' }}>
-          <span className="grid-table-label">Event Date</span>
+        <div className="grid-table-cell grid-table-cell-time" role="cell" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '0.2rem 0' }}>
+          <span className="header-card-label">Event Date</span>
           <span style={{ color: 'var(--text-secondary)' }}>
             {session.event_date || (session.created_at ? new Date(session.created_at).toLocaleDateString() : 'N/A')}
           </span>
@@ -1008,7 +1008,7 @@ export function Scanner() {
 
         {/* Scanned In Count Row */}
         <div className="grid-table-cell" role="cell" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '0.2rem 0' }}>
-          <span className="grid-table-label">Scanned In</span>
+          <span className="header-card-label">Scanned In</span>
           <div>
             <span className="badge badge-success" style={{ borderRadius: '9999px', padding: '0.15rem 0.6rem' }}>
               {attendance.length}
@@ -1028,7 +1028,7 @@ export function Scanner() {
                 style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '0.2rem 0' }}
                 title="Click to view Offline Queue details"
               >
-                <span className="grid-table-label">Offline Queue</span>
+                <span className="header-card-label">Offline Queue</span>
                 <div>
                   {offlineCount > 0 ? (
                     <span className="badge badge-pending">{offlineCount}</span>
@@ -1393,7 +1393,7 @@ export function Scanner() {
                             <strong style={{ color: 'var(--text-primary)' }}>{memberName}</strong>
                           </div>
 
-                          <div className="grid-table-cell grid-table-cell-actions" role="cell">
+                          <div className="grid-table-cell grid-table-cell-actions" role="cell" style={{ gridColumn: isAdminOrLeader ? 5 : 4 }}>
                             <button
                               type="button"
                               className="btn-icon-action btn-icon-destructive"
@@ -1409,14 +1409,14 @@ export function Scanner() {
                           </div>
                         </div>
 
-                        <div className="grid-table-cell" role="cell">
+                        <div className="grid-table-cell" role="cell" style={{ gridColumn: isAdminOrLeader ? 3 : 2 }}>
                           <span className="grid-table-label">Status</span>
                           <span className={`badge badge-${scan.status === 'success' ? 'success' : scan.status === 'duplicate' ? 'warning' : 'error'}`}>
                             {scan.message || 'Scanned In'}
                           </span>
                         </div>
 
-                        <div className="grid-table-cell" role="cell">
+                        <div className="grid-table-cell" role="cell" style={{ gridColumn: isAdminOrLeader ? 4 : 3 }}>
                           <span className="grid-table-label">Scan Time</span>
                           <span style={{ color: 'var(--text-secondary)' }}>{scan.time}</span>
                         </div>

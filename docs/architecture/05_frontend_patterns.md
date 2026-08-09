@@ -108,7 +108,33 @@ To prevent excessive CPU/GPU usage and battery drain on mobile devices, live cam
 
 ---
 
-## 5. Design System & Theming
+## 5. Screen Headers & Header Cards
+
+To provide a consistent and premium experience across major screens (e.g., Scanner, Event Details), the app uses a sticky header and a primary header card pattern:
+
+### 5.1 Pinned Sticky Title Bar (`.scanner-sticky-title`)
+- Floats directly on the page background at the top (`position: sticky; top: 0; z-index: 50;`).
+- Contains the Back button (left) and the Event/Screen Name (center or right).
+- Uses a glassmorphism blur effect (`backdrop-filter: blur(8px);`) to ensure scrolling content is legible underneath.
+- Does **not** include redundant global buttons (like ThemeToggle) if they exist in the top navbar.
+
+### 5.2 Header Card (`.scanner-header-card`)
+- Appears directly beneath the sticky title bar and scrolls away with the page body.
+- Replaces generic glass cards with a dense, structured layout for key entity metadata.
+- **Field Layout**: Formatted as individual full-width rows (`display: flex; justify-content: space-between; align-items: center;`).
+- **Alignment**: Labels (`.grid-table-label`) are left-aligned; values and status badges are right-aligned on the same row.
+- **Action Buttons (`.btn-compact`)**: Rendered inside the header card or immediately below it, using compact padding (`padding: 0.4rem 0.85rem`) and text sizing to group primary screen actions (e.g., Scan, Photos, Add).
+
+### 5.3 Page Outer Wrapper (`maxWidth: 1400px`)
+All major top-level page views (Events, Scanner, Dashboard, Roster, Billing) MUST wrap their main content in an outer container enforcing the canonical desktop max-width constraint:
+```jsx
+<div style={{ width: '100%', maxWidth: '1400px', margin: '0 auto', boxSizing: 'border-box', padding: '2rem' }}>
+```
+This guarantees consistent layout margins, prevents wide stretched layouts on high-resolution screens, and keeps visual alignment uniform across navigation transitions.
+
+---
+
+## 6. Design System & Theming
 
 **Files**: `src/styles/global.css`, `src/hooks/useTheme.js`, `src/components/ThemeToggle.jsx`
 
@@ -121,7 +147,7 @@ To prevent excessive CPU/GPU usage and battery drain on mobile devices, live cam
 
 ---
 
-## 6. Error Handling Security
+## 7. Error Handling Security
 
 All pages follow this security pattern for Supabase errors:
 
@@ -136,17 +162,22 @@ The `supabaseClient.js` singleton does not expose the Supabase URL or anon key i
 
 ---
 
-## 7. SPA Routing for Cloudflare Pages
+## 8. SPA Routing for Cloudflare Pages
 
 `HashRouter` is used instead of `BrowserRouter` because Cloudflare Pages serves from a CDN. Without hash routing, direct navigation to `/#/dashboard` would return the React app's `index.html` correctly without needing server-side redirects. A `public/_redirects` file (`/* /index.html 200`) is also in place as a fallback for any path-based routing edge cases.
 
 ---
 
-## 8. Scanner Manual Entry & Photo Scan
+## 9. Scanner UI Patterns (Live, Manual & Photo)
 
 **File**: `src/pages/Scanner.jsx`
 
-The Scanner UI contains features to augment standard QR scanning alongside the live-camera flow:
+The Scanner UI contains features to augment standard QR scanning alongside the live-camera flow. These actions are surfaced as `.btn-compact` buttons below the Header Card:
+
+### Expandable Camera Viewfinder
+- The live camera `#qr-reader` is wrapped in an expandable accordion-style container (`max-height` transition).
+- When the **"Scan"** button (`.btn-start`) is pressed, it smoothly expands and automatically scrolls into the center of the viewport via a `useEffect` auto-scroll hook.
+- When active, the Scan button transforms into a red **"Stop Scan"** button (`.btn-destructive`).
 
 ### Manual Entry Modal ("Add" Button)
 Allows users to add attendance for someone who forgot their badge or is a new guest.
@@ -163,7 +194,7 @@ Allows uploading multiple photos containing QR codes from the device's camera ro
 
 ---
 
-## 9. Reusable `DataTable` Component
+## 10. Reusable `DataTable` Component
 
 **File**: `src/components/common/DataTable.jsx`
 
@@ -209,7 +240,7 @@ State is written to `localStorage` on every change via a `useEffect`. On mount, 
 
 ---
 
-## 10. Session Purge Threshold & Warning Banner
+## 11. Session Purge Threshold & Warning Banner
 
 **File**: `src/pages/Dashboard.jsx`
 
