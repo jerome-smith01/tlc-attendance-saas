@@ -1065,105 +1065,120 @@ export function Scanner() {
             );
           })()}        </div>
 
-        {/* Expandable Camera Viewfinder */}
-        <div
-          ref={scannerContainerRef}
-          className="scanner-viewfinder"
-          style={{
-            width: '100%',
-            maxWidth: '100%',
-            overflow: 'hidden',
-            opacity: 1,
-            transition: 'opacity 0.3s ease, margin 0.3s ease',
-            marginBottom: '1rem',
-            flexShrink: 0,
-            display: 'flex',
-            flexDirection: 'column'
-          }}
-        >
+        {/* New Scanner Viewfinder & Controls Layout */}
+        <div className="scanner-layout-wrapper">
           {!session.ended_at ? (
             <>
-              <div style={{ position: 'relative', width: '100%', maxWidth: '500px', margin: '0 auto' }}>
-                <div style={{ visibility: isScanning ? 'visible' : 'hidden', height: isScanning ? 'auto' : '0px', overflow: 'hidden' }}>
-                  <div id="qr-reader" style={{ width: '100%' }}></div>
-                </div>
-
-                {!isScanning && (
-                  <div style={{ width: '100%', height: '200px', backgroundColor: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed var(--border-color)', color: 'var(--text-secondary)' }}>
-                    <p>Scanner Disabled</p>
-                  </div>
-                )}
-
-                {isScanning && showCheckmark && (
-                  <div className="scan-overlay scan-overlay--success">
-                    <img src="/logo.png" alt="Success" style={{ width: '36%', height: '36%', objectFit: 'contain' }} />
-                  </div>
-                )}
-                {isScanning && showWarning && (
-                  <div className="scan-overlay scan-overlay--warning">
-                    <div style={{ backgroundColor: 'var(--bg-secondary)', borderRadius: '50%', padding: '1rem', display: 'flex', boxShadow: 'var(--glass-shadow)' }}>
-                      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--color-warning)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="12" y1="8" x2="12" y2="12"></line>
-                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              {/* Top Row: Camera Feed */}
+              <div className="scanner-feed-container" ref={scannerContainerRef}>
+                <div className="glass-card scanner-camera-card">
+                  {/* Disabled State Overlay */}
+                  {!isScanning && (
+                    <div className="scanner-idle-overlay">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="scanner-idle-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
+                      <h2 className="scanner-idle-title">Scanner Idle</h2>
+                      <p className="scanner-idle-subtitle">Camera is paused to save battery.</p>
+                      <button onClick={startScanner} className="btn btn-primary">SCAN</button>
                     </div>
+                  )}
+
+                  {/* Active Camera View */}
+                  <div className="scanner-active-view">
+                    {/* HTML5 QR Code Container */}
+                    <div id="qr-reader" className="scanner-qr-container" style={{ opacity: isScanning ? 1 : 0 }}></div>
+                    
+                    {/* Dimmed overlay outside the square */}
+                    <div className="scanner-dim-overlay"></div>
+
+                    {/* STRICT SQUARE VIEWFINDER */}
+                    <div className="scanner-strict-square">
+                      {/* Corner brackets */}
+                      <div className="scanner-corner scanner-corner-tl"></div>
+                      <div className="scanner-corner scanner-corner-tr"></div>
+                      <div className="scanner-corner scanner-corner-bl"></div>
+                      <div className="scanner-corner scanner-corner-br"></div>
+
+                      {/* Single Pass Scan Line */}
+                      <div key={isScanning ? 'scanning' : 'idle'} className={`scanner-scan-line ${isScanning ? 'scan-line-active' : ''}`}></div>
+                      
+                      {/* Success/Warning Overlays */}
+                      {showCheckmark && (
+                        <div className="scanner-feedback-overlay scanner-feedback-success">
+                          <img src="/logo.png" alt="Success" style={{ width: '36%', height: '36%', objectFit: 'contain' }} />
+                        </div>
+                      )}
+                      {showWarning && (
+                        <div className="scanner-feedback-overlay scanner-feedback-warning">
+                          <div style={{ backgroundColor: 'var(--bg-secondary)', borderRadius: '50%', padding: '1rem', display: 'flex', boxShadow: 'var(--glass-shadow)' }}>
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--color-warning)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                              <line x1="12" y1="8" x2="12" y2="12"></line>
+                              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {isScanning && (
+                      <div className="scanner-live-badge">
+                        <span className="badge badge-success" style={{ backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}>
+                          <div className="scanner-pulse-dot"></div>
+                          Live
+                        </span>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
 
-              {/* Action Buttons Moved Here */}
-              <div className="header-card-actions" style={{ marginTop: '1rem', padding: '0 1rem', justifyContent: 'center' }}>
-                <button
-                  type="button"
-                  onClick={isScanning ? stopScanner : startScanner}
-                  className={`btn btn-compact ${isScanning ? 'btn-destructive' : 'btn-start'}`}
+              {/* Bottom Row: Controls */}
+              <div className="scanner-controls-grid">
+                <button 
+                  onClick={isScanning ? stopScanner : startScanner} 
+                  className={`btn ${isScanning ? 'btn-destructive' : 'btn-primary'}`}
+                  style={{ width: '100%', padding: '1rem', fontSize: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
                 >
                   {isScanning ? (
                     <>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                      <svg xmlns="http://www.w3.org/2000/svg" style={{ width: '1.25rem', height: '1.25rem' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      Stop Scan
+                      <span>STOP SCAN</span>
                     </>
                   ) : (
                     <>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M3 7V5a2 2 0 0 1 2-2h2"/>
-                        <path d="M17 3h2a2 2 0 0 1 2 2v2"/>
-                        <path d="M21 17v2a2 2 0 0 1-2 2h-2"/>
-                        <path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
-                        <rect x="7" y="7" width="10" height="10" rx="1"/>
+                      <svg xmlns="http://www.w3.org/2000/svg" style={{ width: '1.25rem', height: '1.25rem' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
                       </svg>
-                      Scan
+                      <span>SCAN</span>
                     </>
                   )}
                 </button>
 
-                <div style={{ position: 'relative', display: 'inline-flex' }}>
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-compact"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                      <circle cx="8.5" cy="8.5" r="1.5"/>
-                      <polyline points="21 15 16 10 5 21"/>
+                <div style={{ position: 'relative', width: '100%' }}>
+                  <button className="scanner-control-btn-card">
+                    <svg xmlns="http://www.w3.org/2000/svg" style={{ width: '1.25rem', height: '1.25rem', color: 'var(--muted-foreground)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
-                    Photos
+                    Load Photos
                   </button>
-                  <input type="file" multiple accept="image/*" onChange={handleBulkPhotos} style={{ position: 'absolute', top: 0, left: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }} />
+                  <input 
+                    type="file" 
+                    multiple 
+                    accept="image/*" 
+                    onChange={handleBulkPhotos} 
+                    style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }} 
+                  />
                 </div>
 
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-compact"
-                  onClick={() => setIsManualEntryOpen(true)}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="12" y1="5" x2="12" y2="19"/>
-                    <line x1="5" y1="12" x2="19" y2="12"/>
+                <button onClick={() => setIsManualEntryOpen(true)} className="scanner-control-btn-card">
+                  <svg xmlns="http://www.w3.org/2000/svg" style={{ width: '1.25rem', height: '1.25rem', color: 'var(--muted-foreground)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                   </svg>
-                  Add
+                  Add Member
                 </button>
               </div>
             </>

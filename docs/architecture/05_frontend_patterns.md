@@ -290,5 +290,25 @@ The page renders independent section cards wrapped in `.profile-page-wrapper`:
 ### 12.2 Password Security Re-Authentication Pattern
 Before invoking `supabase.auth.updateUser({ password })`, the application verifies the current password by issuing `supabase.auth.signInWithPassword({ email, password: currentPassword })`. If re-authentication fails, an inline toast notification (`Current password is incorrect.`) alerts the user without mutating auth state.
 
+---
+
+## 13. Scanner Viewfinder & Controls Layout Pattern (`Scanner.jsx`)
+
+**File**: `src/pages/Scanner.jsx`
+
+The event scanner layout pairs live camera QR recognition with high-visibility action controls and event session metadata.
+
+### 13.1 Layout Architecture
+- **Header Card (`.scanner-header-card`)**: Positioned at the top or side of the scanner layout, presenting Event Date, Scanned In Count, Session Status (Open/Closed/Synced), and interactive Offline Queue info.
+- **Top Camera Feed (`.scanner-feed-container`)**: Contains the live camera container (`#qr-reader`) set inside a glass card.
+  - **Strict Square Viewfinder (`.scanner-strict-square`)**: Features a centered 1:1 aspect-ratio viewport with corner bracket accents (`.scanner-corner-*`) and backdrop dimming overlay.
+  - **Single-Pass Scan Line (`.scan-line-active`)**: A custom CSS `@keyframes scan-single` animation that sweeps top-to-bottom across the viewfinder once per scan cycle.
+  - **Idle Overlay (`.scanner-idle-overlay`)**: Pauses camera rendering when idle or scrolled out of view to optimize battery consumption.
+- **Action Controls Grid (`.scanner-controls-grid`)**: Positioned directly beneath the camera feed. Renders a responsive 3-column action bar (or 1 column on small mobile screens):
+  1. **SCAN / STOP SCAN**: Toggles live video camera feed state (`isScanning`).
+  2. **Load Photos**: File input trigger for bulk QR code decoding from local photo uploads.
+  3. **Add Member**: Opens manual roster entry modal for un-scannable badges or guest members.
+
+
 
 
