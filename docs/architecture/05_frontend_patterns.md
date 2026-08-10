@@ -184,23 +184,23 @@ The `supabaseClient.js` singleton does not expose the Supabase URL or anon key i
 
 **File**: `src/pages/Scanner.jsx`
 
-The Scanner UI contains features to augment standard QR scanning alongside the live-camera flow. These actions are surfaced as `.btn-compact` buttons below the Header Card:
+The Scanner UI contains features to augment standard QR scanning alongside the live-camera flow. These actions are surfaced in the `.scanner-actions-panel` side cards positioned to the right of the camera feed:
 
-### Expandable Camera Viewfinder
-- The live camera `#qr-reader` is wrapped in an expandable accordion-style container (`max-height` transition).
-- When the **"Scan"** button (`.btn-start`) is pressed, it smoothly expands and automatically scrolls into the center of the viewport via a `useEffect` auto-scroll hook.
-- When active, the Scan button transforms into a red **"Stop Scan"** button (`.btn-destructive`).
+### Camera Viewfinder & State Toggle
+- The live camera `#qr-reader` is contained within `.scanner-feed-container` with a centered 200x200px strict square viewfinder (`.scanner-strict-square`), corner bracket accents, and a single-pass animated scan line (`.scan-line-active`).
+- When idle, the card displays a centered **Ready to Scan** state with an icon and instructions.
+- Pressing **"OPEN SCANNER"** (`.btn-primary`) starts the camera video stream and changes the button label to a red **"STOP SCANNER"** (`.btn-destructive`).
 
-### Manual Entry Modal ("Add" Button)
+### Manual Search Modal ("Manual Search" Item)
 Allows users to add attendance for someone who forgot their badge or is a new guest. (See [09_popup_modals.md](./09_popup_modals.md) for overall popup modal architecture).
-- Triggered by the compact **"Add"** button (`+`) in the header card.
+- Triggered by the **"Manual Search"** list item (`Find member by name`) in the secondary action card.
 - Displayed via `Modal` component controlled by `isManualEntryOpen` state.
 - **Existing Member**: Selects an existing roster member (where `attendance` does not already contain a scan for that `roster_id`), inserting a `scans` row immediately.
 - **New Member/Guest**: Performs a `supabase.from('roster').insert()` to create the member record, retrieves the newly generated `id`, updates local roster state, and then records the scan.
 
-### Photo Scan / Bulk Upload ("Photos" Button)
+### Scan from Photo / Bulk Upload ("Scan from Photo" Item)
 Allows uploading multiple photos containing QR codes from the device's camera roll or local files.
-- Triggered via an invisible file input (`<input type="file" multiple accept="image/*">`) wrapped by the **"Photos"** button in the header card.
+- Triggered via an invisible file input (`<input type="file" multiple accept="image/*">`) wrapped by the **"Scan from Photo"** list item (`Upload image from gallery`) in the secondary action card.
 - Processed sequentially via `handleBulkPhotos`: for each selected file, an instance of `Html5Qrcode` is created (or reused) and `html5Qrcode.scanFile(file, true)` is invoked to decode the QR code payload without activating camera video feeds.
 - Extracted payloads are passed directly into `handleScan` / `processScanPayload`, triggering the exact same validation, lookup, offline queueing, and state update pipeline as live scanning.
 
