@@ -304,10 +304,11 @@ The event scanner layout pairs live camera QR recognition with high-visibility a
   - **Strict Square Viewfinder (`.scanner-strict-square`)**: Features a centered 1:1 aspect-ratio viewport with corner bracket accents (`.scanner-corner-*`) and backdrop dimming overlay.
   - **Single-Pass Scan Line (`.scan-line-active`)**: A custom CSS `@keyframes scan-single` animation that sweeps top-to-bottom across the viewfinder once per scan cycle.
   - **Idle Overlay (`.scanner-idle-overlay`)**: Pauses camera rendering when idle or scrolled out of view to optimize battery consumption.
-- **Action Controls Grid (`.scanner-controls-grid`)**: Positioned directly beneath the camera feed. Renders a responsive 3-column action bar (or 1 column on small mobile screens):
-  1. **SCAN / STOP SCAN**: Toggles live video camera feed state (`isScanning`).
-  2. **Load Photos**: File input trigger for bulk QR code decoding from local photo uploads.
-  3. **Add Member**: Opens manual roster entry modal for un-scannable badges or guest members.
+- **Action Panel Side Cards (`.scanner-actions-panel`)**: Positioned directly to the right of the camera feed on desktop (or stacked below on mobile):
+  1. **Primary Action Card (`.scanner-action-card`)**: Renders the `ACTION` header label and the primary `OPEN SCANNER` / `STOP SCANNER` full-width button (`.btn.btn-primary`).
+  2. **Secondary Options Card (`.scanner-action-card`)**: Renders a stacked list of secondary actions with icons, titles, and descriptive subtitles:
+     - **Scan from Photo**: Image icon, title `Scan from Photo`, subtitle `Upload image from gallery` (triggers file upload).
+     - **Manual Search**: Edit icon, title `Manual Search`, subtitle `Find member by name` (opens manual entry modal).
 
 
 

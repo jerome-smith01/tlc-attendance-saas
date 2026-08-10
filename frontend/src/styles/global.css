@@ -774,19 +774,31 @@ button:active, .btn-primary:active, .btn-action:active {
 .scanner-layout-wrapper {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1rem;
   width: 100%;
-  margin-top: 1rem;
+  margin-top: 0;
   flex-grow: 1;
+}
+
+@media (min-width: 768px) {
+  .scanner-layout-wrapper {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 1.25rem;
+  }
+
+  .scanner-feed-container {
+    flex: 1;
+    min-width: 0;
+    height: 420px;
+  }
 }
 
 .scanner-feed-container {
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: 55vh;
-  min-height: 400px;
-  max-height: 600px;
+  height: 380px;
 }
 
 .scanner-camera-card {
@@ -794,8 +806,9 @@ button:active, .btn-primary:active, .btn-action:active {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  padding: 0.5rem;
+  padding: 0;
   flex-grow: 1;
+  background-color: var(--bg-secondary);
 }
 
 .scanner-idle-overlay {
@@ -808,19 +821,29 @@ button:active, .btn-primary:active, .btn-action:active {
   justify-content: center;
   background-color: var(--bg-secondary);
   transition: opacity 0.3s ease;
-  padding: 1.5rem;
+  padding: 2rem;
   text-align: center;
 }
 
-.scanner-idle-icon {
+.scanner-idle-circle {
   width: 4rem;
   height: 4rem;
-  color: var(--muted-foreground);
+  border-radius: 50%;
+  background-color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin-bottom: 1rem;
 }
 
+.scanner-idle-icon {
+  width: 2rem;
+  height: 2rem;
+  color: var(--color-primary);
+}
+
 .scanner-idle-title {
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   font-weight: 700;
   margin-bottom: 0.5rem;
   color: var(--foreground);
@@ -828,7 +851,9 @@ button:active, .btn-primary:active, .btn-action:active {
 
 .scanner-idle-subtitle {
   color: var(--text-secondary);
-  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+  max-width: 300px;
+  line-height: 1.4;
 }
 
 .scanner-active-view {
@@ -836,11 +861,8 @@ button:active, .btn-primary:active, .btn-action:active {
   width: 100%;
   height: 100%;
   background-color: #000000;
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md, 12px);
   overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .scanner-qr-container {
@@ -848,23 +870,34 @@ button:active, .btn-primary:active, .btn-action:active {
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+}
+
+/* Html5Qrcode video & element overrides to prevent double viewfinders */
+#qr-reader video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: var(--radius-md, 8px);
+}
+
+#qr-reader #qr-shaded-region {
+  display: none !important;
 }
 
 .scanner-dim-overlay {
   position: absolute;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
   pointer-events: none;
 }
 
 .scanner-strict-square {
-  position: relative;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   z-index: 10;
-  width: 80%;
-  max-width: 280px;
+  width: 200px;
+  height: 200px;
   aspect-ratio: 1 / 1;
   box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
   border-radius: var(--radius-md, 12px);
@@ -875,14 +908,14 @@ button:active, .btn-primary:active, .btn-action:active {
 /* Viewfinder Corner Brackets */
 .scanner-corner {
   position: absolute;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 2rem;
+  height: 2rem;
   border-color: #ffffff;
-  opacity: 0.8;
+  opacity: 0.9;
 }
 .scanner-corner-tl {
-  top: -4px;
-  left: -4px;
+  top: -2px;
+  left: -2px;
   border-top-width: 4px;
   border-left-width: 4px;
   border-top-style: solid;
@@ -890,8 +923,8 @@ button:active, .btn-primary:active, .btn-action:active {
   border-top-left-radius: var(--radius-md, 12px);
 }
 .scanner-corner-tr {
-  top: -4px;
-  right: -4px;
+  top: -2px;
+  right: -2px;
   border-top-width: 4px;
   border-right-width: 4px;
   border-top-style: solid;
@@ -899,8 +932,8 @@ button:active, .btn-primary:active, .btn-action:active {
   border-top-right-radius: var(--radius-md, 12px);
 }
 .scanner-corner-bl {
-  bottom: -4px;
-  left: -4px;
+  bottom: -2px;
+  left: -2px;
   border-bottom-width: 4px;
   border-left-width: 4px;
   border-bottom-style: solid;
@@ -908,8 +941,8 @@ button:active, .btn-primary:active, .btn-action:active {
   border-bottom-left-radius: var(--radius-md, 12px);
 }
 .scanner-corner-br {
-  bottom: -4px;
-  right: -4px;
+  bottom: -2px;
+  right: -2px;
   border-bottom-width: 4px;
   border-right-width: 4px;
   border-bottom-style: solid;
@@ -967,33 +1000,66 @@ button:active, .btn-primary:active, .btn-action:active {
   50% { opacity: 0.4; }
 }
 
-.scanner-controls-grid {
-  display: grid;
-  grid-template-columns: 1fr;
+/* --- Action Panel Side Cards --- */
+.scanner-actions-panel {
+  display: flex;
+  flex-direction: column;
   gap: 1rem;
   width: 100%;
 }
 @media (min-width: 768px) {
-  .scanner-controls-grid {
-    grid-template-columns: repeat(3, 1fr);
+  .scanner-actions-panel {
+    width: 280px;
+    flex-shrink: 0;
   }
 }
 
-.scanner-control-btn-card {
-  width: 100%;
-  padding: 1rem;
+.scanner-action-card {
+  background: var(--bg-secondary);
   border-radius: var(--radius-md, 12px);
   border: 1px solid var(--border-color);
-  background-color: var(--bg-secondary);
-  transition: border-color var(--transition-fast), background-color var(--transition-fast);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.scanner-action-item {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  font-weight: 600;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  color: var(--foreground);
+  gap: 0.85rem;
+  padding: 0.85rem 1rem;
   cursor: pointer;
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  transition: background-color var(--transition-fast);
+}
+.scanner-action-item:hover {
+  background-color: var(--muted);
+}
+
+.scanner-action-icon {
+  width: 1.35rem;
+  height: 1.35rem;
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.scanner-action-title {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--foreground);
+  line-height: 1.2;
+}
+
+.scanner-action-subtitle {
+  font-size: 0.78rem;
+  color: var(--muted-foreground);
+  margin-top: 2px;
 }
 .scanner-control-btn-card:hover {
   border-color: var(--color-primary);
@@ -1028,8 +1094,8 @@ button:active, .btn-primary:active, .btn-action:active {
   }
 
   .scanner-hero-section .scanner-header-card {
-    flex: 0 0 380px;
-    max-width: 380px;
+    flex: 0 0 300px;
+    max-width: 300px;
     margin: 0;
   }
 
