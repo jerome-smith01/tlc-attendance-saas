@@ -237,6 +237,23 @@ When a record is scanned or newly added/updated in a table (e.g., scanning atten
 - **Left-Aligned Action Cell**: Row action cells MUST align to the left (`justifyContent: 'flex-start'`) directly beneath the left-aligned `Actions` header text.
 - **No Separate "View Attendees" Action Button**: Do **not** render a separate "View Attendees" button in the single-row action cell. The primary record name link (e.g., Event Name) serves as the single mechanism to open attendee detail modals.
 
+### 7.1 Profile Column & Action Chips ("View" / "Scan Badge")
+
+For member roster views, the **Profile** column displays the status of a member's Trail Life Connect profile link via actionable badge chips:
+
+- **Linked Profile ("View")**:
+  - Rendered as a green `badge-success` chip.
+  - Acts as an external hyperlink (`<a target="_blank" href="https://www.traillifeconnect.com/profile/${tlc_id}/overview">View</a>`).
+  - Opens the member's profile directly on Trail Life Connect in a new tab.
+- **Unlinked Profile ("Scan Badge")**:
+  - Rendered as a grey `badge-neutral` chip.
+  - Acts as an interactive button for authorized roles (`canManageRoster`), triggering `SingleBadgeScannerModal` for targeted badge scanning.
+  - Non-authorized roles see a light/disabled indicator.
+- **Scanning & Conflict Handling**:
+  - Scanning a badge parses `memberId | tlcId` and updates `roster.tlc_id` and `roster.member_id` in Supabase and local state.
+  - Triggers temporary green row highlight (`.newly-scanned`).
+  - If the scanned `tlc_id` is already assigned to another member in the troop (`Postgres 23505`), the application displays an imperative single-button alert modal (`confirm({ title: 'Duplicate Badge', message: '...', confirmText: 'OK', cancelText: null })`) naming the conflicting member.
+
 ### Standardized Action Icon Button Classes (`.btn-icon-action`)
 Single-row action buttons MUST use global CSS utility classes rather than ad-hoc inline styles:
 - Base class: `.btn-icon-action` (flex centered, 6px padding, `var(--radius-sm)`, border, pointer cursor, smooth transitions).

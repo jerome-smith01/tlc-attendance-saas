@@ -63,9 +63,20 @@ Action icons rendered inside table rows use `.btn-icon-action` combined with the
 
 ---
 
-## 3. Icon System Architecture
+## 3. Icon & Logo System Architecture
 
-### 3.1 Icon Conventions
+### 3.1 App Logo Standard (`/logo.png`)
+The application logo is stored as a transparent PNG asset at `frontend/public/logo.png`. It is used consistently across all app touchpoints:
+
+| Location | Component | Sizing / Styling | Notes |
+|:---|:---|:---|:---|
+| **Top Header Bar** | `SidebarLayout.jsx` | 32x32px, `object-fit: contain` | Positioned alongside the "TLC Attendance" app title in the full-width header. |
+| **Scan Success Overlay** | `Scanner.jsx` & `SingleBadgeScannerModal.jsx` | `width: 36%`, `height: 36%`, `object-fit: contain` | Rendered centered over live camera feed inside `.scan-overlay--success`, constrained to fit neatly inside the green scanner brackets. |
+| **Login Screen** | `Login.jsx` | 48x48px, `object-fit: contain` | Replaces placeholder squares above sign-in form. |
+| **App Loading State** | `AppSpinner.jsx` | 48x48px, `object-fit: contain` | Displayed above loading spinner during auth boot. |
+| **Favicon** | `index.html` | `<link rel="icon" type="image/png" href="/logo.png" />` | Displayed as the browser tab icon. |
+
+### 3.2 Icon Conventions
 - Use Lucide icons for all icons across the application.
 - All SVG icons inherit text color via `stroke="currentColor"` or `fill="currentColor"`.
 

@@ -933,242 +933,254 @@ export function Scanner() {
         </h2>
       </div>
 
-      {/* Header Card (Scrolls Away) */}
-      <div className="scanner-header-card">
-        {/* Status Row */}
-        <div ref={statusMenuRef} style={{ position: 'relative' }}>
-          <div
-            className="grid-table-cell grid-table-cell-status"
-            role="cell"
-            onClick={() => setShowStatusMenu(prev => !prev)}
-            style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '0.2rem 0' }}
-          >
-            <span className="header-card-label">Status</span>
+      {/* Top Hero Section (Header Card + Viewfinder side-by-side on desktop) */}
+      <div className="scanner-hero-section">
+        {/* Header Card (Scrolls Away) */}
+        <div className="scanner-header-card">
+          {/* Status Row */}
+          <div ref={statusMenuRef} style={{ position: 'relative' }}>
+            <div
+              className="grid-table-cell grid-table-cell-status"
+              role="cell"
+              onClick={() => setShowStatusMenu(prev => !prev)}
+              style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '0.2rem 0' }}
+            >
+              <span className="header-card-label">Status</span>
+              <div>
+                <span className={`badge ${session.ended_at ? (session.synced_at ? 'badge-neutral' : 'badge-error') : 'badge-success'}`}>
+                  {session.ended_at ? (session.synced_at ? 'Synced' : 'Closed') : 'Open'}
+                </span>
+              </div>
+            </div>
+
+            {showStatusMenu && (
+              <div className="status-popover-menu">
+                {isAdminOrLeader && !session.ended_at && (
+                  <button
+                    type="button"
+                    className="status-popover-item"
+                    onClick={() => { setShowStatusMenu(false); handleEndSession(); }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                    </svg>
+                    Close Event
+                  </button>
+                )}
+
+                {isAdminOrLeader && session.ended_at && !session.synced_at && (
+                  <button
+                    type="button"
+                    className="status-popover-item"
+                    onClick={() => { setShowStatusMenu(false); handleReenableSession(); }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                      <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+                    </svg>
+                    Reopen Event
+                  </button>
+                )}
+
+                {isAdminOrLeader && (
+                  <button
+                    type="button"
+                    className="status-popover-item"
+                    style={{ color: 'var(--color-error)' }}
+                    onClick={() => { setShowStatusMenu(false); handleDeleteSession(); }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    </svg>
+                    Delete Event
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Event Date Row */}
+          <div className="grid-table-cell grid-table-cell-time" role="cell" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '0.2rem 0' }}>
+            <span className="header-card-label">Event Date</span>
+            <span style={{ color: 'var(--text-secondary)' }}>
+              {session.event_date ? formatAppDate(session.event_date) : (session.created_at ? formatAppDate(session.created_at) : 'N/A')}
+            </span>
+          </div>
+
+          {/* Scanned In Count Row */}
+          <div className="grid-table-cell" role="cell" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '0.2rem 0' }}>
+            <span className="header-card-label">Scanned In</span>
             <div>
-              <span className={`badge ${session.ended_at ? (session.synced_at ? 'badge-neutral' : 'badge-error') : 'badge-success'}`}>
-                {session.ended_at ? (session.synced_at ? 'Synced' : 'Closed') : 'Open'}
+              <span className="badge badge-success" style={{ borderRadius: '9999px', padding: '0.15rem 0.6rem' }}>
+                {attendance.length}
               </span>
             </div>
           </div>
 
-          {showStatusMenu && (
-            <div className="status-popover-menu">
-              {isAdminOrLeader && !session.ended_at && (
+          {/* Offline Queue Row */}
+          {(() => {
+            const offlineCount = attendance.filter(s => s.message === 'Saved Offline').length;
+            return (
+              <div ref={offlineInfoRef} style={{ position: 'relative' }}>
+                <div
+                  className="grid-table-cell"
+                  role="cell"
+                  onClick={() => setShowOfflineInfo(prev => !prev)}
+                  style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '0.2rem 0' }}
+                  title="Click to view Offline Queue details"
+                >
+                  <span className="header-card-label">Offline Queue</span>
+                  <div>
+                    {offlineCount > 0 ? (
+                      <span className="badge badge-pending">{offlineCount}</span>
+                    ) : (
+                      <span className="badge badge-success">0</span>
+                    )}
+                  </div>
+                </div>
+
+                {showOfflineInfo && (
+                  <div className="status-popover-menu" style={{ right: 0, left: 'auto', minWidth: '220px', maxWidth: '280px', padding: '0.75rem' }}>
+                    <div style={{ fontWeight: '600', fontSize: '0.85rem', marginBottom: '0.35rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span>Offline Queue</span>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setShowOfflineInfo(false); }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-foreground)', fontSize: '0.9rem', padding: 0 }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                      Scans taken while offline or during weak network conditions are saved locally on your device.
+                    </p>
+                    <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border-color)', fontSize: '0.75rem', color: 'var(--muted-foreground)' }}>
+                      <strong>How to resolve:</strong> Reconnect to the internet and the app will automatically sync queued scans to the server.
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}        </div>
+
+        {/* Expandable Camera Viewfinder */}
+        <div
+          ref={scannerContainerRef}
+          className="scanner-viewfinder"
+          style={{
+            width: '100%',
+            maxWidth: '100%',
+            overflow: 'hidden',
+            opacity: 1,
+            transition: 'opacity 0.3s ease, margin 0.3s ease',
+            marginBottom: '1rem',
+            flexShrink: 0,
+            display: 'flex',
+            flexDirection: 'column'
+          }}
+        >
+          {!session.ended_at ? (
+            <>
+              <div style={{ position: 'relative', width: '100%', maxWidth: '500px', margin: '0 auto' }}>
+                <div style={{ visibility: isScanning ? 'visible' : 'hidden', height: isScanning ? 'auto' : '0px', overflow: 'hidden' }}>
+                  <div id="qr-reader" style={{ width: '100%' }}></div>
+                </div>
+
+                {!isScanning && (
+                  <div style={{ width: '100%', height: '200px', backgroundColor: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed var(--border-color)', color: 'var(--text-secondary)' }}>
+                    <p>Scanner Disabled</p>
+                  </div>
+                )}
+
+                {isScanning && showCheckmark && (
+                  <div className="scan-overlay scan-overlay--success">
+                    <img src="/logo.png" alt="Success" style={{ width: '36%', height: '36%', objectFit: 'contain' }} />
+                  </div>
+                )}
+                {isScanning && showWarning && (
+                  <div className="scan-overlay scan-overlay--warning">
+                    <div style={{ backgroundColor: 'var(--bg-secondary)', borderRadius: '50%', padding: '1rem', display: 'flex', boxShadow: 'var(--glass-shadow)' }}>
+                      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--color-warning)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                      </svg>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons Moved Here */}
+              <div className="header-card-actions" style={{ marginTop: '1rem', padding: '0 1rem', justifyContent: 'center' }}>
                 <button
                   type="button"
-                  className="status-popover-item"
-                  onClick={() => { setShowStatusMenu(false); handleEndSession(); }}
+                  onClick={isScanning ? stopScanner : startScanner}
+                  className={`btn btn-compact ${isScanning ? 'btn-destructive' : 'btn-start'}`}
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                  </svg>
-                  Close Event
+                  {isScanning ? (
+                    <>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                      </svg>
+                      Stop Scan
+                    </>
+                  ) : (
+                    <>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 7V5a2 2 0 0 1 2-2h2"/>
+                        <path d="M17 3h2a2 2 0 0 1 2 2v2"/>
+                        <path d="M21 17v2a2 2 0 0 1-2 2h-2"/>
+                        <path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
+                        <rect x="7" y="7" width="10" height="10" rx="1"/>
+                      </svg>
+                      Scan
+                    </>
+                  )}
                 </button>
-              )}
 
-              {isAdminOrLeader && session.ended_at && !session.synced_at && (
+                <div style={{ position: 'relative', display: 'inline-flex' }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-compact"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                      <circle cx="8.5" cy="8.5" r="1.5"/>
+                      <polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                    Photos
+                  </button>
+                  <input type="file" multiple accept="image/*" onChange={handleBulkPhotos} style={{ position: 'absolute', top: 0, left: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }} />
+                </div>
+
                 <button
                   type="button"
-                  className="status-popover-item"
-                  onClick={() => { setShowStatusMenu(false); handleReenableSession(); }}
+                  className="btn btn-secondary btn-compact"
+                  onClick={() => setIsManualEntryOpen(true)}
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                    <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
                   </svg>
-                  Reopen Event
+                  Add
                 </button>
-              )}
-
+              </div>
+            </>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--foreground)' }}>
+              <h2>Event Closed</h2>
+              <p>No further scans can be recorded.</p>
               {isAdminOrLeader && (
-                <button
-                  type="button"
-                  className="status-popover-item"
-                  style={{ color: 'var(--color-error)' }}
-                  onClick={() => { setShowStatusMenu(false); handleDeleteSession(); }}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="3 6 5 6 21 6" />
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                  </svg>
-                  Delete Event
-                </button>
+                session.synced_at ? (
+                  <button onClick={handleResetSyncSession} className="btn btn-reset-sync" style={{ marginTop: 'var(--spacing-md)' }}>Reset Sync</button>
+                ) : (
+                  <button onClick={handleReenableSession} className="btn btn-reopen" style={{ marginTop: 'var(--spacing-md)' }}>Reopen Event</button>
+                )
               )}
             </div>
           )}
         </div>
-
-        {/* Event Date Row */}
-        <div className="grid-table-cell grid-table-cell-time" role="cell" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '0.2rem 0' }}>
-          <span className="header-card-label">Event Date</span>
-          <span style={{ color: 'var(--text-secondary)' }}>
-            {session.event_date ? formatAppDate(session.event_date) : (session.created_at ? formatAppDate(session.created_at) : 'N/A')}
-          </span>
-        </div>
-
-        {/* Scanned In Count Row */}
-        <div className="grid-table-cell" role="cell" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '0.2rem 0' }}>
-          <span className="header-card-label">Scanned In</span>
-          <div>
-            <span className="badge badge-success" style={{ borderRadius: '9999px', padding: '0.15rem 0.6rem' }}>
-              {attendance.length}
-            </span>
-          </div>
-        </div>
-
-        {/* Offline Queue Row */}
-        {(() => {
-          const offlineCount = attendance.filter(s => s.message === 'Saved Offline').length;
-          return (
-            <div ref={offlineInfoRef} style={{ position: 'relative' }}>
-              <div
-                className="grid-table-cell"
-                role="cell"
-                onClick={() => setShowOfflineInfo(prev => !prev)}
-                style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '0.2rem 0' }}
-                title="Click to view Offline Queue details"
-              >
-                <span className="header-card-label">Offline Queue</span>
-                <div>
-                  {offlineCount > 0 ? (
-                    <span className="badge badge-pending">{offlineCount}</span>
-                  ) : (
-                    <span className="badge badge-success">0</span>
-                  )}
-                </div>
-              </div>
-
-              {showOfflineInfo && (
-                <div className="status-popover-menu" style={{ right: 0, left: 'auto', minWidth: '220px', maxWidth: '280px', padding: '0.75rem' }}>
-                  <div style={{ fontWeight: '600', fontSize: '0.85rem', marginBottom: '0.35rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span>Offline Queue</span>
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); setShowOfflineInfo(false); }}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-foreground)', fontSize: '0.9rem', padding: 0 }}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-                    Scans taken while offline or during weak network conditions are saved locally on your device.
-                  </p>
-                  <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border-color)', fontSize: '0.75rem', color: 'var(--muted-foreground)' }}>
-                    <strong>How to resolve:</strong> Reconnect to the internet and the app will automatically sync queued scans to the server.
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })()}
-
-        {/* Row 2: Action Buttons */}
-        {!session.ended_at && (
-          <div className="header-card-actions">
-            <button
-              type="button"
-              onClick={isScanning ? stopScanner : startScanner}
-              className={`btn btn-compact ${isScanning ? 'btn-destructive' : 'btn-start'}`}
-            >
-              {isScanning ? (
-                <>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                  </svg>
-                  Stop Scan
-                </>
-              ) : (
-                <>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M3 7V5a2 2 0 0 1 2-2h2"/>
-                    <path d="M17 3h2a2 2 0 0 1 2 2v2"/>
-                    <path d="M21 17v2a2 2 0 0 1-2 2h-2"/>
-                    <path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
-                    <rect x="7" y="7" width="10" height="10" rx="1"/>
-                  </svg>
-                  Scan
-                </>
-              )}
-            </button>
-
-            <div style={{ position: 'relative', display: 'inline-flex' }}>
-              <button
-                type="button"
-                className="btn btn-secondary btn-compact"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                  <circle cx="8.5" cy="8.5" r="1.5"/>
-                  <polyline points="21 15 16 10 5 21"/>
-                </svg>
-                Photos
-              </button>
-              <input type="file" multiple accept="image/*" onChange={handleBulkPhotos} style={{ position: 'absolute', top: 0, left: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }} />
-            </div>
-
-            <button
-              type="button"
-              className="btn btn-secondary btn-compact"
-              onClick={() => setIsManualEntryOpen(true)}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"/>
-                <line x1="5" y1="12" x2="19" y2="12"/>
-              </svg>
-              Add
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Expandable Camera Viewfinder */}
-      <div
-        ref={scannerContainerRef}
-        className="scanner-viewfinder"
-        style={{
-          width: '100%',
-          maxWidth: '100%',
-          overflow: 'hidden',
-          maxHeight: isScanning || session.ended_at ? '500px' : '0px',
-          opacity: isScanning || session.ended_at ? 1 : 0,
-          transition: 'max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease, margin 0.3s ease',
-          marginBottom: isScanning || session.ended_at ? '1rem' : '0px',
-          flexShrink: 0
-        }}
-      >
-        {!session.ended_at ? (
-          <>
-            <div id="qr-reader" style={{ width: '100%', maxWidth: '500px', margin: '0 auto' }}></div>
-            {showCheckmark && (
-              <div className="scan-overlay scan-overlay--success">
-                <img src="/logo.png" alt="Success" style={{ width: '36%', height: '36%', objectFit: 'contain' }} />
-              </div>
-            )}
-            {showWarning && (
-              <div className="scan-overlay scan-overlay--warning">
-                <div style={{ backgroundColor: 'var(--bg-secondary)', borderRadius: '50%', padding: '1rem', display: 'flex', boxShadow: 'var(--glass-shadow)' }}>
-                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--color-warning)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="12" y1="8" x2="12" y2="12"></line>
-                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                  </svg>
-                </div>
-              </div>
-            )}
-          </>
-        ) : (
-          <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--foreground)' }}>
-            <h2>Event Closed</h2>
-            <p>No further scans can be recorded.</p>
-            {isAdminOrLeader && (
-              session.synced_at ? (
-                <button onClick={handleResetSyncSession} className="btn btn-reset-sync" style={{ marginTop: 'var(--spacing-md)' }}>Reset Sync</button>
-              ) : (
-                <button onClick={handleReenableSession} className="btn btn-reopen" style={{ marginTop: 'var(--spacing-md)' }}>Reopen Event</button>
-              )
-            )}
-          </div>
-        )}
       </div>
 
       {/* Floating Attendance Section Header */}
@@ -1198,19 +1210,7 @@ export function Scanner() {
             </svg>
             <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>Attendance</h3>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {isAdminOrLeader && (
-              <label onClick={(e) => e.stopPropagation()} style={{ fontSize: '0.85rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', marginRight: '4px' }}>
-                <input
-                  type="checkbox"
-                  onChange={handleSelectAll}
-                  checked={processedAttendance.length > 0 && processedAttendance.every(s => selectedScans.has(s.id))}
-                  style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                />
-                All
-              </label>
-            )}
-          </div>
+
         </div>
 
         {/* Scrollable list inside table - Pattern 07 Responsive Grid Table */}

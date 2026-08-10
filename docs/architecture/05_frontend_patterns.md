@@ -58,21 +58,27 @@ const { selectedTroopId, selectedTroop, troops, isGlobalAdmin } = useTroop();
 
 ## 3. Protected Routes & Onboarding Flow
 
-**Files**: `src/components/ProtectedRoute.jsx`, `src/pages/CompleteProfile.jsx`
+**Files**: `src/components/ProtectedRoute.jsx`, `src/pages/Profile.jsx`
 
 All routes except `/login` are wrapped in `<ProtectedRoute>`. This component:
 1. Waits for `loading = false` before rendering anything.
 2. If `session = null`, silently redirects to `/login`.
 3. Otherwise renders `<SidebarLayout>` with `<Outlet/>` for page content.
 
-### Onboarding (`/complete-profile`)
-When a new user accepts a Supabase email invite, they land on `/complete-profile`. This page:
-1. Checks `roster` for an existing row where `user_id = auth.uid()`.
-2. If found, pre-fills `first_name` and `last_initial`.
-3. Allows the user to set or update their display name and password.
-4. On submit, writes their name to the `roster` table and sets `troop_users.onboarding_completed = true`.
+### URL Routing & Browser Back Button Standard
+Every distinct view state, tab, or screen MUST have its own unique URL (e.g., `/roster/members`, `/roster/leaders`, `/roster/:memberId/edit`, `/profile`).
+- Tab clicks must trigger router navigation (e.g. `navigate('/roster/members')`) rather than purely internal `useState` switching.
+- Root route paths (e.g., `/roster`) redirect automatically to their default tab/sub-route (e.g. `/roster/members`), and `/complete-profile` redirects to `/profile`.
+- This guarantees browser Back and Forward history buttons function correctly across all sub-views and tabs.
 
-**Important**: The `roster` table has an RLS policy (`"Users can update their own roster entry"`) that allows users to update their own row even without a `troop_admin` role. This is what makes self-onboarding possible.
+### Onboarding & Profile Setup (`/profile`)
+When a new user accepts a Supabase email invite, they land on `/profile` (or are redirected from `/complete-profile`). This page:
+1. Checks `roster` for an existing row where `user_id = auth.uid()` for the selected troop.
+2. If found, pre-fills `first_name`, `last_initial`, and `member_id`.
+3. Allows the user to set or update their display name, member ID, password, and link/scan their badge.
+4. On submit, updates their name across all their `roster` affiliations, sets `member_id` for the active troop, and marks `troop_users.onboarding_completed = true`.
+
+**Important**: The `roster` table has an RLS policy (`"Users can update their own roster entry"`) that allows users to update their own row even without a `troop_admin` role. This is what makes self-onboarding and profile management possible.
 
 ---
 
@@ -131,6 +137,12 @@ All major top-level page views (Events, Scanner, Dashboard, Roster, Billing) MUS
 <div style={{ width: '100%', maxWidth: '1400px', margin: '0 auto', boxSizing: 'border-box', padding: '2rem' }}>
 ```
 This guarantees consistent layout margins, prevents wide stretched layouts on high-resolution screens, and keeps visual alignment uniform across navigation transitions.
+
+### 5.4 Top Layout Header Shell (`SidebarLayout.jsx`)
+The application shell uses a full-width header layout:
+- `.layout-root` uses `flex-direction: column` so the top navbar (`.layout-header`) stretches 100% across the viewport width above both the sidebar navigation and main content area (`.layout-content`).
+- **Brand Identity**: Displays the 32x32px logo (`/logo.png`) alongside the `.header-title` ("TLC Attendance").
+- **Mobile Responsive Hiding**: On mobile viewports (`max-width: 767px`), CSS rules hide `.header-title` and `.active-troop-label` so only the hamburger toggle button, logo image, and troop switcher dropdown are visible in the header bar.
 
 ---
 
@@ -258,5 +270,25 @@ Warning banners appear only for **unsynced** sessions (`session.synced_at === nu
 The Sessions page subtitle mirrors this with the copy: *"Synced session data is automatically purged after 30 days."*
 
 > **Developer simulation**: To test warning banners locally without waiting for real sessions to age, temporarily hardcode `const diffDays = 20;` (for 10 days left, amber) or `const diffDays = 25;` (for 5 days left, red) in the `sessions.map` loop in `Dashboard.jsx`.
+
+---
+
+## 12. User Profile & Security Settings Pattern (`Profile.jsx`)
+
+**File**: `src/pages/Profile.jsx`
+
+The `/profile` route manages account credentials, personal display names, troop roster affiliations, and physical badge links.
+
+### 12.1 Modular Independent Cards
+The page renders independent section cards wrapped in `.profile-page-wrapper`:
+1. **Personal Information**: Allows users to update `first_name`, `last_initial`, and `member_id`. Submitting updates roster records across all user troop affiliations in `troop_users` and handles onboarding completion if pending.
+2. **Account Details**: Renders read-only views for system `email` and assigned `role` using `.form-control-readonly` with lock icons and neutral badges.
+3. **Security (Password)**: Provides password management requiring Current Password, New Password, and Confirm New Password fields.
+4. **Badge Management**: Displays physical badge link status (`tlc_id`), with actions to view Trail Life Connect profile, unlink badge, or scan a new badge.
+5. **Danger Zone**: Renders administrative account options.
+
+### 12.2 Password Security Re-Authentication Pattern
+Before invoking `supabase.auth.updateUser({ password })`, the application verifies the current password by issuing `supabase.auth.signInWithPassword({ email, password: currentPassword })`. If re-authentication fails, an inline toast notification (`Current password is incorrect.`) alerts the user without mutating auth state.
+
 
 

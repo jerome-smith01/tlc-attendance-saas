@@ -32,6 +32,7 @@ graph LR
 - Schema supports multi-tenancy even though MVP-1 only exercises one troop.
 - The dedicated Supabase project (`tlc-attendance`) is fully isolated from the `goodplusfast.com` project.
 - `global_admins` is a system-level bypass table for platform owner access (not a troop-level role).
+- **URL Routing for Tabs & Views**: Every distinct view state, tab, or screen must have its own unique URL (e.g., `/roster/members`, `/roster/leaders`, `/roster/:memberId/edit`) so browser history and back/forward buttons work as expected.
 
 ## Frontend Architecture
 
@@ -45,7 +46,7 @@ graph LR
 | `context/AuthContext.jsx` | Global auth state provider. Exposes `session`, `user`, `loading`, `signOut()`. |
 | `context/TroopContext.jsx` | Troop context. Fetches all troops a user belongs to, exposes `troops[]`, `selectedTroopId`, `setSelectedTroopId`, `isGlobalAdmin`. Persists selection in `localStorage` under `tlc_last_troop_id`. |
 | `components/ProtectedRoute.jsx` | Route guard. Blocks render during auth load; redirects unauthenticated users to `/login`. |
-| `components/SidebarLayout.jsx` | App shell. Contains the sidebar nav, top header with troop switcher dropdown, and `ThemeToggle`. Renders `<Outlet/>` for page content. |
+| `components/SidebarLayout.jsx` | App shell. Renders full-width top layout header (app logo, title, troop switcher, theme toggle) with sidebar navigation and main content area beneath it. Renders `<Outlet/>` for page content. |
 | `components/AppSpinner.jsx` | Full-screen branded loading state. |
 | `components/ThemeToggle.jsx` | Sun/moon icon button wired to `useTheme`. |
 | `components/RosterList.jsx` | Roster display, add, edit, delete, and CSV import. |
@@ -54,7 +55,7 @@ graph LR
 | `hooks/useTheme.js` | Dark/light theme engine. Defaults to OS preference; persists in `localStorage` under `tlc-theme`. |
 | `hooks/useScanLogic.js` | Core scan processing: 3-second cooldown, roster lookup by `tlc_id`/`member_id`, backfill, Supabase write. |
 | `pages/Login.jsx` | Email/password login. Clears errors on input; shows generic error to user; logs detailed error to console only. |
-| `pages/CompleteProfile.jsx` | Post-invite onboarding page. New users set their display name (first name + last initial) and optionally set a password. |
+| `pages/Profile.jsx` | Post-invite onboarding & ongoing user profile page. Handles display name (first name + last initial), password updates, member ID, and physical badge links. |
 | `pages/Dashboard.jsx` | Troop overview: active user count, total sessions, unsynced session warnings. |
 | `pages/Roster.jsx` | Full roster management page (wraps `RosterList`). |
 | `pages/Scanner.jsx` | Live camera feed scanner for a specific event (`/events/:eventId`). Includes scan log, unknown member resolution modal, and admin-only approval actions. |
@@ -64,16 +65,20 @@ graph LR
 ### Routing
 Uses `HashRouter` for Cloudflare Pages static SPA compatibility (`/#/login`, `/#/dashboard`, etc.).
 
-| Route | Page | Access |
-|:---|:---|:---|
-| `/login` | `Login.jsx` | Public |
-| `/complete-profile` | `CompleteProfile.jsx` | Protected (any authenticated user) |
-| `/dashboard` | `Dashboard.jsx` | Protected |
-| `/roster` | `Roster.jsx` | Protected |
-| `/events` | `Events.jsx` | Protected |
-| `/events/:eventId` | `Scanner.jsx` | Protected |
-| `/billing` | `Billing.jsx` | Protected (deferred) |
-| `/*` | — | Redirects to `/login` |
+| Route | Page | Access | Notes |
+|:---|:---|:---|:---|
+| `/login` | `Login.jsx` | Public | Login screen |
+| `/complete-profile` | — | Protected | Redirects to `/profile` |
+| `/profile` | `Profile.jsx` | Protected (any user) | User profile, onboarding & security settings |
+| `/dashboard` | `Dashboard.jsx` | Protected | Troop dashboard |
+| `/roster` | — | Protected | Redirects to `/roster/members` |
+| `/roster/members` | `Roster.jsx` | Protected | Roster view for youth members (default) |
+| `/roster/leaders` | `Roster.jsx` | Protected | Roster view for adult leaders |
+| `/roster/:memberId/edit` | `EditMember.jsx` | Protected | Edit member screen |
+| `/events` | `Events.jsx` | Protected | Event history and management |
+| `/events/:eventId` | `Scanner.jsx` | Protected | Scanner page for specific event |
+| `/billing` | `Billing.jsx` | Protected (deferred) | Billing page |
+| `/*` | — | — | Redirects to `/login` |
 
 ### Design System
 - CSS custom properties defined in `global.css` under `:root` (light) and `.dark` (dark).

@@ -26,6 +26,17 @@ When a badge is scanned, the application resolves it to a roster entry using thi
 3. **Backfill TLC ID**: If a match is found via `member_id`, but `roster.tlc_id IS NULL`, the application immediately issues an UPDATE to save the `tlc_id` into that roster row. This ensures future scans match instantly.
 4. **Unknown Member**: If no match is found for either ID, the scan is flagged in the UI as "Unknown Member". A modal lets the leader either manually enter a name (INSERT new roster row) or link the badge to an existing member.
 
+## Targeted Single-Badge Linking (Roster Table)
+Leaders can also link a physical badge directly to a specific roster member from the Roster table using `SingleBadgeScannerModal.jsx`:
+
+1. User clicks **Scan Badge** on a specific member row.
+2. `SingleBadgeScannerModal` opens camera view and reads the QR payload (`memberId | tlcId`).
+3. Upon detection, it plays the success audio tone, displays the green checkmark overlay (`scan-overlay--success`), and returns `{ tlcId, memberId }`.
+4. `RosterList` updates the targeted roster record in Supabase:
+   - Sets `tlc_id = tlcId`
+   - Sets `member_id = memberId` (if present in QR payload and not already set)
+5. **Duplicate Badge Prevention**: If the `tlc_id` is already linked to another member in the troop, Supabase returns a `23505` unique constraint error. The UI catches this and displays a single-button modal alert (`confirm({ title: 'Duplicate Badge', message: '...', confirmText: 'OK', cancelText: null })`) naming the conflicting member.
+
 > See [01_database_schema.md](./01_database_schema.md) for the full dual-ID strategy rationale and constraints.
 
 ## Chrome Extension DOM Integration
