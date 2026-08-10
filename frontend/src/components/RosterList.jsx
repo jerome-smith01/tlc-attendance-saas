@@ -7,6 +7,7 @@ import { InviteUser } from './InviteUser';
 import { InviteStatusList } from './InviteStatusList';
 import { useToast } from './common/ToastContext';
 import { useConfirm } from './common/ConfirmContext';
+import { SingleBadgeScannerModal } from './SingleBadgeScannerModal';
 
 export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAdmin, activeTab, userId }) {
   // ── Permission check FIRST (before any hooks that depend on it) ──────────
@@ -57,6 +58,23 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
   const [newFirstName, setNewFirstName] = useState('');
   const [newLastInitial, setNewLastInitial] = useState('');
   const [newMemberId, setNewMemberId] = useState('');
+
+  // ── Single Badge Scanner modal state ──────────────────────────────────────
+  const [scanningMember, setScanningMember] = useState(null);
+
+  const handleScanSingleBadge = async (tlcId) => {
+    if (!scanningMember) return;
+    try {
+      const { error } = await supabase.from('roster').update({ tlc_id: tlcId }).eq('id', scanningMember.id);
+      if (error) throw error;
+      setRoster(prev => prev.map(m => m.id === scanningMember.id ? { ...m, tlc_id: tlcId } : m));
+      addToast(`Successfully linked badge for ${scanningMember.name}`, 'success');
+    } catch (err) {
+      console.error('Error linking badge', err);
+      addToast('Failed to link badge. Please try again.', 'error');
+    }
+    setScanningMember(null);
+  };
 
   // ── Filter / Sort / Column width state (per-user localStorage) ────────────
   const storageKey = `tlc_table_roster_${userId || 'anon'}`;
@@ -225,7 +243,7 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
   // ── Filter & Sort ─────────────────────────────────────────────────────────
   const getMemberName = (m) => `${m.first_name} ${m.last_initial}.`;
   const getMemberRole = (m) => m.role ? m.role.replace(/_/g, ' ') : 'trailman';
-  const getBadgeLabel = (m) => m.tlc_id ? 'Linked' : 'Not Linked';
+  const getBadgeLabel = (m) => m.tlc_id ? 'View' : 'Scan Badge';
 
   const getFilteredRoster = (excludeColumn = null) => {
     let result = [...displayRoster];
@@ -406,9 +424,9 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
 
   async function handleBulkCopy() {
     const selectedData = roster.filter(m => selectedMembers.includes(m.id));
-    const header = 'Name\tRole\tEmail\tMember ID\tBadge Linked?\n';
+    const header = 'Name\tRole\tEmail\tMember ID\tProfile\n';
     const tsv = selectedData.map(m =>
-      `${getMemberName(m)}\t${getMemberRole(m)}\t${m.email || ''}\t${m.member_id || ''}\t${m.tlc_id ? 'Yes' : 'No'}`
+      `${getMemberName(m)}\t${getMemberRole(m)}\t${m.email || ''}\t${m.member_id || ''}\t${m.tlc_id ? 'https://www.traillifeconnect.com/profile/' + m.tlc_id + '/overview' : 'Not Linked'}`
     ).join('\n');
     try {
       await navigator.clipboard.writeText(header + tsv);
@@ -704,26 +722,26 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
                 <div className="column-resizer" onMouseDown={e => handleStartResize(e, 'member_id', 'badge')} title="Drag to resize column" />
               </div>
 
-              {/* Badge Linked */}
+              {/* Profile */}
               <div role="columnheader" className="column-header-cell" style={{ position: 'relative' }}>
                 <button type="button" className="column-header-btn" onClick={() => setActivePopover(activePopover === 'badge' ? null : 'badge')}>
-                  Badge Linked
+                  Profile
                   {sortConfig.key === 'badge' && (sortConfig.direction === 'asc' ? ' ↑' : ' ↓')}
                   {columnFilters.badge?.length > 0 && ' 🌪️'}
                 </button>
                 {activePopover === 'badge' && (
                   <FilterPopover
-                    isOpen={true} title="Badge Linked" type="multiselect"
+                    isOpen={true} title="Profile" type="multiselect"
                     options={[
-                      { label: 'Linked', value: 'Linked', disabled: !availableBadges.has('Linked') },
-                      { label: 'Not Linked', value: 'Not Linked', disabled: !availableBadges.has('Not Linked') },
+                      { label: 'View', value: 'View', disabled: !availableBadges.has('View') },
+                      { label: 'Scan Badge', value: 'Scan Badge', disabled: !availableBadges.has('Scan Badge') },
                     ]}
                     value={columnFilters.badge || []}
                     onChange={val => setColumnFilters(p => ({ ...p, badge: val }))}
                     onClose={() => setActivePopover(null)}
                     sortConfig={sortConfig} columnKey="badge"
                     onSort={dir => setSortConfig({ key: 'badge', direction: dir })}
-                    sortAscLabel="Linked First" sortDescLabel="Not Linked First"
+                    sortAscLabel="View First" sortDescLabel="Scan Badge First"
                   />
                 )}
                 {canManageRoster && (
@@ -813,12 +831,36 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
                       <span style={{ fontSize: '0.875rem' }}>{member.member_id || '—'}</span>
                     </div>
 
-                    {/* Badge Linked */}
+                    {/* Profile */}
                     <div className="grid-table-cell" role="cell">
-                      <span className="grid-table-label">Badge Linked</span>
-                      <span className={`badge ${member.tlc_id ? 'badge-success' : 'badge-neutral'}`}>
-                        {member.tlc_id ? 'Linked' : 'Not Linked'}
-                      </span>
+                      <span className="grid-table-label">Profile</span>
+                      {member.tlc_id ? (
+                        <a 
+                          href={`https://www.traillifeconnect.com/profile/${member.tlc_id}/overview`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="badge badge-success"
+                          style={{ textDecoration: 'none' }}
+                          title="View Profile on Trail Life Connect"
+                        >
+                          View
+                        </a>
+                      ) : (
+                        <button
+                          type="button"
+                          className="badge badge-neutral"
+                          style={{ cursor: canManageRoster ? 'pointer' : 'default', border: 'none', fontFamily: 'inherit' }}
+                          onClick={() => {
+                            if (canManageRoster) {
+                              setScanningMember({ id: member.id, name: getMemberName(member) });
+                            }
+                          }}
+                          disabled={!canManageRoster}
+                          title={canManageRoster ? 'Scan Badge' : 'Profile unavailable'}
+                        >
+                          Scan Badge
+                        </button>
+                      )}
                     </div>
 
                     {/* Actions (desktop — display:contents from card header unwraps these into grid) */}
@@ -1001,6 +1043,14 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
           </div>
         </form>
       </Modal>
+
+      {/* ── Single Badge Scanner Modal ────────────────────────────────────── */}
+      <SingleBadgeScannerModal
+        isOpen={!!scanningMember}
+        onClose={() => setScanningMember(null)}
+        onScan={handleScanSingleBadge}
+        memberName={scanningMember?.name}
+      />
     </div>
   );
 }
