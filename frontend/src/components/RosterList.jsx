@@ -13,6 +13,9 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
   // ── Permission check FIRST (before any hooks that depend on it) ──────────
   const canManageRoster = isGlobalAdmin || currentUserRole === 'troop_admin' || currentUserRole === 'billing_admin';
 
+  const { addToast } = useToast();
+  const confirm = useConfirm();
+
   // ── Data state ────────────────────────────────────────────────────────────
   const [roster, setRoster] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -61,14 +64,68 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
 
   // ── Single Badge Scanner modal state ──────────────────────────────────────
   const [scanningMember, setScanningMember] = useState(null);
+  const [recentlyScannedIds, setRecentlyScannedIds] = useState(new Set());
 
-  const handleScanSingleBadge = async (tlcId) => {
+  const triggerRowHighlight = (id) => {
+    setRecentlyScannedIds(prev => new Set(prev).add(id));
+    setTimeout(() => {
+      setRecentlyScannedIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }, 2500);
+  };
+
+  const handleScanSingleBadge = async (scanData) => {
     if (!scanningMember) return;
+    const { tlcId, memberId } = typeof scanData === 'string' 
+      ? { tlcId: scanData, memberId: null } 
+      : scanData;
+
+    const memberDisplayName = scanningMember.name || `${scanningMember.first_name || ''} ${scanningMember.last_initial || ''}`.trim();
+
     try {
-      const { error } = await supabase.from('roster').update({ tlc_id: tlcId }).eq('id', scanningMember.id);
-      if (error) throw error;
-      setRoster(prev => prev.map(m => m.id === scanningMember.id ? { ...m, tlc_id: tlcId } : m));
-      addToast(`Successfully linked badge for ${scanningMember.name}`, 'success');
+      let updateData = { tlc_id: tlcId };
+      if (memberId) {
+        updateData.member_id = memberId;
+      }
+
+      let { error } = await supabase.from('roster').update(updateData).eq('id', scanningMember.id);
+
+      // If update with member_id failed due to duplicate key constraint (23505), try updating tlc_id alone
+      if (error && error.code === '23505' && memberId) {
+        updateData = { tlc_id: tlcId };
+        const retry = await supabase.from('roster').update(updateData).eq('id', scanningMember.id);
+        error = retry.error;
+      }
+
+      if (error) {
+        if (error.code === '23505') {
+          const existingMember = roster.find(m => m.tlc_id === tlcId && m.id !== scanningMember.id);
+          const existingName = existingMember 
+            ? (existingMember.name || `${existingMember.first_name || ''} ${existingMember.last_initial || ''}`.trim())
+            : null;
+
+          const duplicateMessage = existingName
+            ? `This badge is already linked to ${existingName}.`
+            : 'This badge is already linked to another member in your troop.';
+
+          setScanningMember(null);
+          await confirm({
+            title: 'Duplicate Badge',
+            message: duplicateMessage,
+            confirmText: 'OK',
+            cancelText: null
+          });
+          return;
+        }
+        throw error;
+      }
+
+      setRoster(prev => prev.map(m => m.id === scanningMember.id ? { ...m, ...updateData } : m));
+      triggerRowHighlight(scanningMember.id);
+      addToast(`Successfully linked badge for ${memberDisplayName}`, 'success');
     } catch (err) {
       console.error('Error linking badge', err);
       addToast('Failed to link badge. Please try again.', 'error');
@@ -195,7 +252,6 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
   };
 
   const toast = useToast();
-  const confirm = useConfirm();
 
   // ── Data fetch ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -771,7 +827,8 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
                 return (
                   <div
                     key={member.id}
-                    className="grid-table-row"
+                    id={`scan-row-${member.id}`}
+                    className={`grid-table-row ${recentlyScannedIds.has(member.id) ? 'newly-scanned' : ''}`}
                     role="row"
                     style={gridTemplateStyle}
                   >

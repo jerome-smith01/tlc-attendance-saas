@@ -29,7 +29,7 @@ export function ConfirmProvider({ children }) {
           title: opts?.title || 'Confirm',
           message: opts?.message || '',
           confirmText: opts?.confirmText || 'Confirm',
-          cancelText: opts?.cancelText || 'Cancel',
+          cancelText: opts?.cancelText !== undefined ? opts.cancelText : 'Cancel',
           isDestructive: opts?.isDestructive || false
         };
 
@@ -83,9 +83,11 @@ export function ConfirmProvider({ children }) {
                 background: 'var(--glass-bg)'
               }}
             >
-              <button className="btn btn-secondary" onClick={handleCancel}>
-                {options.cancelText}
-              </button>
+              {options.cancelText && (
+                <button className="btn btn-secondary" onClick={handleCancel}>
+                  {options.cancelText}
+                </button>
+              )}
               <button 
                 className={options.isDestructive ? "btn btn-destructive" : "btn btn-primary"} 
                 onClick={handleConfirm}

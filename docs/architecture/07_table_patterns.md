@@ -205,6 +205,31 @@ Screens supporting bulk operations include a multi-select checkbox column to the
 
 ---
 
+## 6.1 Temporary Row Highlight Animation (`.newly-scanned`)
+
+When a record is scanned or newly added/updated in a table (e.g., scanning attendance in `/scanner` or linking a member badge in `/roster`), the corresponding row MUST be temporarily highlighted with a subtle success background color tint that smoothly fades away over 2.5 seconds.
+
+### Implementation Standard
+1. **CSS Keyframe Animation (`global.css`)**:
+   ```css
+   @keyframes scanRowHighlight {
+     0% { background-color: color-mix(in srgb, var(--color-success) 35%, transparent); }
+     100% { background-color: transparent; }
+   }
+
+   .grid-table-row.newly-scanned {
+     animation: scanRowHighlight 2.5s ease-out forwards;
+   }
+   ```
+2. **DOM ID & Class Assignment**:
+   - Give row elements an explicit ID: `id={`scan-row-${record.id}`}`.
+   - Conditionally append `.newly-scanned`: `className={`grid-table-row ${recentlyScannedIds.has(record.id) ? 'newly-scanned' : ''}`}`.
+3. **Trigger Function**:
+   - Manage a `recentlyScannedIds` set state in the parent table component.
+   - Call `triggerRowHighlight(recordId)` upon successful scan or badge link to temporarily add the ID for 2500ms before auto-removing it.
+
+---
+
 ## 7. Single-Row Action Column Rules
 
 ### Layout & DOM Placement (CRITICAL)
@@ -295,6 +320,8 @@ When building or upgrading another page (e.g. `Roster.jsx`) to use this pattern:
 - [ ] Add active filter chips bar under toolbar area.
 - [ ] Add mobile Filter/Sort trigger button and bottom sheet drawer.
 - [ ] For nested list sections, use `.attendance-section-header` pattern with left-aligned chevron toggle and right-aligned controls aligned pixel-perfectly (`marginRight: 4px`) to the cards.
+- [ ] Implement temporary green row highlight animation (`.newly-scanned` / `scanRowHighlight`) when scanning or updating table records.
+
 
 
 
