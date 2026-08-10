@@ -35,12 +35,10 @@
   gap: var(--spacing-md);
 }
 
-/* Placeholder logo — bright green square */
 .login-logo {
   width: 48px;
   height: 48px;
-  background: #22c55e;
-  border-radius: var(--radius-sm);
+  object-fit: contain;
   flex-shrink: 0;
 }
 

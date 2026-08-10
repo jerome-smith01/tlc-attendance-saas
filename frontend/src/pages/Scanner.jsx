@@ -1142,7 +1142,7 @@ export function Scanner() {
             <div id="qr-reader" style={{ width: '100%', maxWidth: '500px', margin: '0 auto' }}></div>
             {showCheckmark && (
               <div className="scan-overlay scan-overlay--success">
-                <img src="/logo.png" alt="Success" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '2rem' }} />
+                <img src="/logo.png" alt="Success" style={{ width: '36%', height: '36%', objectFit: 'contain' }} />
               </div>
             )}
             {showWarning && (

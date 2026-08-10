@@ -11,12 +11,8 @@ export function AppSpinner() {
       gap: '1rem',
       background: 'var(--bg-gradient)',
     }}>
-      {/* Placeholder logo — bright green square */}
-      <div style={{
-        width: 40, height: 40,
-        background: '#22c55e',
-        borderRadius: 'var(--radius-sm)',
-      }} />
+      {/* App Logo */}
+      <img src="/logo.png" alt="Loading..." style={{ width: 48, height: 48, objectFit: 'contain' }} />
       <span className="spinner" />
     </div>
   );

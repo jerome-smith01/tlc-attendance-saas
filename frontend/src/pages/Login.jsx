@@ -73,8 +73,8 @@ export function Login() {
       </div>
 
       <div className="login-card">
-        {/* Placeholder logo — bright green square (no trademark) */}
-        <div className="login-logo" aria-hidden="true" />
+        {/* App Logo */}
+        <img src="/logo.png" alt="Logo" className="login-logo" />
 
         <h1 className="app-title login-title">TLC Attendance</h1>
         <p className="login-subtitle">Sign in to your troop account</p>

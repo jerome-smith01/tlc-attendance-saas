@@ -67,7 +67,7 @@ export function EditMember() {
     } catch (err) {
       console.error('Error fetching member:', err);
       addToast('Failed to load member details.', 'error');
-      navigate('/roster');
+      navigate('/roster/members');
     } finally {
       setLoading(false);
     }
@@ -226,7 +226,7 @@ export function EditMember() {
       if (error) throw error;
 
       addToast('Member deleted successfully.', 'success');
-      navigate('/roster');
+      navigate('/roster/members');
     } catch (err) {
       console.error('Error deleting member:', err);
       addToast('Failed to delete member.', 'error');
@@ -243,7 +243,7 @@ export function EditMember() {
       <div style={{ padding: '2rem', color: 'var(--foreground)' }}>
         <h2>Access Denied</h2>
         <p>You do not have permission to edit roster members.</p>
-        <button type="button" className="btn btn-secondary" onClick={() => navigate('/roster')}>
+        <button type="button" className="btn btn-secondary" onClick={() => navigate('/roster/members')}>
           Back to Roster
         </button>
       </div>
@@ -261,7 +261,7 @@ export function EditMember() {
           type="button"
           className="btn btn-secondary"
           title="Back to Roster"
-          onClick={() => navigate('/roster')}
+          onClick={() => navigate('/roster/members')}
           style={{ padding: '0.35rem 0.5rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-move-left-icon lucide-move-left">

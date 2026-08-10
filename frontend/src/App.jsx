@@ -46,6 +46,10 @@ export default function App() {
                   />
                   <Route 
                     path="/roster" 
+                    element={<Navigate to="/roster/members" replace />} 
+                  />
+                  <Route 
+                    path="/roster/:tab" 
                     element={
                       <ProtectedRoute allowedRoles={['troop_admin', 'billing_admin', 'global_admin']}>
                         <Roster />

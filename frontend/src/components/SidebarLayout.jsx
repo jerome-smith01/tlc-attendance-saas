@@ -31,7 +31,7 @@ export function SidebarLayout() {
   };
 
   const linkStyle = (path) => {
-    const isActive = location.pathname === path || (path !== '/' && location.pathname.startsWith(path + '/'));
+    const isActive = location.pathname === path || (path !== '/' && location.pathname.startsWith(path + '/')) || (path.startsWith('/roster') && location.pathname.startsWith('/roster'));
     return {
       display: 'block',
       padding: '0.75rem 1rem',
@@ -49,7 +49,7 @@ export function SidebarLayout() {
 
   const allNavLinks = [
     { path: '/dashboard', label: 'Dashboard', allowedRoles: ['troop_admin', 'billing_admin', 'global_admin'] },
-    { path: '/roster', label: 'Roster', allowedRoles: ['troop_admin', 'billing_admin', 'global_admin'] },
+    { path: '/roster/members', label: 'Roster', allowedRoles: ['troop_admin', 'billing_admin', 'global_admin'] },
     { path: '/events', label: 'Events', allowedRoles: ['badge_scanner', 'troop_admin', 'billing_admin', 'global_admin'] },
     { path: '/billing', label: 'Billing', allowedRoles: ['billing_admin', 'global_admin'] },
     { path: '/complete-profile', label: 'Profile', allowedRoles: ['badge_scanner', 'troop_admin', 'billing_admin', 'global_admin'] },
