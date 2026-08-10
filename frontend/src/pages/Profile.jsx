@@ -16,16 +16,22 @@ export function Profile() {
 
   const [member, setMember] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
 
-  // Form states
+  // Personal Info Form State
   const [firstName, setFirstName] = useState('');
   const [lastInitial, setLastInitial] = useState('');
   const [memberCode, setMemberCode] = useState('');
+  const [savingPersonalInfo, setSavingPersonalInfo] = useState(false);
+
+  // Account Details State (Read-only)
   const [role, setRole] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+
+  // Password Form State
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [savingPassword, setSavingPassword] = useState(false);
 
   // Scanner modal & highlight state
   const [isScannerOpen, setIsScannerOpen] = useState(false);
@@ -76,7 +82,6 @@ export function Profile() {
         setMemberCode(data.member_id || '');
         setRole(data.role || '');
       } else {
-        // Fallback to user metadata or email
         const metaName = user?.user_metadata?.full_name || '';
         const parts = metaName.split(' ');
         if (parts.length > 0) setFirstName(parts[0]);
@@ -90,28 +95,16 @@ export function Profile() {
     }
   }
 
-  const handleSave = async (e) => {
+  const handleSavePersonalInfo = async (e) => {
     e.preventDefault();
     if (!firstName.trim() || !lastInitial.trim()) {
       addToast('First Name and Last Initial are required.', 'error');
       return;
     }
 
-    if (password && password !== confirmPassword) {
-      addToast('Passwords do not match.', 'error');
-      return;
-    }
-
     try {
-      setSaving(true);
+      setSavingPersonalInfo(true);
 
-      // 1. Update password if provided
-      if (password) {
-        const { error: authError } = await supabase.auth.updateUser({ password });
-        if (authError) throw authError;
-      }
-
-      // 2. Fetch all troop affiliations for this user
       const { data: troopUsers, error: tuError } = await supabase
         .from('troop_users')
         .select('troop_id, role, onboarding_completed')
@@ -121,7 +114,6 @@ export function Profile() {
 
       const formattedLastInitial = lastInitial.trim().charAt(0).toUpperCase();
 
-      // 3. Update or create roster entry for each troop the user belongs to
       if (troopUsers && troopUsers.length > 0) {
         for (const tu of troopUsers) {
           const { data: existingRoster } = await supabase
@@ -136,7 +128,6 @@ export function Profile() {
             last_initial: formattedLastInitial,
           };
 
-          // Update member_id for the current troop
           if (tu.troop_id === selectedTroopId) {
             updateObj.member_id = memberCode.trim() || null;
           }
@@ -164,7 +155,6 @@ export function Profile() {
         }
       }
 
-      // 4. Handle onboarding completion if needed
       const needsOnboarding = troopUsers?.some(tu => !tu.onboarding_completed);
       if (needsOnboarding) {
         const { error: updateError } = await supabase.rpc('complete_user_onboarding');
@@ -176,9 +166,7 @@ export function Profile() {
         return;
       }
 
-      addToast('Profile updated successfully!', 'success');
-      setPassword('');
-      setConfirmPassword('');
+      addToast('Personal information updated successfully!', 'success');
       setMember(prev => ({
         ...prev,
         first_name: firstName.trim(),
@@ -187,10 +175,64 @@ export function Profile() {
       }));
 
     } catch (err) {
-      console.error('[Profile] Save Error:', err);
-      addToast(err.message || 'Failed to update profile.', 'error');
+      console.error('[Profile] Personal Info Save Error:', err);
+      addToast(err.message || 'Failed to update personal information.', 'error');
     } finally {
-      setSaving(false);
+      setSavingPersonalInfo(false);
+    }
+  };
+
+  const handleUpdatePassword = async (e) => {
+    e.preventDefault();
+
+    if (!currentPassword) {
+      addToast('Please enter your current password.', 'error');
+      return;
+    }
+
+    if (!newPassword) {
+      addToast('Please enter a new password.', 'error');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      addToast('New password must be at least 6 characters long.', 'error');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      addToast('New passwords do not match.', 'error');
+      return;
+    }
+
+    try {
+      setSavingPassword(true);
+
+      // Verify current password first
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword,
+      });
+
+      if (signInError) {
+        addToast('Current password is incorrect.', 'error');
+        setSavingPassword(false);
+        return;
+      }
+
+      // Update to new password
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+      if (updateError) throw updateError;
+
+      addToast('Password updated successfully!', 'success');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err) {
+      console.error('[Profile] Password Update Error:', err);
+      addToast(err.message || 'Failed to update password.', 'error');
+    } finally {
+      setSavingPassword(false);
     }
   };
 
@@ -207,7 +249,6 @@ export function Profile() {
     if (!isConfirmed) return;
 
     try {
-      setSaving(true);
       const { error } = await supabase
         .from('roster')
         .update({ tlc_id: null })
@@ -220,8 +261,6 @@ export function Profile() {
     } catch (err) {
       console.error('Error unlinking badge:', err);
       addToast('Failed to unlink badge.', 'error');
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -280,11 +319,23 @@ export function Profile() {
 
   const userDisplayName = `${firstName || ''} ${lastInitial || ''}.`.trim() || 'My Profile';
 
+  const formatRoleName = (r) => {
+    if (!r) return 'Member';
+    switch (r) {
+      case 'billing_admin': return 'Billing Admin';
+      case 'troop_admin': return 'Troop Admin';
+      case 'badge_scanner': return 'Badge Scanner';
+      case 'global_admin': return 'Global Admin';
+      default:
+        return r.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
+    }
+  };
+
   return (
-    <div style={{ width: '100%', maxWidth: '800px', margin: '0 auto', boxSizing: 'border-box', padding: '2rem' }}>
+    <div className="profile-page-wrapper">
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+      <div className="profile-header">
         <button
           type="button"
           className="btn btn-secondary"
@@ -292,155 +343,246 @@ export function Profile() {
           onClick={() => navigate('/events')}
           style={{ padding: '0.35rem 0.5rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-move-left-icon lucide-move-left">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M6 8L2 12L6 16"></path>
             <path d="M2 12H22"></path>
           </svg>
         </button>
         <div>
-          <h1 style={{ color: 'var(--foreground)', margin: 0, fontSize: '1.5rem' }}>My Profile</h1>
+          <h1 style={{ color: 'var(--foreground)', margin: 0, fontSize: '1.5rem', fontFamily: 'var(--font-display)' }}>My Profile</h1>
           <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.9rem' }}>{userDisplayName}</p>
         </div>
       </div>
 
-      {/* Profile Details Form */}
-      <div className="glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
-        <h3 style={{ marginTop: 0, marginBottom: '1.25rem', color: 'var(--foreground)', fontSize: '1.1rem' }}>
-          Personal Details
-        </h3>
+      {/* Card 1: Personal Information */}
+      <div className="glass-card form-card">
+        <div className="form-card-header">
+          <div className="form-card-header-main">
+            <h3 className="form-card-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+              Personal Information
+            </h3>
+            <p className="form-card-subtitle">Manage your name and troop member identification</p>
+          </div>
+        </div>
 
-        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
-                First Name (or Nickname) *
+        <form onSubmit={handleSavePersonalInfo}>
+          <div className="form-row-responsive">
+            <div className="form-group form-group-flex-2">
+              <label className="form-label">
+                First Name (or Nickname) <span className="required-asterisk">*</span>
               </label>
               <input
                 type="text"
+                className="form-control-input"
                 value={firstName}
                 onChange={e => setFirstName(e.target.value)}
                 required
                 maxLength={100}
-                style={{ width: '100%', maxWidth: '320px', padding: '0.65rem 0.75rem', background: 'var(--bg-secondary)', color: 'var(--foreground)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', boxSizing: 'border-box' }}
+                placeholder="e.g. John"
               />
             </div>
 
-            <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
-                Last Initial *
+            <div className="form-group form-group-flex-initial">
+              <label className="form-label">
+                Last Initial <span className="required-asterisk">*</span>
               </label>
               <input
                 type="text"
+                className="form-control-input"
                 value={lastInitial}
                 onChange={e => setLastInitial(e.target.value)}
                 required
                 maxLength={1}
-                style={{ width: '100px', padding: '0.65rem 0.75rem', background: 'var(--bg-secondary)', color: 'var(--foreground)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', boxSizing: 'border-box' }}
+                placeholder="D"
               />
             </div>
-          </div>
 
-          <div>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
-              Member ID (Optional)
-            </label>
-            <input
-              type="text"
-              value={memberCode}
-              onChange={e => setMemberCode(e.target.value)}
-              placeholder="e.g. 123456"
-              style={{
-                width: '100%',
-                padding: '0.65rem 0.75rem',
-                background: isMemberIdHighlighted ? 'var(--bg-highlight, rgba(59, 130, 246, 0.15))' : 'var(--bg-secondary)',
-                color: 'var(--foreground)',
-                border: isMemberIdHighlighted ? '2px solid var(--color-primary, #3b82f6)' : '1px solid var(--border-color)',
-                borderRadius: 'var(--radius-sm)',
-                boxSizing: 'border-box',
-                transition: 'all 0.3s ease',
-                boxShadow: isMemberIdHighlighted ? '0 0 8px rgba(59, 130, 246, 0.4)' : 'none'
-              }}
-            />
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
-              Email Address
-            </label>
-            <input
-              type="email"
-              value={email}
-              readOnly
-              disabled
-              style={{ width: '100%', padding: '0.65rem 0.75rem', background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', boxSizing: 'border-box', opacity: 0.8, cursor: 'not-allowed' }}
-            />
-            <span style={{ fontSize: '0.75rem', color: 'var(--color-danger, #ef4444)', marginTop: '0.25rem', display: 'block' }}>
-              Note: Email editing feature is coming in a future update.
-            </span>
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
-              Role
-            </label>
-            <select
-              value={role}
-              disabled
-              style={{ width: '100%', padding: '0.65rem 0.75rem', background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', boxSizing: 'border-box', opacity: 0.8, cursor: 'not-allowed' }}
-            >
-              <option value="billing_admin">Billing Admin</option>
-              <option value="troop_admin">Troop Admin</option>
-              <option value="badge_scanner">Badge Scanner</option>
-            </select>
-            <span style={{ fontSize: '0.75rem', color: 'var(--color-danger, #ef4444)', marginTop: '0.25rem', display: 'block' }}>
-              Note: Self-demotion and role transfer features are coming in a future update.
-            </span>
-          </div>
-
-          <hr style={{ margin: '1rem 0', borderColor: 'var(--border-color)' }} />
-          <h4 style={{ margin: 0, color: 'var(--foreground)', fontSize: '1rem' }}>Change Password</h4>
-
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-            <div style={{ flex: '1 1 200px' }}>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
-                New Password
+            <div className="form-group form-group-flex-2">
+              <label className="form-label">
+                Member ID <span style={{ fontWeight: 400, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>(Optional)</span>
               </label>
               <input
-                type="password"
-                placeholder="Leave blank to keep current"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                style={{ width: '100%', padding: '0.65rem 0.75rem', background: 'var(--bg-secondary)', color: 'var(--foreground)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', boxSizing: 'border-box' }}
-              />
-            </div>
-
-            <div style={{ flex: '1 1 200px' }}>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
-                Confirm New Password
-              </label>
-              <input
-                type="password"
-                placeholder="Confirm new password"
-                value={confirmPassword}
-                onChange={e => setConfirmPassword(e.target.value)}
-                style={{ width: '100%', padding: '0.65rem 0.75rem', background: 'var(--bg-secondary)', color: 'var(--foreground)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', boxSizing: 'border-box' }}
+                type="text"
+                className="form-control-input"
+                value={memberCode}
+                onChange={e => setMemberCode(e.target.value)}
+                placeholder="e.g. 123456"
+                style={{
+                  background: isMemberIdHighlighted ? 'var(--bg-highlight, rgba(59, 130, 246, 0.15))' : undefined,
+                  borderColor: isMemberIdHighlighted ? 'var(--color-primary, #3b82f6)' : undefined,
+                  boxShadow: isMemberIdHighlighted ? '0 0 8px rgba(59, 130, 246, 0.4)' : undefined,
+                  transition: 'all 0.3s ease'
+                }}
               />
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-            <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? 'Saving...' : 'Save Changes'}
+          <div className="form-card-footer">
+            <button type="submit" className="btn btn-primary" disabled={savingPersonalInfo}>
+              {savingPersonalInfo ? 'Saving...' : 'Save'}
             </button>
           </div>
         </form>
       </div>
 
-      {/* Badge Management Section */}
-      <div className="glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
-        <h3 style={{ marginTop: 0, marginBottom: '1.25rem', color: 'var(--foreground)', fontSize: '1.1rem' }}>
-          Badge Management
-        </h3>
+      {/* Card 2: Account Details (Read-only) */}
+      <div className="glass-card form-card">
+        <div className="form-card-header">
+          <div className="form-card-header-main">
+            <h3 className="form-card-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
+              </svg>
+              Account Details
+            </h3>
+            <p className="form-card-subtitle">View your email address and assigned role within your troop</p>
+          </div>
+        </div>
+
+        <div className="form-row-responsive">
+          <div className="form-group form-group-flex-1">
+            <label className="form-label">
+              Email Address
+            </label>
+            <div className="form-control-readonly">
+              <span>{email || 'No email associated'}</span>
+              <span className="form-readonly-badge">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+                Read-only
+              </span>
+            </div>
+            <div className="form-helper-text">
+              Email address is managed via your login credentials.
+            </div>
+          </div>
+
+          <div className="form-group form-group-flex-1">
+            <label className="form-label">
+              Current Role
+            </label>
+            <div className="form-control-readonly">
+              <span style={{ fontWeight: 600, color: 'var(--foreground)' }}>{formatRoleName(role)}</span>
+              <span className="form-readonly-badge">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                </svg>
+                Assigned Role
+              </span>
+            </div>
+            <div className="form-helper-text">
+              Role permissions are managed by your Troop Administrator.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Card 3: Security / Update Password */}
+      <div className="glass-card form-card">
+        <div className="form-card-header">
+          <div className="form-card-header-main">
+            <h3 className="form-card-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+              Security
+            </h3>
+            <p className="form-card-subtitle">Update your account password</p>
+          </div>
+        </div>
+
+        <form onSubmit={handleUpdatePassword}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+
+            <div className="form-group" style={{ maxWidth: '400px' }}>
+              <label className="form-label">
+                Current Password <span className="required-asterisk">*</span>
+              </label>
+              <input
+                type="password"
+                className="form-control-input"
+                placeholder="Enter current password"
+                value={currentPassword}
+                onChange={e => setCurrentPassword(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="form-row-responsive">
+              <div className="form-group form-group-flex-1">
+                <label className="form-label">
+                  New Password <span className="required-asterisk">*</span>
+                </label>
+                <input
+                  type="password"
+                  className="form-control-input"
+                  placeholder="Enter new password"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="form-group form-group-flex-1">
+                <label className="form-label">
+                  Confirm New Password <span className="required-asterisk">*</span>
+                </label>
+                <input
+                  type="password"
+                  className="form-control-input"
+                  placeholder="Confirm new password"
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="password-requirements-box">
+              <div style={{ fontWeight: 600, color: 'var(--foreground)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="16" x2="12" y2="12"></line>
+                  <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+                Password Requirements:
+              </div>
+              <ul>
+                <li>Must be at least 6 characters in length</li>
+                <li>New password and confirmation password must match</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="form-card-footer">
+            <button type="submit" className="btn btn-primary" disabled={savingPassword}>
+              {savingPassword ? 'Updating...' : 'Update Password'}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* Card 4: Badge Management */}
+      <div className="glass-card form-card">
+        <div className="form-card-header">
+          <div className="form-card-header-main">
+            <h3 className="form-card-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.78 4.78 4 4 0 0 1-6.74 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76z"></path>
+              </svg>
+              Badge Management
+            </h3>
+            <p className="form-card-subtitle">Link or unlink your physical Trail Life badge</p>
+          </div>
+        </div>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
@@ -449,7 +591,10 @@ export function Profile() {
             </div>
             <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
               {member?.tlc_id ? (
-                <span style={{ color: 'var(--color-success, #10b981)', fontWeight: 500 }}>
+                <span style={{ color: 'var(--color-success, #10b981)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
                   Linked (TLC ID: {member.tlc_id})
                 </span>
               ) : (
@@ -479,7 +624,6 @@ export function Profile() {
                   type="button"
                   className="btn btn-secondary"
                   onClick={handleUnlinkBadge}
-                  disabled={saving}
                   style={{ borderColor: 'var(--color-danger, #ef4444)', color: 'var(--color-danger, #ef4444)' }}
                 >
                   Unlink Badge
@@ -490,7 +634,6 @@ export function Profile() {
                 type="button"
                 className="btn btn-primary"
                 onClick={() => setIsScannerOpen(true)}
-                disabled={saving}
               >
                 Scan New Badge
               </button>
@@ -499,27 +642,40 @@ export function Profile() {
         </div>
       </div>
 
-      {/* Danger Zone: Self / Troop Deletion Placeholder */}
-      <div className="glass-card" style={{ padding: '1.5rem', border: '1px solid var(--color-danger, #ef4444)' }}>
-        <h3 style={{ marginTop: 0, marginBottom: '0.5rem', color: 'var(--color-danger, #ef4444)', fontSize: '1.1rem' }}>
-          Danger Zone
-        </h3>
-        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
-          Self-deletion and troop deletion options.
-        </p>
+      {/* Card 5: Danger Zone */}
+      <div className="glass-card form-card" style={{ border: '1px solid color-mix(in srgb, var(--color-danger, #ef4444) 30%, transparent)' }}>
+        <div className="form-card-header" style={{ borderBottomColor: 'color-mix(in srgb, var(--color-danger, #ef4444) 20%, transparent)' }}>
+          <div className="form-card-header-main">
+            <h3 className="form-card-title" style={{ color: 'var(--color-danger, #ef4444)' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+              Danger Zone
+            </h3>
+            <p className="form-card-subtitle">Account deletion and troop administration controls</p>
+          </div>
+        </div>
 
-        <span style={{ fontSize: '0.75rem', color: 'var(--color-danger, #ef4444)', marginBottom: '1rem', display: 'block' }}>
-          Note: Account self-deletion (for non-billing admins) and troop deletion (for billing admins) are coming in a future update.
-        </span>
-
-        <button
-          type="button"
-          className="btn btn-secondary"
-          disabled
-          style={{ background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-color)', opacity: 0.6, cursor: 'not-allowed' }}
-        >
-          Delete Account / Troop
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--foreground)' }}>
+              Account Deletion
+            </div>
+            <div className="form-helper-text">
+              Self-deletion and troop deletion options are managed by billing administrators.
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            disabled
+            style={{ opacity: 0.6, cursor: 'not-allowed' }}
+          >
+            Delete Account
+          </button>
+        </div>
       </div>
 
       {/* Single Badge Scanner Modal */}

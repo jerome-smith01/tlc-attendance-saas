@@ -1878,11 +1878,12 @@ input[type="date"].filter-input::-webkit-calendar-picker-indicator:hover {
 }
 
 .form-group-flex-2 {
-  flex: 2 1 260px;
+  flex: 2 1 180px;
 }
 
 .form-group-flex-initial {
-  flex: 0 1 140px;
+  flex: 0 1 110px;
+  min-width: 90px;
 }
 
 .form-group {
