@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useTroop } from '../context/TroopContext';
 import { useAuth } from '../context/AuthContext';
@@ -7,11 +7,10 @@ import { useToast } from '../components/common/ToastContext';
 import { useConfirm } from '../components/common/ConfirmContext';
 import { SingleBadgeScannerModal } from '../components/SingleBadgeScannerModal';
 
-export function EditMember() {
-  const { memberId } = useParams();
+export function Profile() {
   const navigate = useNavigate();
-  const { selectedTroop, selectedTroopId, isGlobalAdmin } = useTroop();
-  const { user } = useAuth();
+  const { session, user, loading: authLoading } = useAuth();
+  const { selectedTroop, selectedTroopId } = useTroop();
   const { addToast } = useToast();
   const confirm = useConfirm();
 
@@ -25,13 +24,12 @@ export function EditMember() {
   const [memberCode, setMemberCode] = useState('');
   const [role, setRole] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   // Scanner modal & highlight state
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isMemberIdHighlighted, setIsMemberIdHighlighted] = useState(false);
-
-  const currentUserRole = selectedTroop?.currentUserRole;
-  const canManageRoster = isGlobalAdmin || currentUserRole === 'troop_admin' || currentUserRole === 'billing_admin';
 
   const triggerMemberIdHighlight = () => {
     setIsMemberIdHighlighted(true);
@@ -41,20 +39,35 @@ export function EditMember() {
   };
 
   useEffect(() => {
-    if (!memberId) return;
-    fetchMember();
-  }, [memberId]);
+    if (!authLoading && !session) {
+      navigate('/login', { replace: true });
+    }
+  }, [session, authLoading, navigate]);
 
-  async function fetchMember() {
+  useEffect(() => {
+    if (!user) return;
+    fetchProfile();
+  }, [user, selectedTroopId]);
+
+  async function fetchProfile() {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      setEmail(user?.email || '');
+
+      let query = supabase
         .from('roster')
         .select('*')
-        .eq('id', memberId)
-        .single();
+        .eq('user_id', user.id);
 
-      if (error) throw error;
+      if (selectedTroopId) {
+        query = query.eq('troop_id', selectedTroopId);
+      }
+
+      const { data, error } = await query.maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching profile roster:', error);
+      }
 
       if (data) {
         setMember(data);
@@ -62,20 +75,20 @@ export function EditMember() {
         setLastInitial(data.last_initial || '');
         setMemberCode(data.member_id || '');
         setRole(data.role || '');
-        setEmail(data.email || '');
+      } else {
+        // Fallback to user metadata or email
+        const metaName = user?.user_metadata?.full_name || '';
+        const parts = metaName.split(' ');
+        if (parts.length > 0) setFirstName(parts[0]);
+        if (parts.length > 1) setLastInitial(parts[parts.length - 1][0]);
       }
     } catch (err) {
-      console.error('Error fetching member:', err);
-      addToast('Failed to load member details.', 'error');
-      navigate('/roster/members');
+      console.error('Error loading profile:', err);
+      addToast('Failed to load profile details.', 'error');
     } finally {
       setLoading(false);
     }
   }
-
-  const isLeader = member && member.role !== null && member.role !== 'trailman';
-  const isProtectedRole = member && (member.role === 'billing_admin' || member.role === 'global_admin');
-  const isOwnAccount = member && member.user_id === user?.id;
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -84,50 +97,109 @@ export function EditMember() {
       return;
     }
 
+    if (password && password !== confirmPassword) {
+      addToast('Passwords do not match.', 'error');
+      return;
+    }
+
     try {
       setSaving(true);
-      const updates = {
+
+      // 1. Update password if provided
+      if (password) {
+        const { error: authError } = await supabase.auth.updateUser({ password });
+        if (authError) throw authError;
+      }
+
+      // 2. Fetch all troop affiliations for this user
+      const { data: troopUsers, error: tuError } = await supabase
+        .from('troop_users')
+        .select('troop_id, role, onboarding_completed')
+        .eq('user_id', user.id);
+
+      if (tuError) throw tuError;
+
+      const formattedLastInitial = lastInitial.trim().charAt(0).toUpperCase();
+
+      // 3. Update or create roster entry for each troop the user belongs to
+      if (troopUsers && troopUsers.length > 0) {
+        for (const tu of troopUsers) {
+          const { data: existingRoster } = await supabase
+            .from('roster')
+            .select('id')
+            .eq('troop_id', tu.troop_id)
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          const updateObj = {
+            first_name: firstName.trim(),
+            last_initial: formattedLastInitial,
+          };
+
+          // Update member_id for the current troop
+          if (tu.troop_id === selectedTroopId) {
+            updateObj.member_id = memberCode.trim() || null;
+          }
+
+          if (existingRoster) {
+            const { error: updateError } = await supabase
+              .from('roster')
+              .update(updateObj)
+              .eq('id', existingRoster.id);
+            if (updateError) throw updateError;
+          } else {
+            const { error: insertError } = await supabase
+              .from('roster')
+              .insert({
+                troop_id: tu.troop_id,
+                user_id: user.id,
+                first_name: firstName.trim(),
+                last_initial: formattedLastInitial,
+                member_id: tu.troop_id === selectedTroopId ? (memberCode.trim() || null) : null,
+                role: tu.role,
+                email: user.email
+              });
+            if (insertError) throw insertError;
+          }
+        }
+      }
+
+      // 4. Handle onboarding completion if needed
+      const needsOnboarding = troopUsers?.some(tu => !tu.onboarding_completed);
+      if (needsOnboarding) {
+        const { error: updateError } = await supabase.rpc('complete_user_onboarding');
+        if (updateError) throw updateError;
+
+        addToast('Profile completed successfully!', 'success');
+        window.location.hash = '#/events';
+        window.location.reload();
+        return;
+      }
+
+      addToast('Profile updated successfully!', 'success');
+      setPassword('');
+      setConfirmPassword('');
+      setMember(prev => ({
+        ...prev,
         first_name: firstName.trim(),
-        last_initial: lastInitial.trim().toUpperCase(),
-        member_id: memberCode.trim() || null,
-      };
+        last_initial: formattedLastInitial,
+        member_id: memberCode.trim() || null
+      }));
 
-      if (isLeader && !isProtectedRole) {
-        updates.role = role;
-      }
-
-      const { error } = await supabase
-        .from('roster')
-        .update(updates)
-        .eq('id', memberId);
-
-      if (error) throw error;
-
-      // If member has a user_id and role was updated, update troop_users table as well
-      if (isLeader && !isProtectedRole && member.user_id && member.troop_id) {
-        const { error: tuError } = await supabase
-          .from('troop_users')
-          .update({ role: role })
-          .eq('user_id', member.user_id)
-          .eq('troop_id', member.troop_id);
-
-        if (tuError) console.error('Error updating troop_users role:', tuError);
-      }
-
-      addToast('Member details updated successfully!', 'success');
-      setMember(prev => ({ ...prev, ...updates }));
     } catch (err) {
-      console.error('Error updating member:', err);
-      addToast('Failed to update member details.', 'error');
+      console.error('[Profile] Save Error:', err);
+      addToast(err.message || 'Failed to update profile.', 'error');
     } finally {
       setSaving(false);
     }
   };
 
   const handleUnlinkBadge = async () => {
+    if (!member?.id) return;
+
     const isConfirmed = await confirm({
       title: 'Unlink Badge',
-      message: `Are you sure you want to unlink the badge for ${firstName} ${lastInitial}.?`,
+      message: 'Are you sure you want to unlink your badge?',
       confirmText: 'Unlink',
       isDestructive: true,
     });
@@ -139,7 +211,7 @@ export function EditMember() {
       const { error } = await supabase
         .from('roster')
         .update({ tlc_id: null })
-        .eq('id', memberId);
+        .eq('id', member.id);
 
       if (error) throw error;
 
@@ -154,6 +226,8 @@ export function EditMember() {
   };
 
   const handleScanBadge = async (scanData) => {
+    if (!member?.id) return;
+
     const { tlcId, memberId: scannedMemberId } = typeof scanData === 'string'
       ? { tlcId: scanData, memberId: null }
       : scanData;
@@ -167,14 +241,14 @@ export function EditMember() {
       let { error } = await supabase
         .from('roster')
         .update(updateData)
-        .eq('id', memberId);
+        .eq('id', member.id);
 
       if (error && error.code === '23505' && scannedMemberId) {
         updateData = { tlc_id: tlcId };
         const retry = await supabase
           .from('roster')
           .update(updateData)
-          .eq('id', memberId);
+          .eq('id', member.id);
         error = retry.error;
       }
 
@@ -200,68 +274,22 @@ export function EditMember() {
     setIsScannerOpen(false);
   };
 
-  const handleDeleteMember = async () => {
-    if (isOwnAccount) {
-      addToast('You cannot remove your own account.', 'error');
-      return;
-    }
-
-    const memberDisplayName = `${firstName} ${lastInitial}.`;
-    const isConfirmed = await confirm({
-      title: 'Remove Member',
-      message: `Are you sure you want to remove ${memberDisplayName} from the roster? This action cannot be undone.`,
-      confirmText: 'Delete',
-      isDestructive: true,
-    });
-
-    if (!isConfirmed) return;
-
-    try {
-      setSaving(true);
-      const { error } = await supabase
-        .from('roster')
-        .delete()
-        .eq('id', memberId);
-
-      if (error) throw error;
-
-      addToast('Member deleted successfully.', 'success');
-      navigate('/roster/members');
-    } catch (err) {
-      console.error('Error deleting member:', err);
-      addToast('Failed to delete member.', 'error');
-      setSaving(false);
-    }
-  };
-
   if (loading) {
-    return <div style={{ padding: '2rem', color: 'var(--foreground)' }}>Loading member details...</div>;
+    return <div style={{ padding: '2rem', color: 'var(--foreground)' }}>Loading profile...</div>;
   }
 
-  if (!canManageRoster) {
-    return (
-      <div style={{ padding: '2rem', color: 'var(--foreground)' }}>
-        <h2>Access Denied</h2>
-        <p>You do not have permission to edit roster members.</p>
-        <button type="button" className="btn btn-secondary" onClick={() => navigate('/roster/members')}>
-          Back to Roster
-        </button>
-      </div>
-    );
-  }
-
-  const memberDisplayName = `${member?.first_name || ''} ${member?.last_initial || ''}.`.trim();
+  const userDisplayName = `${firstName || ''} ${lastInitial || ''}.`.trim() || 'My Profile';
 
   return (
     <div style={{ width: '100%', maxWidth: '800px', margin: '0 auto', boxSizing: 'border-box', padding: '2rem' }}>
 
-      {/* Header & Back Button */}
+      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
         <button
           type="button"
           className="btn btn-secondary"
-          title="Back to Roster"
-          onClick={() => navigate('/roster/members')}
+          title="Back to Events"
+          onClick={() => navigate('/events')}
           style={{ padding: '0.35rem 0.5rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-move-left-icon lucide-move-left">
@@ -270,15 +298,15 @@ export function EditMember() {
           </svg>
         </button>
         <div>
-          <h1 style={{ color: 'var(--foreground)', margin: 0, fontSize: '1.5rem' }}>Edit Member</h1>
-          <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.9rem' }}>{memberDisplayName}</p>
+          <h1 style={{ color: 'var(--foreground)', margin: 0, fontSize: '1.5rem' }}>My Profile</h1>
+          <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.9rem' }}>{userDisplayName}</p>
         </div>
       </div>
 
-      {/* Member Details Form */}
+      {/* Profile Details Form */}
       <div className="glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
         <h3 style={{ marginTop: 0, marginBottom: '1.25rem', color: 'var(--foreground)', fontSize: '1.1rem' }}>
-          Member Details
+          Personal Details
         </h3>
 
         <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -335,50 +363,70 @@ export function EditMember() {
             />
           </div>
 
-          {/* Leader specific fields */}
-          {isLeader && (
-            <>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  readOnly
-                  disabled
-                  style={{ width: '100%', padding: '0.65rem 0.75rem', background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', boxSizing: 'border-box', opacity: 0.8, cursor: 'not-allowed' }}
-                />
-                <span style={{ fontSize: '0.75rem', color: 'var(--color-danger, #ef4444)', marginTop: '0.25rem', display: 'block' }}>
-                  Note: Email editing feature is coming in a future update.
-                </span>
-              </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+              Email Address
+            </label>
+            <input
+              type="email"
+              value={email}
+              readOnly
+              disabled
+              style={{ width: '100%', padding: '0.65rem 0.75rem', background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', boxSizing: 'border-box', opacity: 0.8, cursor: 'not-allowed' }}
+            />
+            <span style={{ fontSize: '0.75rem', color: 'var(--color-danger, #ef4444)', marginTop: '0.25rem', display: 'block' }}>
+              Note: Email editing feature is coming in a future update.
+            </span>
+          </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
-                  Role
-                </label>
-                {isProtectedRole ? (
-                  <input
-                    type="text"
-                    value={role === 'billing_admin' ? 'Billing Admin' : 'Global Admin'}
-                    readOnly
-                    disabled
-                    style={{ width: '100%', padding: '0.65rem 0.75rem', background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', boxSizing: 'border-box', opacity: 0.8, cursor: 'not-allowed' }}
-                  />
-                ) : (
-                  <select
-                    value={role}
-                    onChange={e => setRole(e.target.value)}
-                    style={{ width: '100%', padding: '0.65rem 0.75rem', background: 'var(--bg-secondary)', color: 'var(--foreground)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', boxSizing: 'border-box' }}
-                  >
-                    <option value="troop_admin">Troop Admin</option>
-                    <option value="badge_scanner">Badge Scanner</option>
-                  </select>
-                )}
-              </div>
-            </>
-          )}
+          <div>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+              Role
+            </label>
+            <select
+              value={role}
+              disabled
+              style={{ width: '100%', padding: '0.65rem 0.75rem', background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', boxSizing: 'border-box', opacity: 0.8, cursor: 'not-allowed' }}
+            >
+              <option value="billing_admin">Billing Admin</option>
+              <option value="troop_admin">Troop Admin</option>
+              <option value="badge_scanner">Badge Scanner</option>
+            </select>
+            <span style={{ fontSize: '0.75rem', color: 'var(--color-danger, #ef4444)', marginTop: '0.25rem', display: 'block' }}>
+              Note: Self-demotion and role transfer features are coming in a future update.
+            </span>
+          </div>
+
+          <hr style={{ margin: '1rem 0', borderColor: 'var(--border-color)' }} />
+          <h4 style={{ margin: 0, color: 'var(--foreground)', fontSize: '1rem' }}>Change Password</h4>
+
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 200px' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+                New Password
+              </label>
+              <input
+                type="password"
+                placeholder="Leave blank to keep current"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                style={{ width: '100%', padding: '0.65rem 0.75rem', background: 'var(--bg-secondary)', color: 'var(--foreground)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', boxSizing: 'border-box' }}
+              />
+            </div>
+
+            <div style={{ flex: '1 1 200px' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+                Confirm New Password
+              </label>
+              <input
+                type="password"
+                placeholder="Confirm new password"
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+                style={{ width: '100%', padding: '0.65rem 0.75rem', background: 'var(--bg-secondary)', color: 'var(--foreground)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', boxSizing: 'border-box' }}
+              />
+            </div>
+          </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
             <button type="submit" className="btn btn-primary" disabled={saving}>
@@ -451,33 +499,38 @@ export function EditMember() {
         </div>
       </div>
 
-      {/* Danger Zone: Delete Member */}
+      {/* Danger Zone: Self / Troop Deletion Placeholder */}
       <div className="glass-card" style={{ padding: '1.5rem', border: '1px solid var(--color-danger, #ef4444)' }}>
         <h3 style={{ marginTop: 0, marginBottom: '0.5rem', color: 'var(--color-danger, #ef4444)', fontSize: '1.1rem' }}>
           Danger Zone
         </h3>
-        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-          Removing this member will delete them from the roster. This action cannot be undone.
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+          Self-deletion and troop deletion options.
         </p>
+
+        <span style={{ fontSize: '0.75rem', color: 'var(--color-danger, #ef4444)', marginBottom: '1rem', display: 'block' }}>
+          Note: Account self-deletion (for non-billing admins) and troop deletion (for billing admins) are coming in a future update.
+        </span>
 
         <button
           type="button"
-          className="btn btn-secondary btn-icon-destructive"
-          onClick={handleDeleteMember}
-          disabled={saving || isOwnAccount}
-          style={{ background: 'var(--color-danger, #ef4444)', color: '#fff', border: 'none' }}
+          className="btn btn-secondary"
+          disabled
+          style={{ background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-color)', opacity: 0.6, cursor: 'not-allowed' }}
         >
-          {isOwnAccount ? 'Cannot Delete Own Account' : 'Delete Member'}
+          Delete Account / Troop
         </button>
       </div>
 
       {/* Single Badge Scanner Modal */}
-      <SingleBadgeScannerModal
-        isOpen={isScannerOpen}
-        onClose={() => setIsScannerOpen(false)}
-        onScan={handleScanBadge}
-        memberName={memberDisplayName}
-      />
+      {member && (
+        <SingleBadgeScannerModal
+          isOpen={isScannerOpen}
+          onClose={() => setIsScannerOpen(false)}
+          onScan={handleScanBadge}
+          memberName={userDisplayName}
+        />
+      )}
     </div>
   );
 }

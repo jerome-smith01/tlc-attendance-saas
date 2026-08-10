@@ -63,7 +63,7 @@ export function TroopProvider({ children }) {
       
       const needsOnboarding = data?.some(tu => tu.onboarding_completed === false);
       if (needsOnboarding) {
-        window.location.hash = '#/complete-profile';
+        window.location.hash = '#/profile';
         return;
       }
       

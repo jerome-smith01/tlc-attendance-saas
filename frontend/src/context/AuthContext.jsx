@@ -34,7 +34,7 @@ export function AuthProvider({ children }) {
       (event, session) => {
         // Restore the intended route for invite links before the router mounts
         if (event === 'SIGNED_IN' && isInvite.current) {
-          window.location.hash = '/complete-profile';
+          window.location.hash = '/profile';
           isInvite.current = false;
         }
 

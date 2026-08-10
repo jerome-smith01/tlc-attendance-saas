@@ -1068,26 +1068,24 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
         title="Add Member"
       >
         <form onSubmit={handleAddMember} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <input
-              type="text"
-              placeholder="First Name (or Nickname)"
-              value={newFirstName}
-              onChange={e => setNewFirstName(e.target.value)}
-              required
-              maxLength={100}
-              style={{ flex: 1, padding: '0.75rem', background: 'var(--bg-secondary)', color: 'var(--foreground)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)' }}
-            />
-            <input
-              type="text"
-              placeholder="Last Initial"
-              maxLength={1}
-              value={newLastInitial}
-              onChange={e => setNewLastInitial(e.target.value)}
-              required
-              style={{ width: '90px', padding: '0.75rem', background: 'var(--bg-secondary)', color: 'var(--foreground)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)' }}
-            />
-          </div>
+          <input
+            type="text"
+            placeholder="First Name (or Nickname)"
+            value={newFirstName}
+            onChange={e => setNewFirstName(e.target.value)}
+            required
+            maxLength={100}
+            style={{ width: '100%', maxWidth: '320px', padding: '0.75rem', background: 'var(--bg-secondary)', color: 'var(--foreground)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', boxSizing: 'border-box' }}
+          />
+          <input
+            type="text"
+            placeholder="Last Initial"
+            maxLength={1}
+            value={newLastInitial}
+            onChange={e => setNewLastInitial(e.target.value)}
+            required
+            style={{ width: '100px', padding: '0.75rem', background: 'var(--bg-secondary)', color: 'var(--foreground)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', boxSizing: 'border-box' }}
+          />
           <input
             type="text"
             placeholder="Member ID (Optional)"

@@ -53,7 +53,7 @@ export function Login() {
     setMessage('');
     
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/complete-profile`,
+      redirectTo: `${window.location.origin}/profile`,
     });
     
     if (error) {

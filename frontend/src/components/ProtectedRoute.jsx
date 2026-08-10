@@ -24,7 +24,7 @@ export function ProtectedRoute({ children, allowedRoles = null }) {
     if (!isAuthorized) {
       let fallbackPath = '/dashboard';
       if (userRole === 'badge_scanner') fallbackPath = '/scanner';
-      else if (!userRole) fallbackPath = '/complete-profile';
+      else if (!userRole) fallbackPath = '/profile';
       
       return <Navigate to={fallbackPath} replace />;
     }

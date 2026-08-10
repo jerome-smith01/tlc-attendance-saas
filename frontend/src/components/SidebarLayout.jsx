@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTroop } from '../context/TroopContext';
+import { supabase } from '../lib/supabaseClient';
 import { ThemeToggle } from './ThemeToggle';
 
 export function SidebarLayout() {
@@ -52,7 +53,7 @@ export function SidebarLayout() {
     { path: '/roster/members', label: 'Roster', allowedRoles: ['troop_admin', 'billing_admin', 'global_admin'] },
     { path: '/events', label: 'Events', allowedRoles: ['badge_scanner', 'troop_admin', 'billing_admin', 'global_admin'] },
     { path: '/billing', label: 'Billing', allowedRoles: ['billing_admin', 'global_admin'] },
-    { path: '/complete-profile', label: 'Profile', allowedRoles: ['badge_scanner', 'troop_admin', 'billing_admin', 'global_admin'] },
+    { path: '/profile', label: 'Profile', allowedRoles: ['badge_scanner', 'troop_admin', 'billing_admin', 'global_admin'] },
   ];
 
   const visibleNavLinks = allNavLinks.filter(link => {
@@ -60,7 +61,34 @@ export function SidebarLayout() {
     return link.allowedRoles.includes(currentUserRole);
   });
 
+  const [userName, setUserName] = useState('');
+
+  useEffect(() => {
+    async function loadUserName() {
+      if (!user) return;
+      try {
+        let query = supabase
+          .from('roster')
+          .select('first_name, last_initial')
+          .eq('user_id', user.id);
+
+        if (selectedTroopId) {
+          query = query.eq('troop_id', selectedTroopId);
+        }
+
+        const { data } = await query.limit(1).maybeSingle();
+        if (data && data.first_name && data.last_initial) {
+          setUserName(`${data.first_name} ${data.last_initial}.`);
+        }
+      } catch (err) {
+        console.error('Error fetching sidebar user name:', err);
+      }
+    }
+    loadUserName();
+  }, [user, selectedTroopId, location.pathname]);
+
   const getDisplayName = () => {
+    if (userName) return userName;
     if (user?.user_metadata?.full_name) {
       const parts = user.user_metadata.full_name.split(' ');
       if (parts.length > 1) {
