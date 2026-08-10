@@ -16,10 +16,39 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
   const [roster, setRoster] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // ── UI state ──────────────────────────────────────────────────────────────
+  // Storage keys for section visibility persistence
+  const tableVisibilityKey = `tlc_section_roster_table_${userId || 'anon'}`;
+  const csvVisibilityKey = `tlc_section_roster_csv_${userId || 'anon'}`;
+
   const [selectedMembers, setSelectedMembers] = useState([]);
   const [showActionGuide, setShowActionGuide] = useState(false);
-  const [isTableVisible, setIsTableVisible] = useState(true);
+  const [isTableVisible, setIsTableVisible] = useState(() => {
+    try {
+      const saved = localStorage.getItem(tableVisibilityKey);
+      if (saved !== null) return JSON.parse(saved);
+    } catch (_) { }
+    return true;
+  });
+  const [isCsvVisible, setIsCsvVisible] = useState(() => {
+    try {
+      const saved = localStorage.getItem(csvVisibilityKey);
+      if (saved !== null) return JSON.parse(saved);
+    } catch (_) { }
+    return true;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(tableVisibilityKey, JSON.stringify(isTableVisible));
+    } catch (_) { }
+  }, [isTableVisible, tableVisibilityKey]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(csvVisibilityKey, JSON.stringify(isCsvVisible));
+    } catch (_) { }
+  }, [isCsvVisible, csvVisibilityKey]);
+
   const [selectedFileName, setSelectedFileName] = useState('');
   const fileInputRef = useRef(null);
 
@@ -59,7 +88,7 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
     try {
       const saved = localStorage.getItem(storageKey);
       if (saved) { const p = JSON.parse(saved); if (p.sortConfig) return p.sortConfig; }
-    } catch (_) {}
+    } catch (_) { }
     return defaultSort;
   });
 
@@ -67,7 +96,7 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
     try {
       const saved = localStorage.getItem(storageKey);
       if (saved) { const p = JSON.parse(saved); if (p.columnFilters) return { ...defaultFilters, ...p.columnFilters }; }
-    } catch (_) {}
+    } catch (_) { }
     return defaultFilters;
   });
 
@@ -75,7 +104,7 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
     try {
       const saved = localStorage.getItem(storageKey);
       if (saved) { const p = JSON.parse(saved); if (p.columnWidths) return { ...defaultColumnWidths, ...p.columnWidths }; }
-    } catch (_) {}
+    } catch (_) { }
     return defaultColumnWidths;
   });
 
@@ -83,7 +112,7 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
   useEffect(() => {
     try {
       localStorage.setItem(storageKey, JSON.stringify({ sortConfig, columnFilters, columnWidths }));
-    } catch (_) {}
+    } catch (_) { }
   }, [sortConfig, columnFilters, columnWidths, storageKey]);
 
   // ── Column resize ─────────────────────────────────────────────────────────
@@ -413,41 +442,65 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
 
       {/* ── Members tab: CSV import ────────────────────────────────────── */}
       {activeTab === 'members' && (
-        <div className="glass-card" style={{ padding: '1.25rem', marginBottom: '1.5rem' }}>
-          <h3 style={{ marginTop: 0, marginBottom: '0.5rem', fontSize: '1rem', fontWeight: 600, color: 'var(--foreground)' }}>
-            Import from TLC CSV
-          </h3>
-          <p style={{ fontSize: '0.875rem', marginBottom: '0.75rem', color: 'var(--text-secondary)', margin: '0 0 0.75rem 0' }}>
-            Your CSV file is processed safely on your device. We only extract Name and Member ID. All other PII (like addresses) is ignored.
-          </p>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv"
-            onChange={handleCsvUpload}
-            disabled={!troopId || loading}
-            style={{ display: 'none' }}
-          />
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={!troopId || loading}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+        <>
+          <div className="attendance-section-header" style={{ marginBottom: '0.75rem' }}>
+            <div
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', userSelect: 'none' }}
+              onClick={() => setIsCsvVisible(v => !v)}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="17 8 12 3 7 8" />
-                <line x1="12" y1="3" x2="12" y2="15" />
+              <svg
+                width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                style={{ transition: 'transform 0.2s', transform: isCsvVisible ? 'rotate(0deg)' : 'rotate(-90deg)', flexShrink: 0 }}
+              >
+                <polyline points="6 9 12 15 18 9" />
               </svg>
-              {loading ? 'Processing...' : 'Choose CSV File'}
-            </button>
-            <span style={{ fontSize: '0.875rem', color: selectedFileName ? 'var(--foreground)' : 'var(--text-secondary)', fontStyle: selectedFileName ? 'normal' : 'italic' }}>
-              {selectedFileName || 'No file chosen'}
-            </span>
+              <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: 'var(--foreground)' }}>
+                Import from TLC CSV
+              </h3>
+            </div>
           </div>
-        </div>
+
+          {isCsvVisible && (
+            <div className="glass-card" style={{ padding: '1.25rem', marginBottom: '1.5rem' }}>
+              <ul style={{ margin: '0px 0px 0.75rem 0px', paddingLeft: '1.2rem', fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                <li>
+                  To export the roster from TLC, go to <a href="https://www.traillifeconnect.com" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)', textDecoration: 'underline' }}>Trail Life Connect</a> → My Troop → <a href="https://www.traillifeconnect.com/user" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)', textDecoration: 'underline' }}>Troop Members</a> → Export filtered to csv.
+                </li>
+                <li>
+                  The app only uses First Name, Last Name, Member Number, and Nickname (if present).
+                </li>
+              </ul>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv"
+                onChange={handleCsvUpload}
+                disabled={!troopId || loading}
+                style={{ display: 'none' }}
+              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-compact"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={!troopId || loading}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                  {loading ? 'Processing...' : 'Choose CSV File'}
+                </button>
+                <span style={{ fontSize: '0.875rem', color: selectedFileName ? 'var(--foreground)' : 'var(--text-secondary)', fontStyle: selectedFileName ? 'normal' : 'italic' }}>
+                  {selectedFileName || 'No file chosen'}
+                </span>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* ── Section header ─────────────────────────────────────────────── */}
@@ -473,8 +526,8 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
           {activeTab === 'members' && canManageRoster && (
             <button
               type="button"
-              className="btn btn-start"
-              style={{ padding: '0.3rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+              className="btn btn-start btn-compact"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
               onClick={() => { setNewFirstName(''); setNewLastInitial(''); setNewMemberId(''); setIsAddMemberModalOpen(true); }}
             >
               + Add Member

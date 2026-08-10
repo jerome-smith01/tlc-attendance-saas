@@ -59,6 +59,7 @@ For list sections below the primary Header Card (e.g., the Attendance list), the
    - Expanded: `transform: rotate(0deg)`
    - Collapsed: `transform: rotate(-90deg)`
 5. **Right-Aligned Controls**: The right edge of the header accommodates bulk controls (e.g., the "All" checkbox), shifted slightly left (`margin-right: 4px`) to align pixel-perfect with the right edge of the white floating cards below it.
+6. **State Persistence**: Expandable section visibility states (e.g., `isTableVisible`, `isCsvVisible`) MUST be persisted to `localStorage` per user (e.g., `tlc_section_<name>_<userId>`) so section expand/collapse states survive page reloads.
 
 ---
 
