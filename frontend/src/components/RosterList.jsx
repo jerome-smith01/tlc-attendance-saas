@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { parseTlcRosterCsv } from '../utils/csvParser';
 import { Modal } from './common/Modal';
@@ -10,6 +11,8 @@ import { useConfirm } from './common/ConfirmContext';
 import { SingleBadgeScannerModal } from './SingleBadgeScannerModal';
 
 export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAdmin, activeTab, userId }) {
+  const navigate = useNavigate();
+
   // ── Permission check FIRST (before any hooks that depend on it) ──────────
   const canManageRoster = isGlobalAdmin || currentUserRole === 'troop_admin' || currentUserRole === 'billing_admin';
 
@@ -494,9 +497,7 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
   }
 
   function handleEditMember(member) {
-    // Placeholder — edit logic not yet implemented
-    console.log('Edit not yet implemented', member);
-    toast('Edit member — coming soon!', 'info');
+    navigate(`/roster/${member.id}/edit`);
   }
 
   if (loading) return <div style={{ padding: '2rem' }}>Loading roster...</div>;

@@ -1142,11 +1142,7 @@ export function Scanner() {
             <div id="qr-reader" style={{ width: '100%', maxWidth: '500px', margin: '0 auto' }}></div>
             {showCheckmark && (
               <div className="scan-overlay scan-overlay--success">
-                <div style={{ backgroundColor: 'var(--bg-secondary)', borderRadius: '50%', padding: '1rem', display: 'flex', boxShadow: 'var(--glass-shadow)' }}>
-                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
-                </div>
+                <img src="/logo.png" alt="Success" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '2rem' }} />
               </div>
             )}
             {showWarning && (

@@ -81,155 +81,162 @@ export function SidebarLayout() {
 
   return (
     <div className="layout-root">
-      {/* Backdrop for mobile navigation */}
-      <div 
-        className={`nav-backdrop ${mobileNavOpen ? 'open' : ''}`} 
-        onClick={() => setMobileNavOpen(false)}
-      />
-
-      {/* Sidebar Navigation */}
-      <nav className={`sidebar ${mobileNavOpen ? 'open' : ''}`}>
-        <button 
-          className="sidebar-close-btn" 
-          onClick={() => setMobileNavOpen(false)}
-          aria-label="Close navigation menu"
-        >
-          ✕
-        </button>
-
-        <h2 style={{ padding: '0 1rem', marginBottom: '2rem', color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
-          TLC Attendance
-        </h2>
-        
-        <div style={{ flexGrow: 1 }}>
-          {visibleNavLinks.map(link => (
-            <Link 
-              key={link.path} 
-              to={link.path} 
-              style={linkStyle(link.path)} 
-              onClick={() => setMobileNavOpen(false)}
-            >
-              {link.label}
-            </Link>
-          ))}
-        </div>
-
-        <div style={{ padding: '1rem', borderTop: '1px solid var(--border-color)', marginTop: 'auto' }}>
-          <div style={{ margin: '0 0 1rem 0', overflow: 'hidden' }}>
-            <p style={{ margin: '0 0 0.25rem 0', color: 'var(--text-primary)', fontSize: '0.875rem', fontWeight: '500', textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' }}>
-              {getDisplayName()}
-            </p>
-            {getFriendlyRole() && (
-              <p style={{ margin: '0', color: 'var(--text-secondary)', fontSize: '0.75rem', textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' }}>
-                {getFriendlyRole()}
-              </p>
-            )}
-          </div>
-          <button 
-            onClick={handleSignOut}
-            style={{ 
-              width: '100%', 
-              padding: '0.5rem', 
-              background: 'transparent', 
-              border: '1px solid var(--border-color)',
-              color: 'var(--text-primary)',
-              borderRadius: '6px',
-              cursor: 'pointer'
-            }}
-          >
-            Sign Out
-          </button>
-        </div>
-      </nav>
-
-      {/* Main Content Area */}
-      <div className="layout-body">
-        {/* Top Navbar */}
-        <header className="layout-header">
+      {/* Top Navbar */}
+      <header className="layout-header">
+        <div className="header-brand" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginRight: 'auto' }}>
           <button 
             className="hamburger-btn" 
             onClick={() => setMobileNavOpen(true)}
             aria-label="Open navigation menu"
+            style={{ marginRight: '0.5rem', margin: 0 }}
           >
             ☰
           </button>
+          <div style={{ width: '32px', height: '32px', flexShrink: 0, backgroundColor: 'transparent' }}>
+            <img src="/logo.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          </div>
+          <h2 className="header-title" style={{ margin: 0, color: 'var(--text-primary)', fontFamily: 'var(--font-display)', fontSize: '1.5rem' }}>
+            TLC Attendance
+          </h2>
+        </div>
 
-          {loadingTroops ? (
-            <span style={{ color: 'var(--text-secondary)' }}>Loading context...</span>
-          ) : (
-            <div ref={dropdownRef} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', fontWeight: '600' }}>Active Troop:</span>
-              
-              {/* Custom Glassmorphic Troop Switcher Dropdown */}
-              <button
-                type="button"
-                onClick={() => setTroopDropdownOpen(!troopDropdownOpen)}
+        {loadingTroops ? (
+          <span style={{ color: 'var(--text-secondary)' }}>Loading context...</span>
+        ) : (
+          <div ref={dropdownRef} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span className="active-troop-label" style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', fontWeight: '600' }}>Active Troop:</span>
+            
+            {/* Custom Glassmorphic Troop Switcher Dropdown */}
+            <button
+              type="button"
+              onClick={() => setTroopDropdownOpen(!troopDropdownOpen)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.4rem 0.8rem',
+                fontSize: '0.9rem',
+                fontWeight: '600',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border-color)',
+                backgroundColor: 'var(--bg-secondary)',
+                color: 'var(--text-primary)',
+                cursor: 'pointer',
+                transition: 'all var(--transition-fast)'
+              }}
+            >
+              <span>{selectedTroop ? selectedTroop.troop_number : 'Select Troop'}</span>
+              <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>{troopDropdownOpen ? '▲' : '▼'}</span>
+            </button>
+
+            {troopDropdownOpen && (
+              <div 
+                className="glass-card"
                 style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  padding: '0.4rem 0.8rem',
-                  fontSize: '0.9rem',
-                  fontWeight: '600',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--border-color)',
-                  backgroundColor: 'var(--bg-secondary)',
-                  color: 'var(--text-primary)',
-                  cursor: 'pointer',
-                  transition: 'all var(--transition-fast)'
+                  position: 'absolute',
+                  top: 'calc(100% + 8px)',
+                  right: 0,
+                  minWidth: '160px',
+                  zIndex: 1000,
+                  padding: '0.4rem 0',
+                  maxHeight: '200px',
+                  overflowY: 'auto',
+                  backgroundColor: 'var(--bg-elevated)'
                 }}
               >
-                <span>{selectedTroop ? selectedTroop.troop_number : 'Select Troop'}</span>
-                <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>{troopDropdownOpen ? '▲' : '▼'}</span>
-              </button>
+                {troops.map(t => (
+                  <div
+                    key={t.id}
+                    onClick={() => {
+                      setSelectedTroopId(t.id);
+                      setTroopDropdownOpen(false);
+                    }}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      cursor: 'pointer',
+                      fontSize: '0.9rem',
+                      fontWeight: t.id === selectedTroopId ? '600' : '400',
+                      color: t.id === selectedTroopId ? 'var(--color-primary)' : 'var(--text-primary)',
+                      backgroundColor: t.id === selectedTroopId ? 'var(--bg-elevated)' : 'transparent',
+                      transition: 'background-color var(--transition-fast)'
+                    }}
+                  >
+                    {t.troop_number}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        <div style={{ height: '24px', width: '1px', backgroundColor: 'var(--border-color)', margin: '0 0.5rem' }} />
+        <ThemeToggle />
+      </header>
 
-              {troopDropdownOpen && (
-                <div 
-                  className="glass-card"
-                  style={{
-                    position: 'absolute',
-                    top: 'calc(100% + 8px)',
-                    left: 0,
-                    minWidth: '160px',
-                    zIndex: 1000,
-                    padding: '0.4rem 0',
-                    maxHeight: '200px',
-                    overflowY: 'auto',
-                    backgroundColor: 'var(--bg-elevated)'
-                  }}
-                >
-                  {troops.map(t => (
-                    <div
-                      key={t.id}
-                      onClick={() => {
-                        setSelectedTroopId(t.id);
-                        setTroopDropdownOpen(false);
-                      }}
-                      style={{
-                        padding: '0.5rem 1rem',
-                        cursor: 'pointer',
-                        fontSize: '0.9rem',
-                        fontWeight: t.id === selectedTroopId ? '600' : '400',
-                        color: t.id === selectedTroopId ? 'var(--color-primary)' : 'var(--text-primary)',
-                        backgroundColor: t.id === selectedTroopId ? 'var(--bg-elevated)' : 'transparent',
-                        transition: 'background-color var(--transition-fast)'
-                      }}
-                    >
-                      {t.troop_number}
-                    </div>
-                  ))}
-                </div>
+      <div className="layout-content">
+        {/* Backdrop for mobile navigation */}
+        <div 
+          className={`nav-backdrop ${mobileNavOpen ? 'open' : ''}`} 
+          onClick={() => setMobileNavOpen(false)}
+        />
+
+        {/* Sidebar Navigation */}
+        <nav className={`sidebar ${mobileNavOpen ? 'open' : ''}`}>
+          <button 
+            className="sidebar-close-btn" 
+            onClick={() => setMobileNavOpen(false)}
+            aria-label="Close navigation menu"
+          >
+            ✕
+          </button>
+          
+          <div style={{ flexGrow: 1 }}>
+            {visibleNavLinks.map(link => (
+              <Link 
+                key={link.path} 
+                to={link.path} 
+                style={linkStyle(link.path)} 
+                onClick={() => setMobileNavOpen(false)}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
+
+          <div style={{ padding: '1rem', borderTop: '1px solid var(--border-color)', marginTop: 'auto' }}>
+            <div style={{ margin: '0 0 1rem 0', overflow: 'hidden' }}>
+              <p style={{ margin: '0 0 0.25rem 0', color: 'var(--text-primary)', fontSize: '0.875rem', fontWeight: '500', textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' }}>
+                {getDisplayName()}
+              </p>
+              {getFriendlyRole() && (
+                <p style={{ margin: '0', color: 'var(--text-secondary)', fontSize: '0.75rem', textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' }}>
+                  {getFriendlyRole()}
+                </p>
               )}
             </div>
-          )}
-          <div style={{ height: '24px', width: '1px', backgroundColor: 'var(--border-color)', margin: '0 0.5rem' }} />
-          <ThemeToggle />
-        </header>
+            <button 
+              onClick={handleSignOut}
+              style={{ 
+                width: '100%', 
+                padding: '0.5rem', 
+                background: 'transparent', 
+                border: '1px solid var(--border-color)',
+                color: 'var(--text-primary)',
+                borderRadius: '6px',
+                cursor: 'pointer'
+              }}
+            >
+              Sign Out
+            </button>
+          </div>
+        </nav>
 
-        {/* Page Content */}
-        <main className="layout-main">
-          <Outlet />
-        </main>
+        {/* Main Content Area */}
+        <div className="layout-body">
+          {/* Page Content */}
+          <main className="layout-main">
+            <Outlet />
+          </main>
+        </div>
       </div>
     </div>
   );

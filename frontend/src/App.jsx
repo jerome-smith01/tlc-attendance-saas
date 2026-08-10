@@ -10,6 +10,7 @@ import { CompleteProfile } from './pages/CompleteProfile';
 import { Dashboard } from './pages/Dashboard';
 import { Scanner } from './pages/Scanner';
 import { Roster } from './pages/Roster';
+import { EditMember } from './pages/EditMember';
 import { Events } from './pages/Events';
 import { Billing } from './pages/Billing';
 
@@ -48,6 +49,14 @@ export default function App() {
                     element={
                       <ProtectedRoute allowedRoles={['troop_admin', 'billing_admin', 'global_admin']}>
                         <Roster />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/roster/:memberId/edit" 
+                    element={
+                      <ProtectedRoute allowedRoles={['troop_admin', 'billing_admin', 'global_admin']}>
+                        <EditMember />
                       </ProtectedRoute>
                     } 
                   />
