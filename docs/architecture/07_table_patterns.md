@@ -25,8 +25,13 @@ To maximize vertical reading space and accommodate arbitrarily long record names
 +--------------------------------------------------------+
 | [x] Aaron K                                       [🗑️] |
 | ------------------------------------------------------ |
-| STATUS                                      SCANNED IN |
-| SCAN TIME                                  03:06:25 PM |
+| STATUS                                      SIGNED IN  |
+| SCANNED IN DATE                                8/12/26 |
+| SCANNED IN TIME                               12:47 PM |
+| SCANNED IN BY                                Jerome S. |
+| SCANNED OUT DATE                                     - |
+| SCANNED OUT TIME                                     - |
+| SCANNED OUT BY                                       - |
 +--------------------------------------------------------+
 ```
 
@@ -44,6 +49,18 @@ To maximize vertical reading space and accommodate arbitrarily long record names
 6. **Desktop Grid Unwrapping (`display: contents`)**:
    - On desktop viewports (`@media (min-width: 768px)`), `.grid-table-card-header` sets `display: contents;`.
    - This eliminates the wrapper from the CSS grid calculation, allowing Cell 1 (checkbox) and Cell 2 (title link) to participate directly in the desktop multi-column CSS grid without DOM duplication.
+
+### Attendance Table Status Badge Contract
+Attendance table rows render interactive status pills using the `getDisplayStatus(scan)` and `getStatusBadgeStyle(scan)` helpers:
+
+| Status Label | Condition | Theme / Color | Hex Code |
+|:---|:---|:---|:---|
+| **`SIGNED IN`** | Online scan, active sign-in (`!raw_sign_out_time`) | 🟢 Green | `#10b981` |
+| **`SIGNED OUT`** | Online scan, member signed out (`!!raw_sign_out_time`) | 🔵 Blue | `#3b82f6` |
+| **`SIGNED IN - OFFLINE`** | Offline scan (`message === 'Saved Offline'` / `temp-` ID), active sign-in | 🟡 Yellow | `#eab308` |
+| **`SIGNED OUT - OFFLINE`** | Offline scan, member signed out | 🟡 Yellow | `#eab308` |
+
+> **Status Toggle Confirmation**: Clicking a status badge prompts for user confirmation (`Sign Member Back In` / `Sign Member Out`) displaying the member's full name before updating Supabase. Authorized roles include `isGlobalAdmin`, `troop_admin`, `billing_admin`, `admin`, and `leader`.
 
 ---
 
@@ -192,6 +209,36 @@ To allow users to adjust column widths according to their viewing preferences wi
   - Apply `table-layout: fixed; width: 100%;` to `<table>`.
   - Render `<colgroup>` with `<col style={{ width: '${columnWidths[key]}fr' }} />` to control column width allocations.
 
+### 5.4 Responsive Scroll Wrapper (`.grid-table-scroll-wrapper`) & Mobile Viewport Collapse
+To handle tables with many columns (e.g. Scanner Attendance Table with 9 columns) without squishing desktop grid cells or breaking mobile card layouts:
+
+- **Desktop Viewports (`@media (min-width: 768px)`)**:
+  - `.grid-table-scroll-wrapper` sets `overflow-x: auto; width: 100%`.
+  - `.grid-table-scroll-wrapper > .grid-table-container` sets `min-width: 1100px` (or screen-appropriate minimum width).
+  - Enables smooth horizontal scrolling for wide desktop grid tables while maintaining fixed fractional column ratios (`fr`) and pixel resizers.
+- **Mobile Viewports (< 768px)**:
+  - `.grid-table-container` remains `width: 100%` without a `min-width` restriction.
+  - Cards (`.grid-table-row`) collapse to 100% of the mobile screen width with `display: flex; flex-direction: column;`.
+  - Field cells (`.grid-table-cell`) display labels on the left and values on the right edge of the mobile screen without label/value separation or forced horizontal page scrolling.
+
+---
+
+## 5.5 Attendance Table 6-Column Scan Specification
+
+The Scanner attendance table (`Scanner.jsx`) replaces the legacy single combined "Scan Time" column with **6 individual, filterable, and sortable columns**:
+
+| Column Key | Column Header | Data Source & Formatting | Empty Value Fallback |
+|:---|:---|:---|:---|
+| `in_date` | `Scanned in date` | `raw_sign_in_time` formatted via `formatAppDate()` (e.g. `8/12/26`) | `-` |
+| `in_time` | `Scanned in time` | `raw_sign_in_time` formatted via `toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })` | `-` |
+| `in_by` | `Scanned in by` | Looked up from `roster` state by `signed_in_by` UUID, formatted as `First L.` (e.g. `Jerome S.`) | `-` |
+| `out_date` | `Scanned out date` | `raw_sign_out_time` formatted via `formatAppDate()` | `-` |
+| `out_time` | `Scanned out time` | `raw_sign_out_time` formatted via `toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })` | `-` |
+| `out_by` | `Scanned out by` | Looked up from `roster` state by `signed_out_by` UUID, formatted as `First L.` | `-` |
+
+### Real-Time Scanner State Synchronization
+When new scans arrive real-time (`processPayload`, `handleResolveUnknown`, `handleManualAddAttendee`), state updates MUST construct all 6 properties immediately (`raw_sign_in_time`, `raw_sign_out_time`, `in_date`, `in_time`, `in_by`, `out_date`, `out_time`, `out_by`) so new scan rows render live without requiring a page refresh.
+
 ---
 
 ## 6. Row Selection & Pixel-Perfect Alignment
@@ -256,6 +303,16 @@ For member roster views, the **Profile** column displays the status of a member'
   - Triggers temporary green row highlight (`.newly-scanned`).
   - If the scanned `tlc_id` is already assigned to another member in the troop (`Postgres 23505`), the application displays an imperative single-button alert modal (`confirm({ title: 'Duplicate Badge', message: '...', confirmText: 'OK', cancelText: null })`) naming the conflicting member.
 
+### 7.2 Attendance Status Column & Interactive Badge Toggle
+
+For event attendance views (`/events/[event-id]`):
+- **Status Badges (`.badge`)**: Rendered as interactive buttons for authorized roles (`isGlobalAdmin`, `troop_admin`, `billing_admin`, `admin`, `leader`).
+- **Interactive Toggle & Confirmation**: Tapping the status badge switches between **SIGNED OUT** (`complete`) and **SIGNED IN** (`pending`). Before performing the database update, the interaction triggers a standard confirmation modal (`confirm(...)`):
+  - **Signed Out -> Sign In**: Title `"Sign Member Back In"`, Message `"Are you sure you want to sign [Member Name] back in?"`, Confirm button `"Sign In"`.
+  - **Signed In -> Sign Out**: Title `"Sign Member Out"`, Message `"Are you sure you want to sign [Member Name] out?"`, Confirm button `"Sign Out"`.
+- **Role Permission Scoping**: Permission checks (`canToggle`) must explicitly evaluate all administrative roles (`isGlobalAdmin || currentUserRole === 'troop_admin' || currentUserRole === 'billing_admin' || currentUserRole === 'admin' || currentUserRole === 'leader'`) to prevent silent early exits.
+
+
 ### Standardized Action Icon Button Classes (`.btn-icon-action`)
 Single-row action buttons MUST use global CSS utility classes rather than ad-hoc inline styles:
 - Base class: `.btn-icon-action` (flex centered, 6px padding, `var(--radius-sm)`, border, pointer cursor, smooth transitions).
@@ -307,7 +364,7 @@ To prevent invalid state transitions across multi-selected items, bulk actions e
 
 When building or upgrading another page (e.g. `Roster.jsx`) to use this pattern:
 
-- [ ] Import `FilterPopover` and global filter CSS.
+- [ ] Import `FilterPopover` (uses React Portal `createPortal` with fixed viewport coordinates so popovers float unclipped over single-row tables) and global filter CSS.
 - [ ] Implement `columnFilters` and `sortConfig` states initialized from `localStorage` (`tlc_table_<screen>_<userId>`).
 - [ ] Implement `columnWidths` state initialized from `localStorage` with `defaultColumnWidths`.
 - [ ] Add `.column-resizer` handles to header cells (with `onMouseDown` triggering `handleStartResize`).

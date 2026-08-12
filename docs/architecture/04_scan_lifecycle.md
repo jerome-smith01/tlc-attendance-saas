@@ -85,20 +85,31 @@ await supabase.from('scans').update({ status: 'approved' })
   .eq('session_id', sessionId).eq('status', 'pending');
 ```
 
-### Individual Scan Removal (Pre-Approval)
+### Individual Scan Removal & Manual Status Toggle (Pre-Approval)
 
-Before a session is ended, an admin or scanner can **remove individual scans** from the attendance log in the Scanner page. The Scanner page shows the running attendance list with checkboxes. Selecting one or more scans and clicking "Remove" deletes them from the `scans` table permanently.
+Before a session is ended, an authorized user (`isGlobalAdmin`, `troop_admin`, `billing_admin`, `admin`, `leader`) can manage the running attendance log on the Scanner page:
+- **Individual / Bulk Scan Removal**: Selecting one or more scans and clicking "Remove" deletes them from the `scans` table permanently.
+- **Manual Status Toggle**: Clicking a member's attendance status in the grid switches between Signed In and Signed Out. This triggers an explicit confirmation dialog (`Sign Member Back In` / `Sign Member Out`) displaying the member's full name before updating Supabase.
+- **Status Labels & Offline Badging**:
+  - `SIGNED IN`: Online scan, active sign-in (Green `#10b981`).
+  - `SIGNED OUT`: Online scan, signed out (Blue `#3b82f6`).
+  - `SIGNED IN - OFFLINE`: Scan saved offline, active sign-in (Yellow `#eab308`).
+  - `SIGNED OUT - OFFLINE`: Scan saved offline, signed out (Yellow `#eab308`).
+- **Real-time Event Counters**: The top `.scanner-header-card` computes real-time session metrics rendered as plain text:
+  - `SCANNED IN`: Count of members currently active / signed in (`!raw_sign_out_time`).
+  - `SCANNED OUT`: Count of members currently signed out (`!!raw_sign_out_time`).
+  - `SCANNED TOTAL`: Total unique scans recorded (`[scanned in] + [scanned out]`).
 
-This is the mechanism for handling incorrect scans (e.g., a youth who left early and shouldn't be marked present).
+This provides full operational flexibility for handling incorrect scans (e.g., a youth who left early or was signed out by mistake).
 
-### Session Actions Summary (Admin Only)
+### Session Actions Summary (Admin / Leader)
 
 | Action | When Available | Effect |
 |:---|:---|:---|
-| **End Session** | Session is open (`ended_at IS NULL`) | Sets `ended_at`; bulk-approves all `pending` scans |
-| **Reenable Session** | Session ended, not yet synced | Clears `ended_at`; allows new scans again |
+| **End Session / Close Event** | Session is open (`ended_at IS NULL`) | Sets `ended_at`; bulk-approves all `pending` scans |
+| **Reenable Session / Reopen Event** | Session ended, not yet synced | Clears `ended_at`; allows new scans again |
 | **Reset Sync** | Session is synced (`synced_at IS NOT NULL`) | Clears `synced_at`, `synced_by`, `purge_after`; allows re-sync |
-| **Delete Session** | Any state | Permanently deletes session and all child scans (cascades) |
+| **Delete Session / Delete Event** | Any state | Permanently deletes session and all child scans (cascades). Available in header status menu and as a dedicated red `DELETE EVENT` button below Scanner Actions. |
 
 ### Future Consideration
 

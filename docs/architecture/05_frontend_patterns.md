@@ -130,6 +130,13 @@ To provide a consistent and premium experience across major screens (e.g., Scann
 - Replaces generic glass cards with a dense, structured layout for key entity metadata.
 - **Field Layout**: Formatted as individual full-width rows (`display: flex; justify-content: space-between; align-items: center;`).
 - **Alignment**: Labels (`.grid-table-label`) are left-aligned; values and status badges are right-aligned on the same row.
+- **Metrics Hierarchy**:
+  - **STATUS**: Session status pill badge (`OPEN`, `CLOSED`, or `SYNCED`).
+  - **EVENT DATE**: Formatted event date string.
+  - **SCANNED IN**: Real-time count of members currently active / signed in (`attendance.filter(s => !s.raw_sign_out_time).length`).
+  - **SCANNED OUT**: Count of members signed out (`attendance.filter(s => !!s.raw_sign_out_time).length`).
+  - **SCANNED TOTAL**: Total scans recorded (`[scanned in] + [scanned out]`).
+- **Metric Styling**: `SCANNED IN`, `SCANNED OUT`, and `SCANNED TOTAL` render as plain text (`color: var(--text-secondary)`), without colored background badge pills. The legacy "Offline Queue" row and popover description are removed from the header card.
 - **Action Buttons (`.btn-compact`)**: Rendered inside the header card or immediately below it, using compact padding (`padding: 0.4rem 0.85rem`) and text sizing to group primary screen actions (e.g., Scan, Photos, Add).
 
 ### 5.3 Page Outer Wrapper (`maxWidth: 1400px`)
@@ -188,20 +195,34 @@ The `supabaseClient.js` singleton does not expose the Supabase URL or anon key i
 The Scanner UI contains features to augment standard QR scanning alongside the live-camera flow. These actions are surfaced in the `.scanner-actions-panel` side cards positioned to the right of the camera feed:
 
 ### Camera Viewfinder & State Toggle
-- The live camera `#qr-reader` is contained within `.scanner-feed-container` with a centered 200x200px strict square viewfinder (`.scanner-strict-square`), corner bracket accents, and a single-pass animated scan line (`.scan-line-active`).
-- When idle, the card displays a centered **Ready to Scan** state with an icon and instructions.
-- Pressing **"OPEN SCANNER"** (`.btn-primary`) starts the camera video stream and changes the button label to a red **"STOP SCANNER"** (`.btn-destructive`).
+- The live camera `#qr-reader` is contained within `.scanner-feed-container` with a centered 200x200px strict square viewfinder (`.scanner-strict-square`), corner bracket accents (`.scanner-corner-in` / `.scanner-corner-out`), and a single-pass animated scan line (`.scan-line-active`).
+- **Dynamic Camera Mode Badge (`.scanner-live-badge`)**: Positioned at the top-right of the active camera feed, replacing the generic `LIVE` badge with a mode-aware status indicator:
+  - When scanning in (`scanMode === 'IN'`), renders **`SCANNING IN`** with a green pulsing dot (`#10b981`) and green badge styling (`.badge-success`).
+  - When scanning out (`scanMode === 'OUT'`), renders **`SCANNING OUT`** with a blue pulsing dot (`#3b82f6`) and blue badge styling (`.badge-info`).
+- **Unobscured Viewfinder Overlay**: The inner viewfinder mode label overlay tag (`.scanner-mode-overlay-tag`, which previously displayed "Signing In" or "Signing Out" in the center of the camera square) was removed to provide an unobscured video stream for QR recognition.
+- **Idle Overlay (`.scanner-idle-overlay`)**: When camera scanning is inactive, camera rendering is paused to save battery, displaying an idle camera icon, title `"Scanner Idle"`, and subtitle `"Camera is paused to save battery."`. The standalone `SCAN` button inside the idle viewfinder placeholder was removed to prevent duplicate triggers; scanning activation is driven directly by the equal-width `SCAN IN` / `SCAN OUT` buttons in the action panel.
+- **Scanning Controls & Mode Switch Workflow**: Pressing **"SCAN IN"** (`.scanner-btn-in`) or **"SCAN OUT"** (`.scanner-btn-out`) activates the camera feed. While scanning is active, only the red **"STOP SCANNER"** (`.btn-destructive`) button is rendered. To switch between Scan In and Scan Out modes, the user must first stop the active scanner session.
 
-### Manual Search Modal ("Manual Search" Item)
+### Scanner Action Panel & Secondary Actions Container
+- **Single Consolidated Card (`.scanner-action-card`)**: Consolidates top action buttons, optional scanner sound toggle switch (`.scanner-toggle-switch`), and secondary options into a single card container with rounded corners (`16px`), light border (`#e2e8f0`), and subtle shadow.
+- **Equal-Width Primary Buttons**: `SCAN IN` (`.scanner-btn-in`, `#48bb78` green) and `SCAN OUT` (`.scanner-btn-out`, `#4c7cf3` blue) are configured with `flex: 1; flex-basis: 0;` so both buttons occupy exactly 50% equal width across the top row inside the card.
+- **Icon Orientations**:
+  - **`SCAN IN`**: Right-pointing arrow entering into a right-hand bracket (`->]`).
+  - **`SCAN OUT`**: Right-pointing arrow exiting out of a left-hand bracket (`[->`).
+- **Secondary Actions Box (`.scanner-secondary-actions-box`)**: An inner container box placed directly below the primary buttons row. Features a green vertical left accent bar (`border-left: 3.5px solid #10b981`), light background (`var(--bg-tertiary, #f8fafc)`), rounded corners (`12px`), and border (`1px solid #e2e8f0`).
+  - **Item 1 - Check in from Photos**: Photo icon in a white square badge box (`.scanner-action-icon-box`), title `Check in from Photos`, subtitle `Upload badge photos to scan`, with invisible file input overlay.
+  - **Item 2 - Check in from Roster**: User-plus icon in a white square badge box (`.scanner-action-icon-box`), title `Check in from Roster`, subtitle `Select trailmen from a list`, with onClick opening manual roster entry modal.
+
+### Manual Search Modal ("Check in from Roster" Item)
 Allows users to add attendance for someone who forgot their badge or is a new guest. (See [09_popup_modals.md](./09_popup_modals.md) for overall popup modal architecture).
-- Triggered by the **"Manual Search"** list item (`Find member by name`) in the secondary action card.
+- Triggered by the **"Check in from Roster"** list item (`Select trailmen from a list`) in the secondary action box.
 - Displayed via `Modal` component controlled by `isManualEntryOpen` state.
 - **Existing Member**: Selects an existing roster member (where `attendance` does not already contain a scan for that `roster_id`), inserting a `scans` row immediately.
 - **New Member/Guest**: Performs a `supabase.from('roster').insert()` to create the member record, retrieves the newly generated `id`, updates local roster state, and then records the scan.
 
-### Scan from Photo / Bulk Upload ("Scan from Photo" Item)
+### Scan from Photo / Bulk Upload ("Check in from Photos" Item)
 Allows uploading multiple photos containing QR codes from the device's camera roll or local files.
-- Triggered via an invisible file input (`<input type="file" multiple accept="image/*">`) wrapped by the **"Scan from Photo"** list item (`Upload image from gallery`) in the secondary action card.
+- Triggered via an invisible file input (`<input type="file" multiple accept="image/*">`) wrapped by the **"Check in from Photos"** list item (`Upload badge photos to scan`) in the secondary action box.
 - Processed sequentially via `handleBulkPhotos`: for each selected file, an instance of `Html5Qrcode` is created (or reused) and `html5Qrcode.scanFile(file, true)` is invoked to decode the QR code payload without activating camera video feeds.
 - Extracted payloads are passed directly into `handleScan` / `processScanPayload`, triggering the exact same validation, lookup, offline queueing, and state update pipeline as live scanning.
 
@@ -300,17 +321,28 @@ Before invoking `supabase.auth.updateUser({ password })`, the application verifi
 The event scanner layout pairs live camera QR recognition with high-visibility action controls and event session metadata.
 
 ### 13.1 Layout Architecture
-- **Header Card (`.scanner-header-card`)**: Positioned at the top or side of the scanner layout, presenting Event Date, Scanned In Count, Session Status (Open/Closed/Synced), and interactive Offline Queue info.
+- **Header Card (`.scanner-header-card`)**: Positioned at the top or side of the scanner layout, presenting Event Date, Session Status (Open/Closed/Synced), and real-time metric counters (`SCANNED IN`, `SCANNED OUT`, `SCANNED TOTAL`) rendered as plain text.
 - **Top Camera Feed (`.scanner-feed-container`)**: Contains the live camera container (`#qr-reader`) set inside a glass card.
-  - **Strict Square Viewfinder (`.scanner-strict-square`)**: Features a centered 1:1 aspect-ratio viewport with corner bracket accents (`.scanner-corner-*`) and backdrop dimming overlay.
+  - **Dynamic Mode Badge (`.scanner-live-badge`)**: Rendered at the top-right of the active camera view, displaying **`SCANNING IN`** (green dot `#10b981`, `.badge-success`) or **`SCANNING OUT`** (blue dot `#3b82f6`, `.badge-info`).
+  - **Strict Square Viewfinder (`.scanner-strict-square`)**: Features a centered 1:1 aspect-ratio viewport with corner bracket accents (`.scanner-corner-in` green or `.scanner-corner-out` blue) and backdrop dimming overlay. The inner viewfinder mode tag has been removed for a clean video feed.
   - **Single-Pass Scan Line (`.scan-line-active`)**: A custom CSS `@keyframes scan-single` animation that sweeps top-to-bottom across the viewfinder once per scan cycle.
   - **Idle Overlay (`.scanner-idle-overlay`)**: Pauses camera rendering when idle or scrolled out of view to optimize battery consumption.
 - **Action Panel Side Cards (`.scanner-actions-panel`)**: Positioned directly to the right of the camera feed on desktop (or stacked below on mobile):
-  1. **Primary Action Card (`.scanner-action-card`)**: Renders the `ACTION` header label and the primary `OPEN SCANNER` / `STOP SCANNER` full-width button (`.btn.btn-primary`).
-  2. **Secondary Options Card (`.scanner-action-card`)**: Renders a stacked list of secondary actions with icons, titles, and descriptive subtitles:
-     - **Scan from Photo**: Image icon, title `Scan from Photo`, subtitle `Upload image from gallery` (triggers file upload).
-     - **Manual Search**: Edit icon, title `Manual Search`, subtitle `Find member by name` (opens manual entry modal).
+  - **Single Consolidated Action Card (`.scanner-action-card`)**: Renders `SCANNER ACTIONS` header label with an optional sound toggle switch (`.scanner-toggle-switch`):
+    - **Header Right Sound Toggle**: Switches scanner sound effects on/off. Muted state displays a grey mute icon (`#94a3b8`); active state displays a green sound-wave icon (`#10b981`).
+    - **Default & Persistence**: Defaults to muted (`false`), persisting user setting across browser sessions in `localStorage` under key `'scanner_sound_enabled'`.
+    - **Stale Closure Prevention Pattern**: Audio playback functions (`playSuccessSound`, `playWarningSound`, `playErrorSound`) dynamically evaluate `localStorage.getItem('scanner_sound_enabled') === 'true'` on every invocation.
+  - **Primary Scan Controls**:
+    - **Idle State**: Renders equal-width `SCAN IN` (`.scanner-btn-in`, `#48bb78` green) and `SCAN OUT` (`.scanner-btn-out`, `#4c7cf3` blue) buttons to initiate scanning in the desired mode. Buttons specify `flex: 1; flex-basis: 0;` so both buttons occupy 50% width in the row.
+      - **`SCAN IN` Icon**: Right-pointing arrow entering into a right-hand bracket (`->]`).
+      - **`SCAN OUT` Icon**: Right-pointing arrow exiting out of a left-hand bracket (`[->`).
+    - **Active State**: Renders a single full-width `STOP SCANNER` (`.btn.btn-destructive`) button. Mode switching during active camera streaming is disabled; users must tap `STOP SCANNER` to stop the session before switching modes.
+  - **Secondary Actions Box (`.scanner-secondary-actions-box`)**: An inner container box placed directly below the primary buttons row. Features a green vertical left accent bar (`border-left: 3.5px solid #10b981`), light background (`var(--bg-tertiary, #f8fafc)`), rounded corners (`12px`), and border (`1px solid #e2e8f0`).
+    - **Check in from Photos**: Photo icon in a white square badge box (`.scanner-action-icon-box`), title `Check in from Photos`, subtitle `Upload badge photos to scan` (triggers file upload).
+    - **Check in from Roster**: User-plus icon in a white square badge box (`.scanner-action-icon-box`), title `Check in from Roster`, subtitle `Select trailmen from a list` (opens manual roster entry modal).
+  - **Delete Event Button (`.scanner-btn-delete`)**: Placed below `scanner-action-card` in `.scanner-actions-panel`, aligned right-flush (`alignSelf: 'flex-end'`). Renders with red background (`var(--color-error)`), trash SVG icon, uppercase label `DELETE EVENT`, and auto width (`width: auto`).
 
-
-
-
+### 13.2 Manual Attendance Status Toggle & Confirmation Pattern
+When an authorized user (`isGlobalAdmin`, `troop_admin`, `billing_admin`, `admin`, `leader`) toggles a member's attendance status in the scanner attendance grid (`handleToggleScanStatus`):
+1. **Confirmation Modal Prompt**: Prompts for confirmation via `confirm(...)` displaying title `Sign Member Back In` / `Sign Member Out` and explicitly showing the member's full name (`memberName`).
+2. **Database Update & Toast**: Updates `sign_out_time`, `signed_out_by`, and `status` in Supabase, then displays a toast confirmation containing `${memberName} marked as Signed In / Signed Out`.

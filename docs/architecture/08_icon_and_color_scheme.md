@@ -34,13 +34,24 @@ To ensure visual clarity and consistency across screens and bulk-action bars, ac
 | Action Purpose | Button Label Examples | Color Theme | CSS Class | Color Token | Hex Code |
 |:---|:---|:---|:---|:---|:---|
 | **Start / Create** | `+ Start New Event`, `Start Scan` | 🟢 Green | `.btn-start` | `--color-action-start` | `#22c55e` |
+| **Scan In** | `SCAN IN` | 🟢 Green | `.scanner-btn-in` | — | `#48bb78` / `#10b981` |
+| **Scan Out** | `SCAN OUT` | 🔵 Blue | `.scanner-btn-out` | — | `#4c7cf3` / `#3b82f6` |
 | **Reopen** | `Reopen`, `Reopen Event` | 🟢 Green | `.btn-reopen` | `--color-action-start` | `#22c55e` |
 | **Close / End** | `Close`, `Close Event` | 🔵 Blue | `.btn-close` | `--color-action-close` | `#0284c7` |
 | **Reset Sync** | `Reset Sync`, `Reset Sync Status` | 🟣 Purple | `.btn-reset-sync` | `--color-action-reset` | `#7c3aed` |
-| **Delete / Stop** | `Delete`, `⏹ Stop Scan` | 🔴 Red | `.btn-destructive` | `--color-error` | `#ef4444` |
+| **Delete / Stop** | `Delete`, `DELETE EVENT`, `⏹ Stop Scan` | 🔴 Red | `.btn-destructive`, `.scanner-btn-delete` | `--color-error` | `#ef4444` / `#dc2626` |
 | **Cancel / Neutral** | `Deselect All`, `Change` | Neutral | `.btn-secondary`, `.btn-link` | `--muted` | `#e4e4e7` |
 
-### 2.2 Disabled Button Rules
+### 2.2 Attendance Status Badge Colors
+
+| Status Badge Label | Context | Color Theme | Hex Code |
+|:---|:---|:---|:---|
+| `SIGNED IN` | Online scan, active sign-in | 🟢 Green | `#10b981` |
+| `SIGNED OUT` | Online scan, signed out | 🔵 Blue | `#3b82f6` |
+| `SIGNED IN - OFFLINE` | Scan saved offline, active sign-in | 🟡 Yellow | `#eab308` |
+| `SIGNED OUT - OFFLINE` | Scan saved offline, signed out | 🟡 Yellow | `#eab308` |
+
+### 2.3 Disabled Button Rules
 
 When any action button is disabled (e.g. invalid bulk selection states):
 1. **Never use default grey backgrounds** for active buttons. Active buttons maintain their full brand color.
@@ -48,9 +59,9 @@ When any action button is disabled (e.g. invalid bulk selection states):
    - `opacity: 0.4` (or `0.35` for icon buttons)
    - `cursor: not-allowed`
    - `pointer-events: none` (prevents hover triggers and tooltip flicker)
-3. Every button variant (`.btn-primary`, `.btn-secondary`, `.btn-destructive`, `.btn-close`, `.btn-start`, `.btn-reopen`, `.btn-reset-sync`, `.btn-icon-action`) has an explicit `:disabled` CSS block in `global.css`.
+3. Every button variant (`.btn-primary`, `.btn-secondary`, `.btn-destructive`, `.btn-close`, `.btn-start`, `.btn-reopen`, `.btn-reset-sync`, `.btn-icon-action`, `.scanner-btn-delete`) has an explicit `:disabled` CSS block in `global.css`.
 
-### 2.3 Row Action Icon Buttons
+### 2.4 Row Action Icon Buttons
 
 Action icons rendered inside table rows use `.btn-icon-action` combined with the matching action class so their active and deactivated states match the bulk action color tokens:
 

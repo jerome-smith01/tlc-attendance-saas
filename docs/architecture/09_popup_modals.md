@@ -78,3 +78,32 @@ await confirm({
 
 > **Design Standard**: Use `addToast` for transient non-blocking notifications. Use single-button `confirm` alert dialogs (`cancelText: null`) when an error or condition requires explicit user acknowledgment before continuing.
 
+### 3.3 Attendance Status Toggle Confirmation Dialog
+When an authorized user toggles a member's attendance status in the event scanner grid, the interaction prompts for explicit confirmation using contextual action labels:
+
+```javascript
+const confirmed = await confirm({
+  title: isCurrentlySignedOut ? 'Sign Member Back In' : 'Sign Member Out',
+  message: isCurrentlySignedOut
+    ? `Are you sure you want to sign ${memberName} back in?`
+    : `Are you sure you want to sign ${memberName} out?`,
+  confirmText: isCurrentlySignedOut ? 'Sign In' : 'Sign Out',
+  cancelText: 'Cancel'
+});
+```
+
+---
+
+## 4. Popover Overlays vs Modal Dialogs
+
+While full dialogs use `.app-modal-overlay` with backdrop blur (`z-index: 9999`), lightweight contextual popovers (such as `FilterPopover.jsx` for table column filtering/sorting) use React Portals (`createPortal(..., document.body)`) positioned fixed relative to their target anchor element (`getBoundingClientRect()`).
+
+### Key Differences
+| Element Type | Component | Render Strategy | Z-Index | Clipping & Positioning Behavior |
+|:---|:---|:---|:---|:---|
+| **Modal Dialog** | `Modal.jsx`, `ConfirmContext.jsx` | Overlay Backdrop Portal (`fixed inset 0`) | `9999` | Centered full viewport dialog with backdrop blur |
+| **Filter / Context Popover** | `FilterPopover.jsx` | Target Anchor Portal (`createPortal(..., document.body)`) | `1000` | Positioned fixed to header button; stays unclipped by table container height or `overflow-x: auto` |
+
+For detailed table filter popover implementation standards, see [07_table_patterns.md Section 4](07_table_patterns.md#4-popover-ui-layer--status-badge-synchronization).
+
+
