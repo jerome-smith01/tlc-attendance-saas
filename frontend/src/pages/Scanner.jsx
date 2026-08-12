@@ -152,6 +152,27 @@ export function Scanner() {
   const [selectedRosterId, setSelectedRosterId] = useState('');
   const [isTableVisible, setIsTableVisible] = useState(true);
 
+  // Sound toggle state (default to muted)
+  const [isSoundEnabled, setIsSoundEnabled] = useState(() => {
+    try {
+      return localStorage.getItem('scanner_sound_enabled') === 'true';
+    } catch (e) {
+      return false;
+    }
+  });
+
+  const handleToggleSound = () => {
+    setIsSoundEnabled(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('scanner_sound_enabled', String(next));
+      } catch (e) {
+        console.warn('Failed to save sound setting', e);
+      }
+      return next;
+    });
+  };
+
   // Manual Entry modal state
   const [isManualEntryOpen, setIsManualEntryOpen] = useState(false);
   const [manualEntryFirstName, setManualEntryFirstName] = useState('');
@@ -295,11 +316,25 @@ export function Scanner() {
   }
 
   const handleToggleScanStatus = async (scan) => {
-    const isAdminOrLeader = currentUserRole === 'admin' || currentUserRole === 'leader' || isGlobalAdmin;
-    if (!isAdminOrLeader || !scan.id || String(scan.id).startsWith('temp-')) return;
-    const nowIso = new Date().toISOString();
-    const isCurrentlySignedOut = !!scan.sign_out_time;
+    const canToggle = isGlobalAdmin || currentUserRole === 'troop_admin' || currentUserRole === 'billing_admin' || currentUserRole === 'admin' || currentUserRole === 'leader';
+    if (!canToggle || !scan.id || String(scan.id).startsWith('temp-')) return;
+    const isCurrentlySignedOut = !!(scan.raw_sign_out_time || scan.sign_out_time);
+    const memberName = scan.member
+      ? `${scan.member.first_name || ''} ${scan.member.last_name || scan.member.last_initial || ''}`.trim()
+      : 'this member';
 
+    const confirmed = await confirm({
+      title: isCurrentlySignedOut ? 'Sign Member Back In' : 'Sign Member Out',
+      message: isCurrentlySignedOut
+        ? `Are you sure you want to sign ${memberName} back in?`
+        : `Are you sure you want to sign ${memberName} out?`,
+      confirmText: isCurrentlySignedOut ? 'Sign In' : 'Sign Out',
+      cancelText: 'Cancel'
+    });
+
+    if (!confirmed) return;
+
+    const nowIso = new Date().toISOString();
     let updateData = {};
     if (isCurrentlySignedOut) {
       updateData = {
@@ -323,7 +358,7 @@ export function Scanner() {
 
     addToast({ 
       type: 'success', 
-      message: `${scan.member ? scan.member.first_name : 'Member'} marked as ${isCurrentlySignedOut ? 'Signed In' : 'Signed Out'}.` 
+      message: `${memberName} marked as ${isCurrentlySignedOut ? 'Signed In' : 'Signed Out'}.` 
     });
 
     await fetchAttendance();
@@ -845,7 +880,16 @@ export function Scanner() {
     }
   };
 
+  const checkIsSoundEnabled = () => {
+    try {
+      return localStorage.getItem('scanner_sound_enabled') === 'true';
+    } catch (e) {
+      return false;
+    }
+  };
+
   const playSuccessSound = () => {
+    if (!checkIsSoundEnabled()) return;
     try {
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       if (!AudioContext) return;
@@ -870,8 +914,11 @@ export function Scanner() {
       console.warn('Audio play failed', e);
     }
   };
-  const playErrorSound = () => {};
+  const playErrorSound = () => {
+    if (!checkIsSoundEnabled()) return;
+  };
   const playWarningSound = () => {
+    if (!checkIsSoundEnabled()) return;
     try {
       const audio = new Audio('/uh-oh.mp3');
       audio.play().catch(e => console.warn('Audio play failed', e));
@@ -1432,7 +1479,40 @@ export function Scanner() {
               {/* Right Column: Actions Panel */}
               <div className="scanner-actions-panel">
                 <div className="scanner-action-card">
-                  <span className="header-card-label">SCANNER ACTIONS</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                    <span className="header-card-label">SCANNER ACTIONS</span>
+                    <button
+                      type="button"
+                      onClick={handleToggleSound}
+                      title={isSoundEnabled ? "Mute Scanner Sound" : "Enable Scanner Sound"}
+                      aria-label={isSoundEnabled ? "Mute Scanner Sound" : "Enable Scanner Sound"}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: '0.2rem',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justify: 'center',
+                        color: isSoundEnabled ? '#10b981' : '#94a3b8',
+                        transition: 'color 0.2s ease, transform 0.15s ease'
+                      }}
+                    >
+                      {isSoundEnabled ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" style={{ width: '1.35rem', height: '1.35rem' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                          <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                          <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" style={{ width: '1.35rem', height: '1.35rem' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                          <line x1="22" y1="9" x2="16" y2="15" />
+                          <line x1="16" y1="9" x2="22" y2="15" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                   {!isScanning ? (
                     <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
                       <button 

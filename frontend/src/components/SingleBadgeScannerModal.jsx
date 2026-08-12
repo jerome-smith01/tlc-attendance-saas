@@ -10,6 +10,8 @@ export function SingleBadgeScannerModal({ isOpen, onClose, onScan, memberName })
 
   const playSuccessSound = () => {
     try {
+      const isSoundEnabled = localStorage.getItem('scanner_sound_enabled') === 'true';
+      if (!isSoundEnabled) return;
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       if (!AudioContext) return;
       const ctx = new AudioContext();
