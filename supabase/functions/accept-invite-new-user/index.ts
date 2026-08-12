@@ -12,29 +12,17 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
-    )
+    const { token, password } = await req.json()
 
-    // Get the JWT of the caller
-    const {
-      data: { user },
-      error: userError,
-    } = await supabaseClient.auth.getUser()
-
-    if (userError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized. Please log in first.' }), {
+    if (!token || !password) {
+      return new Response(JSON.stringify({ error: 'Missing token or password' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 401,
+        status: 400,
       })
     }
 
-    const { token } = await req.json()
-
-    if (!token) {
-      return new Response(JSON.stringify({ error: 'Missing invite token' }), {
+    if (password.length < 6) {
+      return new Response(JSON.stringify({ error: 'Password must be at least 6 characters' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
       })
@@ -45,7 +33,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // 1. Validate token
+    // 1. Fetch & validate invite
     const { data: inviteData, error: inviteError } = await supabaseAdmin
       .from('pending_invites')
       .select('*')
@@ -59,7 +47,6 @@ serve(async (req) => {
       })
     }
 
-    // 2. Check expiration
     if (new Date(inviteData.expires_at) < new Date()) {
       await supabaseAdmin.from('pending_invites').delete().eq('id', inviteData.id)
       return new Response(JSON.stringify({ error: 'This invite has expired.' }), {
@@ -68,48 +55,42 @@ serve(async (req) => {
       })
     }
 
-    // 3. Normalized email comparison
-    const loggedInEmail = (user.email || '').trim().toLowerCase()
-    const invitedEmail = (inviteData.email || '').trim().toLowerCase()
+    const normalizedEmail = inviteData.email.toLowerCase()
 
-    if (loggedInEmail !== invitedEmail) {
-      return new Response(JSON.stringify({
-        error: `You are signed in as ${user.email}, but this invite was sent to ${inviteData.email}.`,
-        emailMismatch: true,
-        loggedInEmail: user.email,
-        invitedEmail: inviteData.email
-      }), {
+    // 2. Create the user in Auth
+    const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+      email: normalizedEmail,
+      password: password,
+      email_confirm: true // Mark email confirmed automatically since they received the invite link
+    })
+
+    if (createError) {
+      return new Response(JSON.stringify({ error: createError.message }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 403,
+        status: 400,
       })
     }
 
-    // 4. Insert into troop_users
+    // 3. Link user to troop
     const { error: linkError } = await supabaseAdmin.from('troop_users').insert([{
-      user_id: user.id,
+      user_id: newUser.user.id,
       troop_id: inviteData.troop_id,
       role: inviteData.role
     }])
 
     if (linkError) {
-      if (linkError.code === '23505') {
-        // Unique constraint violation (already in troop)
-        await supabaseAdmin.from('pending_invites').delete().eq('id', inviteData.id)
-        return new Response(JSON.stringify({ error: 'You are already a member of this troop.' }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400,
-        })
-      }
+      // Rollback user creation if troop_users insert fails
+      await supabaseAdmin.auth.admin.deleteUser(newUser.user.id)
       return new Response(JSON.stringify({ error: linkError.message }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
       })
     }
 
-    // 5. Delete the invite
+    // 4. Delete the invite
     await supabaseAdmin.from('pending_invites').delete().eq('id', inviteData.id)
 
-    return new Response(JSON.stringify({ success: true, message: 'Invite accepted successfully!' }), {
+    return new Response(JSON.stringify({ success: true, email: normalizedEmail }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })
