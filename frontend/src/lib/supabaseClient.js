@@ -13,4 +13,8 @@ if (!supabaseUrl || !supabaseAnon) {
   throw new Error(msg);
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnon);
+export const supabase = createClient(supabaseUrl, supabaseAnon, {
+  auth: {
+    flowType: 'pkce'
+  }
+});

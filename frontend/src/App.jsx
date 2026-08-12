@@ -6,6 +6,7 @@ import { SidebarLayout } from './components/SidebarLayout';
 import { ToastProvider } from './components/common/ToastContext';
 import { ConfirmProvider } from './components/common/ConfirmContext';
 import { Login } from './pages/Login';
+import { AcceptInvite } from './pages/AcceptInvite';
 import { Profile } from './pages/Profile';
 import { Dashboard } from './pages/Dashboard';
 import { Scanner } from './pages/Scanner';
@@ -24,11 +25,11 @@ export default function App() {
               <Routes>
                 {/* Public */}
                 <Route path="/login" element={<Login />} />
+                <Route path="/accept-invite" element={<AcceptInvite />} />
 
                 {/* Protected with Sidebar Layout */}
                 <Route element={<ProtectedRoute allowedRoles={['badge_scanner', 'troop_admin', 'billing_admin', 'global_admin']}><SidebarLayout /></ProtectedRoute>}>
                   <Route path="/profile" element={<Profile />} />
-                  <Route path="/complete-profile" element={<Navigate to="/profile" replace />} />
                   <Route 
                     path="/dashboard" 
                     element={

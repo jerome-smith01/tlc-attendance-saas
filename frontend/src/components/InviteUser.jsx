@@ -143,11 +143,13 @@ export function InviteUser({ troopId }) {
         if (error) {
           let errMsg = error.message;
           try {
+            // Supabase functions invoke sometimes buries the response body in context
             const body = await error.context?.json?.();
             if (body?.error) errMsg = body.error;
           } catch (_) { }
-          if (errMsg.includes('non-2xx status code')) {
-            errMsg = 'Already invited or registered with TLC Attendance.';
+          
+          if (errMsg.includes('non-2xx status code') || !errMsg) {
+            errMsg = 'An unexpected error occurred. Please try again.';
           }
           throw { rowId: row.id, message: errMsg };
         }
