@@ -61,20 +61,20 @@ export function TroopProvider({ children }) {
 
       if (error) throw error;
       
-      const needsOnboarding = data?.some(tu => tu.onboarding_completed === false);
-      if (needsOnboarding) {
-        window.location.hash = '#/profile';
-        return;
-      }
-      
       const formattedTroops = (data || []).map(tu => ({
         id: tu.troop_id,
-        troop_number: tu.troops.troop_number,
+        troop_number: tu?.troops?.troop_number || 'Troop',
         currentUserRole: tu.role
       }));
       
       setTroops(formattedTroops);
       setDefaultTroop(formattedTroops);
+
+      const needsOnboarding = data?.some(tu => tu.onboarding_completed === false);
+      if (needsOnboarding) {
+        window.location.hash = '#/profile';
+        return;
+      }
       
     } catch (err) {
       console.error('Error fetching troops:', err);
@@ -109,6 +109,7 @@ export function TroopProvider({ children }) {
     loadingTroops,
     isGlobalAdmin,
     error,
+    refreshTroops: fetchTroops,
     selectedTroop: troops.find(t => t.id === selectedTroopId)
   };
 

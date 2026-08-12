@@ -28,7 +28,7 @@ export default function App() {
                 <Route path="/accept-invite" element={<AcceptInvite />} />
 
                 {/* Protected with Sidebar Layout */}
-                <Route element={<ProtectedRoute allowedRoles={['badge_scanner', 'troop_admin', 'billing_admin', 'global_admin']}><SidebarLayout /></ProtectedRoute>}>
+                <Route element={<ProtectedRoute><SidebarLayout /></ProtectedRoute>}>
                   <Route path="/profile" element={<Profile />} />
                   <Route 
                     path="/dashboard" 

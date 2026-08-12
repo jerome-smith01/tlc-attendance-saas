@@ -53,10 +53,11 @@ export function SidebarLayout() {
     { path: '/roster/members', label: 'Roster', allowedRoles: ['troop_admin', 'billing_admin', 'global_admin'] },
     { path: '/events', label: 'Events', allowedRoles: ['badge_scanner', 'troop_admin', 'billing_admin', 'global_admin'] },
     { path: '/billing', label: 'Billing', allowedRoles: ['billing_admin', 'global_admin'] },
-    { path: '/profile', label: 'Profile', allowedRoles: ['badge_scanner', 'troop_admin', 'billing_admin', 'global_admin'] },
+    { path: '/profile', label: 'Profile', allowedRoles: null },
   ];
 
   const visibleNavLinks = allNavLinks.filter(link => {
+    if (!link.allowedRoles) return true;
     if (isGlobalAdmin) return true;
     return link.allowedRoles.includes(currentUserRole);
   });

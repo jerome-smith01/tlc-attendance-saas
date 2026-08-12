@@ -109,7 +109,7 @@ serve(async (req) => {
     // 5. Delete the invite
     await supabaseAdmin.from('pending_invites').delete().eq('id', inviteData.id)
 
-    return new Response(JSON.stringify({ success: true, message: 'Invite accepted successfully!' }), {
+    return new Response(JSON.stringify({ success: true, message: 'Invite accepted successfully!', troop_id: inviteData.troop_id }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })

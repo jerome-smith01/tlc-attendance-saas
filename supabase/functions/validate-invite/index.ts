@@ -31,7 +31,7 @@ serve(async (req) => {
     // 1. Fetch pending invite with troop details
     const { data: inviteData, error: inviteError } = await supabaseAdmin
       .from('pending_invites')
-      .select('id, email, account_exists, expires_at, troops(name)')
+      .select('id, email, account_exists, expires_at, troops(troop_number, city)')
       .eq('token', token)
       .single()
 
@@ -51,10 +51,15 @@ serve(async (req) => {
       })
     }
 
+    const troopDetails = inviteData.troops || {};
+    const troopDisplay = troopDetails.troop_number 
+      ? `Troop ${troopDetails.troop_number} (${troopDetails.city || 'Unknown'})` 
+      : 'a Troop';
+
     return new Response(JSON.stringify({
       email: inviteData.email,
       accountExists: inviteData.account_exists,
-      troopName: inviteData.troops?.name || 'a Troop'
+      troopName: troopDisplay
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,

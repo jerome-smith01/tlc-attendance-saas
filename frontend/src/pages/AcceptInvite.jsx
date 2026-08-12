@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
+import { useTroop } from '../context/TroopContext';
 import { useToast } from '../components/common/ToastContext';
 import { ThemeToggle } from '../components/ThemeToggle';
 import './Login.css';
 
 export function AcceptInvite() {
   const { session, user, signOut, loading: authLoading } = useAuth();
+  const { refreshTroops, setSelectedTroopId } = useTroop();
   const navigate = useNavigate();
   const { addToast } = useToast();
   const [searchParams] = useSearchParams();
@@ -107,6 +109,13 @@ export function AcceptInvite() {
         throw new Error(errMsg || 'Failed to accept invite');
       }
 
+      if (refreshTroops) {
+        await refreshTroops();
+      }
+      if (data?.troop_id) {
+        setSelectedTroopId(data.troop_id);
+      }
+
       setSuccess(true);
       addToast('Invite accepted successfully!', 'success');
       setTimeout(() => navigate('/events', { replace: true }), 1500);
@@ -180,6 +189,10 @@ export function AcceptInvite() {
 
       if (signInErr) {
         throw new Error('Account created! Please log in on the main screen.');
+      }
+
+      if (refreshTroops) {
+        await refreshTroops();
       }
 
       setSuccess(true);
