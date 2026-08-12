@@ -34,7 +34,20 @@ export function Scanner() {
   const [loadingEvent, setLoadingEvent] = useState(true);
   const [roster, setRoster] = useState([]);
   const [attendance, setAttendance] = useState([]);
-  const [scanMode, setScanMode] = useState('IN'); // 'IN' | 'OUT'
+  const [scanMode, _setScanMode] = useState('IN'); // 'IN' | 'OUT'
+  const scanModeRef = useRef('IN');
+  const setScanMode = (mode) => {
+    if (typeof mode === 'function') {
+      _setScanMode(prev => {
+        const next = mode(prev);
+        scanModeRef.current = next;
+        return next;
+      });
+    } else {
+      scanModeRef.current = mode;
+      _setScanMode(mode);
+    }
+  };
   const [selectedScans, setSelectedScans] = useState(new Set());
   const [recentlyScannedIds, setRecentlyScannedIds] = useState(new Set());
   const [scannerStatus, setScannerStatus] = useState('Idle');
@@ -189,15 +202,17 @@ export function Scanner() {
 
   useEffect(() => {
     if (troopId && session?.id) {
-      fetchRoster();
+      fetchRoster(troopId);
     }
   }, [troopId, session?.id]);
 
-  async function fetchRoster() {
+  async function fetchRoster(targetTroopId) {
+    const tId = targetTroopId || troopId;
+    if (!tId) return;
     let { data, error } = await supabase
       .from('roster')
       .select('*')
-      .eq('troop_id', troopId);
+      .eq('troop_id', tId);
       
     if (error) {
       console.error('[fetchRoster] Supabase error:', error);
@@ -577,7 +592,7 @@ export function Scanner() {
 
   const processPayload = (payload) => {
     return new Promise((resolve) => {
-      handleScan(payload, scanMode, (result) => {
+      handleScan(payload, scanModeRef.current, (result) => {
         if (result.status === 'unknown') {
           if (qrEngineRef.current?.getState() === 2) qrEngineRef.current.pause(true);
           playErrorSound();
@@ -619,19 +634,72 @@ export function Scanner() {
           if ((result.status === 'success' || result.status === 'offline_queued') && result.member) {
             setAttendance(prev => {
               const rId = result.member.id;
-              if (prev.some(item => item.roster_id === rId || item.member?.id === rId)) {
-                return prev;
+              const existingIndex = prev.findIndex(item => item.roster_id === rId || item.member?.id === rId);
+
+              if (existingIndex >= 0) {
+                const updatedItem = { ...prev[existingIndex] };
+                if (result.scanRecord) {
+                  const s = result.scanRecord;
+                  const signInTimeRaw = s.sign_in_time || s.scan_time;
+                  const signOutTimeRaw = s.sign_out_time;
+                  const isSignedOut = !!signOutTimeRaw;
+                  
+                  updatedItem.sign_in_time = signInTimeRaw ? new Date(signInTimeRaw).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null;
+                  updatedItem.sign_out_time = signOutTimeRaw ? new Date(signOutTimeRaw).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null;
+                  updatedItem.signed_out_by = s.signed_out_by;
+                  if (s.signed_out_by === user?.id) updatedItem.signed_out_by_email = user?.email || 'You';
+                  
+                  updatedItem.status = isSignedOut ? 'complete' : 'pending';
+                  updatedItem.message = isSignedOut ? 'Signed Out' : 'Signed In';
+                  updatedItem.time = isSignedOut ? updatedItem.sign_out_time : updatedItem.sign_in_time;
+                } else if (result.mode === 'OUT') {
+                  const nowStr = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                  updatedItem.sign_out_time = nowStr;
+                  updatedItem.signed_out_by_email = user?.email || 'You';
+                  updatedItem.status = 'complete';
+                  updatedItem.message = 'Signed Out';
+                  updatedItem.time = nowStr;
+                } else {
+                  const nowStr = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                  updatedItem.sign_in_time = nowStr;
+                  updatedItem.sign_out_time = null;
+                  updatedItem.signed_out_by_email = null;
+                  updatedItem.status = 'pending';
+                  updatedItem.message = 'Signed In';
+                  updatedItem.time = nowStr;
+                }
+                
+                const newPrev = [...prev];
+                newPrev[existingIndex] = updatedItem;
+                triggerRowHighlight(updatedItem.id);
+                return newPrev;
               }
+
               const newId = result.scanRecord ? result.scanRecord.id : 'temp-' + Date.now();
               triggerRowHighlight(newId);
+              
+              const s = result.scanRecord || {};
+              const signInTimeRaw = s.sign_in_time || s.scan_time || new Date().toISOString();
+              const signOutTimeRaw = s.sign_out_time;
+              const isSignedOut = !!signOutTimeRaw;
+              
               const newEntry = {
                 id: newId,
                 roster_id: rId,
                 member: result.member,
-                time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
-                status: 'success',
-                message: result.status === 'offline_queued' ? 'Saved Offline' : 'Scanned In'
+                sign_in_time: signInTimeRaw ? new Date(signInTimeRaw).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null,
+                signed_in_by: s.signed_in_by || user?.id,
+                signed_in_by_email: (s.signed_in_by === user?.id || !s.signed_in_by) ? (user?.email || 'You') : 'Leader',
+                sign_out_time: signOutTimeRaw ? new Date(signOutTimeRaw).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null,
+                signed_out_by: s.signed_out_by,
+                signed_out_by_email: s.signed_out_by === user?.id ? (user?.email || 'You') : (s.signed_out_by ? 'Leader' : null),
+                time: isSignedOut
+                  ? (signOutTimeRaw ? new Date(signOutTimeRaw).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'N/A')
+                  : (signInTimeRaw ? new Date(signInTimeRaw).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'N/A'),
+                status: isSignedOut ? 'complete' : 'pending',
+                message: result.status === 'offline_queued' ? 'Saved Offline' : (isSignedOut ? 'Signed Out' : 'Signed In')
               };
+              
               return [newEntry, ...prev];
             });
           }

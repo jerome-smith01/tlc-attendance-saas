@@ -67,93 +67,142 @@ export function useScanLogic(troopId, sessionId, user, roster, setRoster) {
     // Supabase Write
     try {
       const nowIso = new Date().toISOString();
-      let scanData = {};
 
-      if (mode === 'OUT') {
-        // First check if an existing scan record exists
-        let { data: existingScans } = await supabase
+      // Helper to fetch existing scan safely (handling event_id vs session_id column name)
+      async function getExistingScan() {
+        let { data, error } = await supabase
           .from('scans')
           .select('*')
-          .or(`event_id.eq.${sessionId},session_id.eq.${sessionId}`)
-          .eq('roster_id', matchedMember.id);
+          .eq('event_id', sessionId)
+          .eq('roster_id', matchedMember.id)
+          .maybeSingle();
 
-        if (existingScans && existingScans.length > 0) {
-          const existing = existingScans[0];
+        if (error && (error.code === 'PGRST204' || error.message?.includes('event_id'))) {
+          const res = await supabase
+            .from('scans')
+            .select('*')
+            .eq('session_id', sessionId)
+            .eq('roster_id', matchedMember.id)
+            .maybeSingle();
+          data = res.data;
+        }
+        return data;
+      }
+
+      const existingScan = await getExistingScan();
+
+      if (mode === 'OUT') {
+        if (existingScan) {
+          if (existingScan.sign_out_time) {
+            // Already signed out! Block duplicate scan out
+            if (onResult) onResult({ status: 'duplicate', message: 'Already Signed Out', member: matchedMember });
+            return;
+          }
+
+          // Member is currently Signed In -> Update record to Sign Out
           let { data, error } = await supabase
             .from('scans')
             .update({
               sign_out_time: nowIso,
-              signed_out_by: user.id
+              signed_out_by: user.id,
+              status: 'complete'
             })
-            .eq('id', existing.id)
+            .eq('id', existingScan.id)
             .select();
 
           if (error) {
             if (onResult) onResult({ status: 'error', message: error.message, member: matchedMember });
           } else {
-            if (onResult) onResult({ status: 'success', message: 'Signed Out', member: matchedMember, scanRecord: data ? data[0] : existing, mode: 'OUT' });
+            if (onResult) onResult({ status: 'success', message: 'Signed Out', member: matchedMember, scanRecord: data ? data[0] : existingScan, mode: 'OUT' });
           }
           return;
         } else {
-          // Member was not scanned in first, insert new record with sign_out_time
-          scanData = {
+          // Member was not scanned in first, insert new scan out record
+          const newRecord = {
             event_id: sessionId,
             roster_id: matchedMember.id,
-            status: 'pending',
+            status: 'complete',
             sign_in_time: nowIso,
             signed_in_by: user.id,
             sign_out_time: nowIso,
             signed_out_by: user.id
           };
+          let { data, error } = await supabase.from('scans').insert([newRecord]).select();
+          if (error && (error.code === 'PGRST204' || error.message?.includes('event_id'))) {
+            delete newRecord.event_id;
+            newRecord.session_id = sessionId;
+            const res = await supabase.from('scans').insert([newRecord]).select();
+            data = res.data;
+            error = res.error;
+          }
+          if (error) {
+            if (onResult) onResult({ status: 'error', message: error.message, member: matchedMember });
+          } else {
+            if (onResult) onResult({ status: 'success', message: 'Signed Out', member: matchedMember, scanRecord: data ? data[0] : null, mode: 'OUT' });
+          }
+          return;
         }
       } else {
-        // Sign IN mode
-        scanData = {
+        // Mode === 'IN'
+        if (existingScan) {
+          if (!existingScan.sign_out_time) {
+            // Already signed in (and not signed out yet)! Block duplicate scan in
+            if (onResult) onResult({ status: 'duplicate', message: 'Already Signed In', member: matchedMember });
+            return;
+          }
+
+          // Member was previously signed out, now re-signing IN -> Clear sign_out_time & update sign_in_time
+          let { data, error } = await supabase
+            .from('scans')
+            .update({
+              sign_in_time: nowIso,
+              signed_in_by: user.id,
+              sign_out_time: null,
+              signed_out_by: null,
+              status: 'pending'
+            })
+            .eq('id', existingScan.id)
+            .select();
+
+          if (error) {
+            if (onResult) onResult({ status: 'error', message: error.message, member: matchedMember });
+          } else {
+            if (onResult) onResult({ status: 'success', message: 'Signed In', member: matchedMember, scanRecord: data ? data[0] : existingScan, mode: 'IN' });
+          }
+          return;
+        }
+
+        // New Sign In record
+        const scanData = {
           event_id: sessionId,
           roster_id: matchedMember.id,
           status: 'pending',
           sign_in_time: nowIso,
           signed_in_by: user.id
         };
-      }
 
-      let { data, error } = await supabase
-        .from('scans')
-        .insert([scanData])
-        .select();
-
-      // Fallback for pre-migration column name 'session_id'
-      if (error && (error.code === 'PGRST204' || error.message?.includes('event_id') || error.message?.includes('session_id'))) {
-        delete scanData.event_id;
-        scanData.session_id = sessionId;
-        const res = await supabase
-          .from('scans')
-          .insert([scanData])
-          .select();
-        data = res.data;
-        error = res.error;
-      }
-
-      if (error) {
-        console.error('[useScanLogic] Supabase insert error:', error);
-        if (error.code === '23505') { // Postgres UNIQUE violation code
-          if (mode === 'IN') {
-            // Already signed in, update sign in time or notify duplicate
-            if (onResult) onResult({ status: 'duplicate', message: 'Already Signed In', member: matchedMember });
-          } else {
-            if (onResult) onResult({ status: 'duplicate', message: 'Already Signed Out', member: matchedMember });
-          }
-        } else if (error.message.includes('fetch') || error.message.includes('Failed to fetch')) {
-          queueOfflineScan({
-            ...scanData,
-            scan_time: nowIso
-          });
-          if (onResult) onResult({ status: 'offline_queued', message: 'Saved Offline', member: matchedMember });
-        } else {
-          if (onResult) onResult({ status: 'error', message: error.message, member: matchedMember });
+        let { data, error } = await supabase.from('scans').insert([scanData]).select();
+        if (error && (error.code === 'PGRST204' || error.message?.includes('event_id'))) {
+          delete scanData.event_id;
+          scanData.session_id = sessionId;
+          const res = await supabase.from('scans').insert([scanData]).select();
+          data = res.data;
+          error = res.error;
         }
-      } else {
-        if (onResult) onResult({ status: 'success', message: mode === 'OUT' ? 'Signed Out' : 'Success', member: matchedMember, scanRecord: data ? data[0] : null, mode });
+
+        if (error) {
+          console.error('[useScanLogic] Supabase insert error:', error);
+          if (error.code === '23505') {
+            if (onResult) onResult({ status: 'duplicate', message: 'Already Signed In', member: matchedMember });
+          } else if (error.message?.includes('fetch') || error.message?.includes('Failed to fetch')) {
+            queueOfflineScan({ ...scanData, scan_time: nowIso });
+            if (onResult) onResult({ status: 'offline_queued', message: 'Saved Offline', member: matchedMember });
+          } else {
+            if (onResult) onResult({ status: 'error', message: error.message, member: matchedMember });
+          }
+        } else {
+          if (onResult) onResult({ status: 'success', message: 'Signed In', member: matchedMember, scanRecord: data ? data[0] : null, mode: 'IN' });
+        }
       }
     } catch (err) {
       queueOfflineScan({
