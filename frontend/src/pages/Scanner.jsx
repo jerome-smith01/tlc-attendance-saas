@@ -1237,7 +1237,6 @@ export function Scanner() {
                       </svg>
                       <h2 className="scanner-idle-title">Scanner Idle</h2>
                       <p className="scanner-idle-subtitle">Camera is paused to save battery.</p>
-                      <button onClick={startScanner} className="btn btn-primary">SCAN</button>
                     </div>
                   )}
 
@@ -1251,11 +1250,6 @@ export function Scanner() {
 
                     {/* STRICT SQUARE VIEWFINDER */}
                     <div className="scanner-strict-square">
-                      {/* Mode Label Overlay */}
-                      <div className={`scanner-mode-overlay-tag scanner-mode-overlay-${scanMode.toLowerCase()}`}>
-                        {scanMode === 'IN' ? 'Signing In' : 'Signing Out'}
-                      </div>
-
                       {/* Corner brackets */}
                       <div className={`scanner-corner scanner-corner-tl scanner-corner-${scanMode.toLowerCase()}`}></div>
                       <div className={`scanner-corner scanner-corner-tr scanner-corner-${scanMode.toLowerCase()}`}></div>
@@ -1285,9 +1279,20 @@ export function Scanner() {
 
                     {isScanning && (
                       <div className="scanner-live-badge">
-                        <span className="badge badge-success" style={{ backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}>
-                          <div className="scanner-pulse-dot"></div>
-                          Live
+                        <span 
+                          className={`badge ${scanMode === 'IN' ? 'badge-success' : 'badge-info'}`} 
+                          style={{ 
+                            backgroundColor: 'rgba(0,0,0,0.5)', 
+                            backdropFilter: 'blur(8px)',
+                            borderColor: scanMode === 'IN' ? 'rgba(16, 185, 129, 0.4)' : 'rgba(59, 130, 246, 0.4)',
+                            color: scanMode === 'IN' ? '#10b981' : '#3b82f6'
+                          }}
+                        >
+                          <div 
+                            className="scanner-pulse-dot" 
+                            style={{ backgroundColor: scanMode === 'IN' ? '#10b981' : '#3b82f6' }}
+                          ></div>
+                          {scanMode === 'IN' ? 'SCANNING IN' : 'SCANNING OUT'}
                         </span>
                       </div>
                     )}
@@ -1297,34 +1302,30 @@ export function Scanner() {
 
               {/* Right Column: Actions Panel */}
               <div className="scanner-actions-panel">
-                {/* Action Card 1: Primary Action Buttons */}
                 <div className="scanner-action-card">
                   <span className="header-card-label">SCANNER ACTIONS</span>
                   {!isScanning ? (
                     <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
                       <button 
                         onClick={() => { setScanMode('IN'); startScanner(); }} 
-                        className="btn w-full"
-                        style={{ padding: '0.85rem 0.5rem', fontSize: '0.9rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem', backgroundColor: '#10b981', color: '#ffffff', fontWeight: '600' }}
+                        className="scanner-btn-in"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" style={{ width: '1.2rem', height: '1.2rem' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                        <svg xmlns="http://www.w3.org/2000/svg" style={{ width: '1.25rem', height: '1.25rem' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M11 21h7a3 3 0 003-3V7a3 3 0 00-3-3h-7M3 12h14m-4-4l4 4-4 4" />
                         </svg>
                         <span>SCAN IN</span>
                       </button>
                       <button 
                         onClick={() => { setScanMode('OUT'); startScanner(); }} 
-                        className="btn w-full"
-                        style={{ padding: '0.85rem 0.5rem', fontSize: '0.9rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem', backgroundColor: '#3b82f6', color: '#ffffff', fontWeight: '600' }}
+                        className="scanner-btn-out"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" style={{ width: '1.2rem', height: '1.2rem' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        <svg xmlns="http://www.w3.org/2000/svg" style={{ width: '1.25rem', height: '1.25rem' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                         </svg>
                         <span>SCAN OUT</span>
                       </button>
                     </div>
                   ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
                       <button 
                         onClick={stopScanner} 
                         className="btn btn-destructive w-full"
@@ -1335,49 +1336,48 @@ export function Scanner() {
                         </svg>
                         <span>STOP SCANNER</span>
                       </button>
-                      <button 
-                        onClick={() => setScanMode(prev => prev === 'IN' ? 'OUT' : 'IN')} 
-                        className="btn btn-secondary w-full"
-                        style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem' }}
-                      >
-                        <span>Switch to {scanMode === 'IN' ? 'Scanning Out (Blue)' : 'Scanning In (Green)'}</span>
-                      </button>
-                    </div>
                   )}
-                </div>
 
-                {/* Action Card 2: Secondary Options */}
-                <div className="scanner-action-card" style={{ padding: 0, overflow: 'hidden' }}>
-                  {/* Scan from Photo */}
-                  <div style={{ position: 'relative', width: '100%' }}>
-                    <button className="scanner-action-item" style={{ borderBottom: '1px solid var(--border-color)' }}>
-                      <svg xmlns="http://www.w3.org/2000/svg" className="scanner-action-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
+                  {/* Secondary Options Box inside the same Card */}
+                  <div className="scanner-secondary-actions-box">
+                    {/* Check in from Photos */}
+                    <div style={{ position: 'relative', width: '100%' }}>
+                      <button className="scanner-action-item" style={{ borderBottom: '1px solid var(--border-color, #e2e8f0)' }}>
+                        <div className="scanner-action-icon-box">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="scanner-action-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <div className="scanner-action-title">Check in from Photos</div>
+                          <div className="scanner-action-subtitle">Upload badge photos to scan</div>
+                        </div>
+                      </button>
+                      <input 
+                        type="file" 
+                        multiple 
+                        accept="image/*" 
+                        onChange={handleBulkPhotos} 
+                        style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }} 
+                      />
+                    </div>
+
+                    {/* Check in from Roster */}
+                    <button onClick={() => setIsManualEntryOpen(true)} className="scanner-action-item">
+                      <div className="scanner-action-icon-box">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="scanner-action-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                          <circle cx="8.5" cy="7" r="4" />
+                          <line x1="20" y1="8" x2="20" y2="14" />
+                          <line x1="17" y1="11" x2="23" y2="11" />
+                        </svg>
+                      </div>
                       <div>
-                        <div className="scanner-action-title">Scan from Photo</div>
-                        <div className="scanner-action-subtitle">Upload image from gallery</div>
+                        <div className="scanner-action-title">Check in from Roster</div>
+                        <div className="scanner-action-subtitle">Select trailmen from a list</div>
                       </div>
                     </button>
-                    <input 
-                      type="file" 
-                      multiple 
-                      accept="image/*" 
-                      onChange={handleBulkPhotos} 
-                      style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }} 
-                    />
                   </div>
-
-                  {/* Manual Search */}
-                  <button onClick={() => setIsManualEntryOpen(true)} className="scanner-action-item">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="scanner-action-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                    <div>
-                      <div className="scanner-action-title">Manual Search</div>
-                      <div className="scanner-action-subtitle">Find member by name</div>
-                    </div>
-                  </button>
                 </div>
               </div>
             </>
