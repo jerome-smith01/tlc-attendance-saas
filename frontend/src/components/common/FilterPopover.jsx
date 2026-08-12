@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 
 /**
  * FilterPopover component for desktop table column filtering.
@@ -32,13 +33,59 @@ export function FilterPopover({
   sortDescLabel
 }) {
   const popoverRef = useRef(null);
+  const anchorRef = useRef(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
+  const [positioned, setPositioned] = useState(false);
+
+  const updatePosition = useCallback(() => {
+    if (!anchorRef.current) return;
+    const parentEl = anchorRef.current.parentElement;
+    if (!parentEl) return;
+    const rect = parentEl.getBoundingClientRect();
+
+    let top = rect.bottom + 4;
+    let left = rect.left;
+
+    if (popoverRef.current) {
+      const popoverWidth = popoverRef.current.offsetWidth || 260;
+      const popoverHeight = popoverRef.current.offsetHeight || 300;
+
+      // Ensure popover stays within right viewport edge
+      if (left + popoverWidth > window.innerWidth - 16) {
+        left = Math.max(16, window.innerWidth - popoverWidth - 16);
+      }
+
+      // Ensure popover stays within left viewport edge
+      if (left < 16) {
+        left = 16;
+      }
+
+      // Ensure popover flips above header if extending below bottom viewport edge
+      if (top + popoverHeight > window.innerHeight - 16 && rect.top - popoverHeight > 16) {
+        top = rect.top - popoverHeight - 4;
+      }
+    }
+
+    setCoords({ top, left });
+    setPositioned(true);
+  }, []);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      setPositioned(false);
+      return;
+    }
+
+    updatePosition();
 
     function handleClickOutside(event) {
-      if (popoverRef.current && !popoverRef.current.contains(event.target)) {
+      if (
+        popoverRef.current &&
+        !popoverRef.current.contains(event.target) &&
+        anchorRef.current?.parentElement &&
+        !anchorRef.current.parentElement.contains(event.target)
+      ) {
         onClose();
       }
     }
@@ -51,11 +98,16 @@ export function FilterPopover({
 
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, updatePosition]);
 
   // Reset local search term when popover opens/closes
   useEffect(() => {
@@ -77,8 +129,6 @@ export function FilterPopover({
     });
     return { enabledOptions: enabled, disabledOptions: disabled };
   }, [visibleOptions]);
-
-  if (!isOpen) return null;
 
   const isSortedAsc = sortConfig?.key === columnKey && sortConfig?.direction === 'asc';
   const isSortedDesc = sortConfig?.key === columnKey && sortConfig?.direction === 'desc';
@@ -125,10 +175,22 @@ export function FilterPopover({
     }
   };
 
-  return (
+  if (!isOpen) {
+    return <span ref={anchorRef} style={{ display: 'none' }} />;
+  }
+
+  const popoverContent = (
     <div
       ref={popoverRef}
       className="filter-popover glass-card"
+      style={{
+        position: 'fixed',
+        top: `${coords.top}px`,
+        left: `${coords.left}px`,
+        zIndex: 1000,
+        opacity: positioned ? 1 : 0,
+        marginTop: 0,
+      }}
       onClick={(e) => e.stopPropagation()}
     >
 
@@ -443,5 +505,12 @@ export function FilterPopover({
         )}
       </div>
     </div>
+  );
+
+  return (
+    <>
+      <span ref={anchorRef} style={{ display: 'none' }} />
+      {createPortal(popoverContent, document.body)}
+    </>
   );
 }

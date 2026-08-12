@@ -83,12 +83,17 @@ export function Scanner() {
 
   // Table Filter, Sort & Column Resizing states
   const [activePopover, setActivePopover] = useState(null);
-  const defaultSort = { key: 'time', direction: 'desc' };
-  const defaultFilters = { name: [], status: [], time: [] };
+  const defaultSort = { key: 'in_time', direction: 'desc' };
+  const defaultFilters = { name: [], status: [], in_date: [], in_time: [], in_by: [], out_date: [], out_time: [], out_by: [] };
   const defaultColumnWidths = useMemo(() => ({
-    name: 2.5,
+    name: 2.0,
     status: 1.0,
-    time: 1.0,
+    in_date: 1.0,
+    in_time: 1.0,
+    in_by: 1.0,
+    out_date: 1.0,
+    out_time: 1.0,
+    out_by: 1.0,
     actions: 0.8
   }), []);
 
@@ -271,15 +276,14 @@ export function Scanner() {
             id: s.id,
             roster_id: s.roster_id,
             member: s.roster,
-            sign_in_time: signInTimeRaw ? new Date(signInTimeRaw).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null,
+            raw_sign_in_time: signInTimeRaw,
+            raw_sign_out_time: signOutTimeRaw,
+            in_date: signInTimeRaw ? formatAppDate(signInTimeRaw) : '-',
+            in_time: signInTimeRaw ? new Date(signInTimeRaw).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '-',
             signed_in_by: s.signed_in_by || s.scanned_by,
-            signed_in_by_email: (s.signed_in_by === user?.id || s.scanned_by === user?.id) ? (user?.email || 'You') : 'Leader',
-            sign_out_time: signOutTimeRaw ? new Date(signOutTimeRaw).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null,
+            out_date: signOutTimeRaw ? formatAppDate(signOutTimeRaw) : '-',
+            out_time: signOutTimeRaw ? new Date(signOutTimeRaw).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '-',
             signed_out_by: s.signed_out_by,
-            signed_out_by_email: s.signed_out_by === user?.id ? (user?.email || 'You') : (s.signed_out_by ? 'Leader' : null),
-            time: isSignedOut
-              ? (signOutTimeRaw ? new Date(signOutTimeRaw).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'N/A')
-              : (signInTimeRaw ? new Date(signInTimeRaw).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'N/A'),
             status: isSignedOut ? 'complete' : 'pending',
             message: isSignedOut ? 'Signed Out' : 'Signed In'
           });
@@ -644,29 +648,37 @@ export function Scanner() {
                   const signOutTimeRaw = s.sign_out_time;
                   const isSignedOut = !!signOutTimeRaw;
                   
-                  updatedItem.sign_in_time = signInTimeRaw ? new Date(signInTimeRaw).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null;
-                  updatedItem.sign_out_time = signOutTimeRaw ? new Date(signOutTimeRaw).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null;
+                  updatedItem.raw_sign_in_time = signInTimeRaw;
+                  updatedItem.raw_sign_out_time = signOutTimeRaw;
+                  updatedItem.in_date = signInTimeRaw ? formatAppDate(signInTimeRaw) : '-';
+                  updatedItem.in_time = signInTimeRaw ? new Date(signInTimeRaw).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '-';
+                  updatedItem.out_date = signOutTimeRaw ? formatAppDate(signOutTimeRaw) : '-';
+                  updatedItem.out_time = signOutTimeRaw ? new Date(signOutTimeRaw).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '-';
+                  updatedItem.signed_in_by = s.signed_in_by || s.scanned_by || updatedItem.signed_in_by;
                   updatedItem.signed_out_by = s.signed_out_by;
-                  if (s.signed_out_by === user?.id) updatedItem.signed_out_by_email = user?.email || 'You';
                   
                   updatedItem.status = isSignedOut ? 'complete' : 'pending';
                   updatedItem.message = isSignedOut ? 'Signed Out' : 'Signed In';
-                  updatedItem.time = isSignedOut ? updatedItem.sign_out_time : updatedItem.sign_in_time;
                 } else if (result.mode === 'OUT') {
-                  const nowStr = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-                  updatedItem.sign_out_time = nowStr;
-                  updatedItem.signed_out_by_email = user?.email || 'You';
+                  const nowIso = new Date().toISOString();
+                  updatedItem.raw_sign_out_time = nowIso;
+                  updatedItem.out_date = formatAppDate(nowIso);
+                  updatedItem.out_time = new Date(nowIso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                  updatedItem.signed_out_by = user?.id;
                   updatedItem.status = 'complete';
                   updatedItem.message = 'Signed Out';
-                  updatedItem.time = nowStr;
                 } else {
-                  const nowStr = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-                  updatedItem.sign_in_time = nowStr;
-                  updatedItem.sign_out_time = null;
-                  updatedItem.signed_out_by_email = null;
+                  const nowIso = new Date().toISOString();
+                  updatedItem.raw_sign_in_time = nowIso;
+                  updatedItem.raw_sign_out_time = null;
+                  updatedItem.in_date = formatAppDate(nowIso);
+                  updatedItem.in_time = new Date(nowIso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                  updatedItem.out_date = '-';
+                  updatedItem.out_time = '-';
+                  updatedItem.signed_in_by = user?.id;
+                  updatedItem.signed_out_by = null;
                   updatedItem.status = 'pending';
                   updatedItem.message = 'Signed In';
-                  updatedItem.time = nowStr;
                 }
                 
                 const newPrev = [...prev];
@@ -687,15 +699,14 @@ export function Scanner() {
                 id: newId,
                 roster_id: rId,
                 member: result.member,
-                sign_in_time: signInTimeRaw ? new Date(signInTimeRaw).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null,
+                raw_sign_in_time: signInTimeRaw,
+                raw_sign_out_time: signOutTimeRaw,
+                in_date: signInTimeRaw ? formatAppDate(signInTimeRaw) : '-',
+                in_time: signInTimeRaw ? new Date(signInTimeRaw).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '-',
                 signed_in_by: s.signed_in_by || user?.id,
-                signed_in_by_email: (s.signed_in_by === user?.id || !s.signed_in_by) ? (user?.email || 'You') : 'Leader',
-                sign_out_time: signOutTimeRaw ? new Date(signOutTimeRaw).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null,
+                out_date: signOutTimeRaw ? formatAppDate(signOutTimeRaw) : '-',
+                out_time: signOutTimeRaw ? new Date(signOutTimeRaw).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '-',
                 signed_out_by: s.signed_out_by,
-                signed_out_by_email: s.signed_out_by === user?.id ? (user?.email || 'You') : (s.signed_out_by ? 'Leader' : null),
-                time: isSignedOut
-                  ? (signOutTimeRaw ? new Date(signOutTimeRaw).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'N/A')
-                  : (signInTimeRaw ? new Date(signInTimeRaw).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'N/A'),
                 status: isSignedOut ? 'complete' : 'pending',
                 message: result.status === 'offline_queued' ? 'Saved Offline' : (isSignedOut ? 'Signed Out' : 'Signed In')
               };
@@ -798,8 +809,23 @@ export function Scanner() {
           if (prev.some(item => item.roster_id === targetRosterId || item.member?.id === targetRosterId)) {
             return prev;
           }
+          const nowIso = new Date().toISOString();
           return [
-            { id: data[0].id, roster_id: targetRosterId, time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }), status: 'success', message: 'Scanned In', member: targetMember },
+            {
+              id: data[0].id,
+              roster_id: targetRosterId,
+              raw_sign_in_time: nowIso,
+              raw_sign_out_time: null,
+              in_date: formatAppDate(nowIso),
+              in_time: new Date(nowIso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+              signed_in_by: user?.id,
+              out_date: '-',
+              out_time: '-',
+              signed_out_by: null,
+              status: 'success',
+              message: 'Scanned In',
+              member: targetMember
+            },
             ...prev
           ];
         });
@@ -903,9 +929,24 @@ export function Scanner() {
       }
       if (data) {
         triggerRowHighlight(data[0].id);
+        const nowIso = new Date().toISOString();
         setAttendance(prev => {
           return [
-            { id: data[0].id, roster_id: targetRosterId, time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }), status: 'success', message: 'Scanned In', member: targetMember },
+            {
+              id: data[0].id,
+              roster_id: targetRosterId,
+              raw_sign_in_time: nowIso,
+              raw_sign_out_time: null,
+              in_date: formatAppDate(nowIso),
+              in_time: new Date(nowIso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+              signed_in_by: user?.id,
+              out_date: '-',
+              out_time: '-',
+              signed_out_by: null,
+              status: 'success',
+              message: 'Scanned In',
+              member: targetMember
+            },
             ...prev
           ];
         });
@@ -934,7 +975,7 @@ export function Scanner() {
     const startLeftFr = columnWidths[leftCol] ?? defaultColumnWidths[leftCol];
     const startRightFr = columnWidths[rightCol] ?? defaultColumnWidths[rightCol];
 
-    const activeCols = ['name', 'status', 'time', 'actions'];
+    const activeCols = ['name', 'status', 'in_date', 'in_time', 'in_by', 'out_date', 'out_time', 'out_by', 'actions'];
     const totalFr = activeCols.reduce((sum, col) => sum + (columnWidths[col] ?? defaultColumnWidths[col]), 0);
     const availWidth = isAdminOrLeader ? Math.max(100, containerRect.width - 48) : containerRect.width;
 
@@ -977,13 +1018,25 @@ export function Scanner() {
   const gridTemplateStyle = useMemo(() => {
     if (isAdminOrLeader) {
       return {
-        gridTemplateColumns: `48px minmax(0, ${columnWidths.name || 2.5}fr) minmax(0, ${columnWidths.status || 1.0}fr) minmax(0, ${columnWidths.time || 1.0}fr) minmax(0, ${columnWidths.actions || 0.8}fr)`
+        gridTemplateColumns: `48px minmax(0, ${columnWidths.name || 2.0}fr) minmax(0, ${columnWidths.status || 1.0}fr) minmax(0, ${columnWidths.in_date || 1.0}fr) minmax(0, ${columnWidths.in_time || 1.0}fr) minmax(0, ${columnWidths.in_by || 1.0}fr) minmax(0, ${columnWidths.out_date || 1.0}fr) minmax(0, ${columnWidths.out_time || 1.0}fr) minmax(0, ${columnWidths.out_by || 1.0}fr) minmax(0, ${columnWidths.actions || 0.8}fr)`
       };
     }
     return {
-      gridTemplateColumns: `minmax(0, ${columnWidths.name || 2.5}fr) minmax(0, ${columnWidths.status || 1.0}fr) minmax(0, ${columnWidths.time || 1.0}fr) minmax(0, ${columnWidths.actions || 0.8}fr)`
+      gridTemplateColumns: `minmax(0, ${columnWidths.name || 2.0}fr) minmax(0, ${columnWidths.status || 1.0}fr) minmax(0, ${columnWidths.in_date || 1.0}fr) minmax(0, ${columnWidths.in_time || 1.0}fr) minmax(0, ${columnWidths.in_by || 1.0}fr) minmax(0, ${columnWidths.out_date || 1.0}fr) minmax(0, ${columnWidths.out_time || 1.0}fr) minmax(0, ${columnWidths.out_by || 1.0}fr) minmax(0, ${columnWidths.actions || 0.8}fr)`
     };
   }, [isAdminOrLeader, columnWidths]);
+
+  const getLeaderName = (userId) => {
+    if (!userId) return '-';
+    const found = roster.find(r => r.user_id === userId);
+    if (found) {
+      return `${found.first_name} ${found.last_initial}.`;
+    }
+    if (userId === user?.id) {
+      return 'You';
+    }
+    return 'Leader';
+  };
 
   // Dynamic Options & Filtering for Attendance Table
   const uniqueMemberNames = useMemo(() => {
@@ -996,13 +1049,42 @@ export function Scanner() {
     return [...new Set(statuses)].sort();
   }, [attendance]);
 
-  const uniqueTimes = useMemo(() => {
-    const times = attendance.map(a => a.time).filter(Boolean);
-    return [...new Set(times)].sort((a, b) => b.localeCompare(a));
+  const uniqueInDates = useMemo(() => {
+    const dates = attendance.map(a => a.in_date).filter(Boolean);
+    return [...new Set(dates)].sort();
   }, [attendance]);
 
+  const uniqueInTimes = useMemo(() => {
+    const times = attendance.map(a => a.in_time).filter(Boolean);
+    return [...new Set(times)].sort();
+  }, [attendance]);
+
+  const uniqueInBys = useMemo(() => {
+    const list = attendance.map(a => getLeaderName(a.signed_in_by)).filter(Boolean);
+    return [...new Set(list)].sort();
+  }, [attendance, roster, user]);
+
+  const uniqueOutDates = useMemo(() => {
+    const dates = attendance.map(a => a.out_date).filter(Boolean);
+    return [...new Set(dates)].sort();
+  }, [attendance]);
+
+  const uniqueOutTimes = useMemo(() => {
+    const times = attendance.map(a => a.out_time).filter(Boolean);
+    return [...new Set(times)].sort();
+  }, [attendance]);
+
+  const uniqueOutBys = useMemo(() => {
+    const list = attendance.map(a => getLeaderName(a.signed_out_by)).filter(Boolean);
+    return [...new Set(list)].sort();
+  }, [attendance, roster, user]);
+
   const processedAttendance = useMemo(() => {
-    let result = [...attendance];
+    let result = attendance.map(a => ({
+      ...a,
+      in_by: getLeaderName(a.signed_in_by),
+      out_by: getLeaderName(a.signed_out_by)
+    }));
 
     // Column Filters
     if (columnFilters.name?.length > 0) {
@@ -1016,8 +1098,28 @@ export function Scanner() {
       result = result.filter(a => columnFilters.status.includes(a.message || 'Scanned In'));
     }
 
-    if (columnFilters.time?.length > 0) {
-      result = result.filter(a => columnFilters.time.includes(a.time));
+    if (columnFilters.in_date?.length > 0) {
+      result = result.filter(a => columnFilters.in_date.includes(a.in_date));
+    }
+
+    if (columnFilters.in_time?.length > 0) {
+      result = result.filter(a => columnFilters.in_time.includes(a.in_time));
+    }
+
+    if (columnFilters.in_by?.length > 0) {
+      result = result.filter(a => columnFilters.in_by.includes(a.in_by));
+    }
+
+    if (columnFilters.out_date?.length > 0) {
+      result = result.filter(a => columnFilters.out_date.includes(a.out_date));
+    }
+
+    if (columnFilters.out_time?.length > 0) {
+      result = result.filter(a => columnFilters.out_time.includes(a.out_time));
+    }
+
+    if (columnFilters.out_by?.length > 0) {
+      result = result.filter(a => columnFilters.out_by.includes(a.out_by));
     }
 
     // Sorting
@@ -1030,9 +1132,24 @@ export function Scanner() {
         } else if (sortConfig.key === 'status') {
           valA = a.message || '';
           valB = b.message || '';
-        } else if (sortConfig.key === 'time') {
-          valA = a.time || '';
-          valB = b.time || '';
+        } else if (sortConfig.key === 'in_date') {
+          valA = a.raw_sign_in_time || '';
+          valB = b.raw_sign_in_time || '';
+        } else if (sortConfig.key === 'in_time') {
+          valA = a.raw_sign_in_time || '';
+          valB = b.raw_sign_in_time || '';
+        } else if (sortConfig.key === 'in_by') {
+          valA = a.in_by || '';
+          valB = b.in_by || '';
+        } else if (sortConfig.key === 'out_date') {
+          valA = a.raw_sign_out_time || '';
+          valB = b.raw_sign_out_time || '';
+        } else if (sortConfig.key === 'out_time') {
+          valA = a.raw_sign_out_time || '';
+          valB = b.raw_sign_out_time || '';
+        } else if (sortConfig.key === 'out_by') {
+          valA = a.out_by || '';
+          valB = b.out_by || '';
         }
 
         valA = String(valA).toLowerCase();
@@ -1045,7 +1162,7 @@ export function Scanner() {
     }
 
     return result;
-  }, [attendance, columnFilters, sortConfig]);
+  }, [attendance, columnFilters, sortConfig, roster, user]);
 
   if (loadingEvent) {
     return (
@@ -1165,15 +1282,40 @@ export function Scanner() {
             </span>
           </div>
 
-          {/* Scanned In Count Row */}
-          <div className="grid-table-cell" role="cell" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '0.2rem 0' }}>
-            <span className="header-card-label">Scanned In</span>
-            <div>
-              <span className="badge badge-success" style={{ borderRadius: '9999px', padding: '0.15rem 0.6rem' }}>
-                {attendance.length}
-              </span>
-            </div>
-          </div>
+          {/* Scanned Metrics */}
+          {(() => {
+            const scannedInCount = attendance.filter(s => !s.raw_sign_out_time).length;
+            const scannedOutCount = attendance.filter(s => !!s.raw_sign_out_time).length;
+            const scannedTotalCount = scannedInCount + scannedOutCount;
+
+            return (
+              <>
+                {/* Scanned In Count Row */}
+                <div className="grid-table-cell" role="cell" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '0.2rem 0' }}>
+                  <span className="header-card-label">Scanned In</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>
+                    {scannedInCount}
+                  </span>
+                </div>
+
+                {/* Scanned Out Count Row */}
+                <div className="grid-table-cell" role="cell" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '0.2rem 0' }}>
+                  <span className="header-card-label">Scanned Out</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>
+                    {scannedOutCount}
+                  </span>
+                </div>
+
+                {/* Scanned Total Count Row */}
+                <div className="grid-table-cell" role="cell" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '0.2rem 0' }}>
+                  <span className="header-card-label">Scanned Total</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>
+                    {scannedTotalCount}
+                  </span>
+                </div>
+              </>
+            );
+          })()}
 
           {/* Offline Queue Row */}
           {(() => {
@@ -1192,7 +1334,7 @@ export function Scanner() {
                     {offlineCount > 0 ? (
                       <span className="badge badge-pending">{offlineCount}</span>
                     ) : (
-                      <span className="badge badge-success">0</span>
+                      <span style={{ color: 'var(--text-secondary)' }}>0</span>
                     )}
                   </div>
                 </div>
@@ -1440,7 +1582,8 @@ export function Scanner() {
                   <p>No people scanned in yet.</p>
                 </div>
               ) : (
-                <div className="grid-table-container">
+                <div className="grid-table-scroll-wrapper">
+                  <div className="grid-table-container">
                   {/* Table Header */}
                   <div
                     ref={headerRef}
@@ -1528,41 +1671,199 @@ export function Scanner() {
                       )}
                       <div
                         className="column-resizer"
-                        onMouseDown={(e) => handleStartResize(e, 'status', 'time')}
+                        onMouseDown={(e) => handleStartResize(e, 'status', 'in_date')}
                         title="Drag to resize column"
                       />
                     </div>
 
-                    {/* Time Header */}
+                    {/* Scanned In Date Header */}
                     <div role="columnheader" className="column-header-cell">
                       <button
                         type="button"
                         className="column-header-btn"
-                        onClick={() => setActivePopover(activePopover === 'time' ? null : 'time')}
+                        onClick={() => setActivePopover(activePopover === 'in_date' ? null : 'in_date')}
                       >
-                        Scan Time
-                        {sortConfig.key === 'time' && (sortConfig.direction === 'asc' ? ' ↑' : ' ↓')}
-                        {columnFilters.time?.length > 0 && ' 🌪️'}
+                        Scanned in date
+                        {sortConfig.key === 'in_date' && (sortConfig.direction === 'asc' ? ' ↑' : ' ↓')}
+                        {columnFilters.in_date?.length > 0 && ' 🌪️'}
                       </button>
-                      {activePopover === 'time' && (
+                      {activePopover === 'in_date' && (
                         <FilterPopover
                           isOpen={true}
-                          title="Scan Time"
+                          title="Scanned in date"
                           type="multiselect"
-                          options={uniqueTimes.map(t => ({ label: t, value: t }))}
-                          value={columnFilters.time || []}
-                          onChange={(val) => setColumnFilters(prev => ({ ...prev, time: val }))}
+                          options={uniqueInDates.map(d => ({ label: d, value: d }))}
+                          value={columnFilters.in_date || []}
+                          onChange={(val) => setColumnFilters(prev => ({ ...prev, in_date: val }))}
                           onClose={() => setActivePopover(null)}
                           sortConfig={sortConfig}
-                          columnKey="time"
-                          onSort={(dir) => setSortConfig({ key: 'time', direction: dir })}
-                          sortAscLabel="Sort Newest to Oldest"
-                          sortDescLabel="Sort Oldest to Newest"
+                          columnKey="in_date"
+                          onSort={(dir) => setSortConfig({ key: 'in_date', direction: dir })}
                         />
                       )}
                       <div
                         className="column-resizer"
-                        onMouseDown={(e) => handleStartResize(e, 'time', 'actions')}
+                        onMouseDown={(e) => handleStartResize(e, 'in_date', 'in_time')}
+                        title="Drag to resize column"
+                      />
+                    </div>
+
+                    {/* Scanned In Time Header */}
+                    <div role="columnheader" className="column-header-cell">
+                      <button
+                        type="button"
+                        className="column-header-btn"
+                        onClick={() => setActivePopover(activePopover === 'in_time' ? null : 'in_time')}
+                      >
+                        Scanned in time
+                        {sortConfig.key === 'in_time' && (sortConfig.direction === 'asc' ? ' ↑' : ' ↓')}
+                        {columnFilters.in_time?.length > 0 && ' 🌪️'}
+                      </button>
+                      {activePopover === 'in_time' && (
+                        <FilterPopover
+                          isOpen={true}
+                          title="Scanned in time"
+                          type="multiselect"
+                          options={uniqueInTimes.map(t => ({ label: t, value: t }))}
+                          value={columnFilters.in_time || []}
+                          onChange={(val) => setColumnFilters(prev => ({ ...prev, in_time: val }))}
+                          onClose={() => setActivePopover(null)}
+                          sortConfig={sortConfig}
+                          columnKey="in_time"
+                          onSort={(dir) => setSortConfig({ key: 'in_time', direction: dir })}
+                        />
+                      )}
+                      <div
+                        className="column-resizer"
+                        onMouseDown={(e) => handleStartResize(e, 'in_time', 'in_by')}
+                        title="Drag to resize column"
+                      />
+                    </div>
+
+                    {/* Scanned In By Header */}
+                    <div role="columnheader" className="column-header-cell">
+                      <button
+                        type="button"
+                        className="column-header-btn"
+                        onClick={() => setActivePopover(activePopover === 'in_by' ? null : 'in_by')}
+                      >
+                        Scanned in by
+                        {sortConfig.key === 'in_by' && (sortConfig.direction === 'asc' ? ' ↑' : ' ↓')}
+                        {columnFilters.in_by?.length > 0 && ' 🌪️'}
+                      </button>
+                      {activePopover === 'in_by' && (
+                        <FilterPopover
+                          isOpen={true}
+                          title="Scanned in by"
+                          type="multiselect"
+                          options={uniqueInBys.map(b => ({ label: b, value: b }))}
+                          value={columnFilters.in_by || []}
+                          onChange={(val) => setColumnFilters(prev => ({ ...prev, in_by: val }))}
+                          onClose={() => setActivePopover(null)}
+                          sortConfig={sortConfig}
+                          columnKey="in_by"
+                          onSort={(dir) => setSortConfig({ key: 'in_by', direction: dir })}
+                        />
+                      )}
+                      <div
+                        className="column-resizer"
+                        onMouseDown={(e) => handleStartResize(e, 'in_by', 'out_date')}
+                        title="Drag to resize column"
+                      />
+                    </div>
+
+                    {/* Scanned Out Date Header */}
+                    <div role="columnheader" className="column-header-cell">
+                      <button
+                        type="button"
+                        className="column-header-btn"
+                        onClick={() => setActivePopover(activePopover === 'out_date' ? null : 'out_date')}
+                      >
+                        Scanned out date
+                        {sortConfig.key === 'out_date' && (sortConfig.direction === 'asc' ? ' ↑' : ' ↓')}
+                        {columnFilters.out_date?.length > 0 && ' 🌪️'}
+                      </button>
+                      {activePopover === 'out_date' && (
+                        <FilterPopover
+                          isOpen={true}
+                          title="Scanned out date"
+                          type="multiselect"
+                          options={uniqueOutDates.map(d => ({ label: d, value: d }))}
+                          value={columnFilters.out_date || []}
+                          onChange={(val) => setColumnFilters(prev => ({ ...prev, out_date: val }))}
+                          onClose={() => setActivePopover(null)}
+                          sortConfig={sortConfig}
+                          columnKey="out_date"
+                          onSort={(dir) => setSortConfig({ key: 'out_date', direction: dir })}
+                        />
+                      )}
+                      <div
+                        className="column-resizer"
+                        onMouseDown={(e) => handleStartResize(e, 'out_date', 'out_time')}
+                        title="Drag to resize column"
+                      />
+                    </div>
+
+                    {/* Scanned Out Time Header */}
+                    <div role="columnheader" className="column-header-cell">
+                      <button
+                        type="button"
+                        className="column-header-btn"
+                        onClick={() => setActivePopover(activePopover === 'out_time' ? null : 'out_time')}
+                      >
+                        Scanned out time
+                        {sortConfig.key === 'out_time' && (sortConfig.direction === 'asc' ? ' ↑' : ' ↓')}
+                        {columnFilters.out_time?.length > 0 && ' 🌪️'}
+                      </button>
+                      {activePopover === 'out_time' && (
+                        <FilterPopover
+                          isOpen={true}
+                          title="Scanned out time"
+                          type="multiselect"
+                          options={uniqueOutTimes.map(t => ({ label: t, value: t }))}
+                          value={columnFilters.out_time || []}
+                          onChange={(val) => setColumnFilters(prev => ({ ...prev, out_time: val }))}
+                          onClose={() => setActivePopover(null)}
+                          sortConfig={sortConfig}
+                          columnKey="out_time"
+                          onSort={(dir) => setSortConfig({ key: 'out_time', direction: dir })}
+                        />
+                      )}
+                      <div
+                        className="column-resizer"
+                        onMouseDown={(e) => handleStartResize(e, 'out_time', 'out_by')}
+                        title="Drag to resize column"
+                      />
+                    </div>
+
+                    {/* Scanned Out By Header */}
+                    <div role="columnheader" className="column-header-cell">
+                      <button
+                        type="button"
+                        className="column-header-btn"
+                        onClick={() => setActivePopover(activePopover === 'out_by' ? null : 'out_by')}
+                      >
+                        Scanned out by
+                        {sortConfig.key === 'out_by' && (sortConfig.direction === 'asc' ? ' ↑' : ' ↓')}
+                        {columnFilters.out_by?.length > 0 && ' 🌪️'}
+                      </button>
+                      {activePopover === 'out_by' && (
+                        <FilterPopover
+                          isOpen={true}
+                          title="Scanned out by"
+                          type="multiselect"
+                          options={uniqueOutBys.map(b => ({ label: b, value: b }))}
+                          value={columnFilters.out_by || []}
+                          onChange={(val) => setColumnFilters(prev => ({ ...prev, out_by: val }))}
+                          onClose={() => setActivePopover(null)}
+                          sortConfig={sortConfig}
+                          columnKey="out_by"
+                          onSort={(dir) => setSortConfig({ key: 'out_by', direction: dir })}
+                        />
+                      )}
+                      <div
+                        className="column-resizer"
+                        onMouseDown={(e) => handleStartResize(e, 'out_by', 'actions')}
                         title="Drag to resize column"
                       />
                     </div>
@@ -1604,7 +1905,7 @@ export function Scanner() {
                             <strong style={{ color: 'var(--text-primary)' }}>{memberName}</strong>
                           </div>
 
-                          <div className="grid-table-cell grid-table-cell-actions" role="cell" style={{ gridColumn: isAdminOrLeader ? 5 : 4 }}>
+                          <div className="grid-table-cell grid-table-cell-actions" role="cell" style={{ gridColumn: isAdminOrLeader ? 10 : 9 }}>
                             <button
                               type="button"
                               className="btn-icon-action btn-icon-destructive"
@@ -1625,37 +1926,54 @@ export function Scanner() {
                           <button
                             type="button"
                             onClick={() => handleToggleScanStatus(scan)}
-                            className={`badge ${scan.sign_out_time ? 'badge-info' : 'badge-success'}`}
+                            className={`badge ${scan.raw_sign_out_time ? 'badge-info' : 'badge-success'}`}
                             style={{ 
                               cursor: isAdminOrLeader ? 'pointer' : 'default', 
                               border: 'none', 
-                              backgroundColor: scan.sign_out_time ? '#3b82f6' : '#10b981',
+                              backgroundColor: scan.raw_sign_out_time ? '#3b82f6' : '#10b981',
                               color: '#ffffff',
                               fontWeight: '600',
                               padding: '0.25rem 0.65rem'
                             }}
                             title={isAdminOrLeader ? "Click to toggle between Signed In and Signed Out" : undefined}
                           >
-                            {scan.sign_out_time ? 'Signed Out' : 'Signed In'}
+                            {scan.raw_sign_out_time ? 'Signed Out' : 'Signed In'}
                           </button>
                         </div>
 
                         <div className="grid-table-cell" role="cell" style={{ gridColumn: isAdminOrLeader ? 4 : 3 }}>
-                          <span className="grid-table-label">Audit Log</span>
-                          <div style={{ fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                            <span style={{ color: '#10b981', fontWeight: '500' }}>
-                              In: {scan.sign_in_time || scan.time || 'N/A'} {scan.signed_in_by_email ? `by ${scan.signed_in_by_email}` : ''}
-                            </span>
-                            {scan.sign_out_time && (
-                              <span style={{ color: '#3b82f6', fontWeight: '500' }}>
-                                Out: {scan.sign_out_time} {scan.signed_out_by_email ? `by ${scan.signed_out_by_email}` : ''}
-                              </span>
-                            )}
-                          </div>
+                          <span className="grid-table-label">Scanned in date</span>
+                          <span>{scan.in_date}</span>
+                        </div>
+
+                        <div className="grid-table-cell" role="cell" style={{ gridColumn: isAdminOrLeader ? 5 : 4 }}>
+                          <span className="grid-table-label">Scanned in time</span>
+                          <span>{scan.in_time}</span>
+                        </div>
+
+                        <div className="grid-table-cell" role="cell" style={{ gridColumn: isAdminOrLeader ? 6 : 5 }}>
+                          <span className="grid-table-label">Scanned in by</span>
+                          <span>{scan.in_by}</span>
+                        </div>
+
+                        <div className="grid-table-cell" role="cell" style={{ gridColumn: isAdminOrLeader ? 7 : 6 }}>
+                          <span className="grid-table-label">Scanned out date</span>
+                          <span>{scan.out_date}</span>
+                        </div>
+
+                        <div className="grid-table-cell" role="cell" style={{ gridColumn: isAdminOrLeader ? 8 : 7 }}>
+                          <span className="grid-table-label">Scanned out time</span>
+                          <span>{scan.out_time}</span>
+                        </div>
+
+                        <div className="grid-table-cell" role="cell" style={{ gridColumn: isAdminOrLeader ? 9 : 8 }}>
+                          <span className="grid-table-label">Scanned out by</span>
+                          <span>{scan.out_by}</span>
                         </div>
                       </div>
                     );
                   })}
+                </div>
                 </div>
               )}
             </div>
