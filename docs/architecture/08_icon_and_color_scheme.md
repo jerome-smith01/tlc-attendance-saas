@@ -34,15 +34,20 @@ To ensure visual clarity and consistency across screens and bulk-action bars, ac
 | Action Purpose | Button Label Examples | Color Theme | CSS Class | Color Token | Hex Code |
 |:---|:---|:---|:---|:---|:---|
 | **Start / Create** | `+ Start New Event`, `Start Scan` | 🟢 Green | `.btn-start` | `--color-action-start` | `#22c55e` |
-| **Scan In** | `SCAN IN` | 🟢 Green | `.scanner-btn-in` | — | `#48bb78` / `#10b981` |
-| **Scan Out** | `SCAN OUT` | 🔵 Blue | `.scanner-btn-out` | — | `#4c7cf3` / `#3b82f6` |
+| **Scan In / Sign In** | `SCAN IN`, `Sign In` | 🟢 Green | `.scanner-btn-in`, `.btn-signin` | `--color-action-signin` | `#48bb78` / `#10b981` |
+| **Scan Out / Sign Out** | `SCAN OUT`, `Sign Out` | 🔵 Blue | `.scanner-btn-out`, `.btn-signout` | `--color-action-signout` | `#4c7cf3` / `#3b82f6` |
 | **Reopen** | `Reopen`, `Reopen Event` | 🟢 Green | `.btn-reopen` | `--color-action-start` | `#22c55e` |
 | **Close / End** | `Close`, `Close Event` | 🔵 Blue | `.btn-close` | `--color-action-close` | `#0284c7` |
 | **Reset Sync** | `Reset Sync`, `Reset Sync Status` | 🟣 Purple | `.btn-reset-sync` | `--color-action-reset` | `#7c3aed` |
 | **Delete / Stop** | `Delete`, `DELETE EVENT`, `⏹ Stop Scan` | 🔴 Red | `.btn-destructive`, `.scanner-btn-delete` | `--color-error` | `#ef4444` / `#dc2626` |
 | **Cancel / Neutral** | `Deselect All`, `Change` | Neutral | `.btn-secondary`, `.btn-link` | `--muted` | `#e4e4e7` |
 
-### 2.2 Attendance Status Badge Colors
+### 2.2 Sign In vs. Sign Out Action & Confirmation Dialog Color Standard
+
+- **Green is for Signing In**: All sign-in actions—including the `SCAN IN` mode scanner button, row sign-in toggles, and confirmation dialog CTA buttons labeled `Sign In` when signing a member back in—MUST use green (`.btn-signin` / `.scanner-btn-in`, `--color-action-signin`, `#48bb78`).
+- **Blue is for Signing Out**: All sign-out actions—including the `SCAN OUT` mode scanner button, row sign-out toggles, and confirmation dialog CTA buttons labeled `Sign Out` when signing a member out—MUST use blue (`.btn-signout` / `.scanner-btn-out`, `--color-action-signout`, `#4c7cf3`).
+
+### 2.3 Attendance Status Badge Colors
 
 | Status Badge Label | Context | Color Theme | Hex Code |
 |:---|:---|:---|:---|

@@ -17,20 +17,22 @@ export function ConfirmProvider({ children }) {
     message: '',
     confirmText: 'Confirm',
     cancelText: 'Cancel',
-    isDestructive: false
+    isDestructive: false,
+    confirmBtnClass: null
   });
   
   const resolver = useRef(null);
 
   const confirm = useCallback((opts) => {
     const optionsObj = typeof opts === 'string'
-      ? { title: 'Confirm', message: opts, confirmText: 'Confirm', cancelText: 'Cancel', isDestructive: false }
+      ? { title: 'Confirm', message: opts, confirmText: 'Confirm', cancelText: 'Cancel', isDestructive: false, confirmBtnClass: null }
       : {
           title: opts?.title || 'Confirm',
           message: opts?.message || '',
           confirmText: opts?.confirmText || 'Confirm',
           cancelText: opts?.cancelText !== undefined ? opts.cancelText : 'Cancel',
-          isDestructive: opts?.isDestructive || false
+          isDestructive: opts?.isDestructive || false,
+          confirmBtnClass: opts?.confirmBtnClass || null
         };
 
     setOptions(optionsObj);
@@ -89,7 +91,7 @@ export function ConfirmProvider({ children }) {
                 </button>
               )}
               <button 
-                className={options.isDestructive ? "btn btn-destructive" : "btn btn-primary"} 
+                className={options.confirmBtnClass ? options.confirmBtnClass : (options.isDestructive ? "btn btn-destructive" : "btn btn-primary")} 
                 onClick={handleConfirm}
               >
                 {options.confirmText}

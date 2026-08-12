@@ -329,7 +329,8 @@ export function Scanner() {
         ? `Are you sure you want to sign ${memberName} back in?`
         : `Are you sure you want to sign ${memberName} out?`,
       confirmText: isCurrentlySignedOut ? 'Sign In' : 'Sign Out',
-      cancelText: 'Cancel'
+      cancelText: 'Cancel',
+      confirmBtnClass: isCurrentlySignedOut ? 'btn btn-signin' : 'btn btn-signout'
     });
 
     if (!confirmed) return;
