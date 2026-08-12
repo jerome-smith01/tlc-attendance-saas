@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useToast } from './common/ToastContext';
 
-export function InviteUser({ troopId }) {
+export function InviteUser({ troopId, onInviteSent, onDuplicateInvite }) {
   const toast = useToast();
 
   const [isOpen, setIsOpen] = useState(() => {
@@ -19,11 +19,33 @@ export function InviteUser({ troopId }) {
   ]);
   const [loading, setLoading] = useState(false);
 
+  // Pre-fetched sets for client-side duplicate detection
+  const rosterEmailsRef = useRef(new Set());
+  const pendingEmailsRef = useRef(new Set());
+
   useEffect(() => {
     try {
       localStorage.setItem('tlc_invite_section_open', String(isOpen));
     } catch (_) { }
   }, [isOpen]);
+
+  // Fetch existing roster and pending invite emails whenever troopId changes
+  useEffect(() => {
+    if (!troopId) return;
+    async function prefetchDuplicateEmails() {
+      const [rosterRes, pendingRes] = await Promise.all([
+        supabase.from('roster').select('email').eq('troop_id', troopId).not('email', 'is', null),
+        supabase.from('pending_invites').select('email').eq('troop_id', troopId).gt('expires_at', new Date().toISOString()),
+      ]);
+      rosterEmailsRef.current = new Set(
+        (rosterRes.data || []).map(r => r.email.toLowerCase())
+      );
+      pendingEmailsRef.current = new Set(
+        (pendingRes.data || []).map(r => r.email.toLowerCase())
+      );
+    }
+    prefetchDuplicateEmails();
+  }, [troopId]);
 
   // Helper to extract email addresses from formatted strings like "Name <email@domain.com>" or delimited email lists
   function extractEmails(text) {
@@ -52,6 +74,18 @@ export function InviteUser({ troopId }) {
     setRows(prev => prev.map(row => row.id === id ? { ...row, role } : row));
   }
 
+  function checkDuplicateInline(email) {
+    const lower = email.toLowerCase();
+    if (rosterEmailsRef.current.has(lower)) {
+      return 'This email is already on the leadership roster.';
+    }
+    if (pendingEmailsRef.current.has(lower)) {
+      if (onDuplicateInvite) onDuplicateInvite(email);
+      return 'An invite has already been sent to this email address.';
+    }
+    return null;
+  }
+
   function handleBlur(id) {
     setRows(prevRows => {
       const index = prevRows.findIndex(r => r.id === id);
@@ -65,17 +99,21 @@ export function InviteUser({ troopId }) {
       let updated = [...prevRows];
 
       if (parts.length > 1) {
-        const newSplitRows = parts.map((partEmail, i) => ({
-          id: i === 0 ? targetRow.id : `${Date.now()}_${Math.random().toString(36).substring(2, 7)}_${i}`,
-          email: partEmail,
-          role: targetRow.role,
-          error: null
-        }));
+        const newSplitRows = parts.map((partEmail, i) => {
+          const dupError = checkDuplicateInline(partEmail);
+          return {
+            id: i === 0 ? targetRow.id : `${Date.now()}_${Math.random().toString(36).substring(2, 7)}_${i}`,
+            email: partEmail,
+            role: targetRow.role,
+            error: dupError
+          };
+        });
         updated.splice(index, 1, ...newSplitRows);
       } else if (parts.length === 1) {
-        updated[index] = { ...targetRow, email: parts[0] };
+        const dupError = checkDuplicateInline(parts[0]);
+        updated[index] = { ...targetRow, email: parts[0], error: dupError };
       } else {
-        updated[index] = { ...targetRow, email: '' };
+        updated[index] = { ...targetRow, email: '', error: null };
       }
 
       // Automatically append a new blank row if the last row is non-empty
@@ -151,6 +189,11 @@ export function InviteUser({ troopId }) {
           if (errMsg.includes('non-2xx status code') || !errMsg) {
             errMsg = 'An unexpected error occurred. Please try again.';
           }
+
+          if (errMsg.toLowerCase().includes('already') && onDuplicateInvite) {
+            onDuplicateInvite(row.email.trim());
+          }
+
           throw { rowId: row.id, message: errMsg };
         }
         return { rowId: row.id, email: row.email };
@@ -171,6 +214,13 @@ export function InviteUser({ troopId }) {
 
     if (successCount > 0) {
       toast(`Successfully sent invite to ${successCount} leader${successCount > 1 ? 's' : ''}`, 'success');
+      // Add successfully invited emails to in-memory set so repeat entries are caught inline
+      results.forEach(res => {
+        if (res.status === 'fulfilled' && res.value?.email) {
+          pendingEmailsRef.current.add(res.value.email.toLowerCase());
+        }
+      });
+      if (onInviteSent) onInviteSent();
     }
 
     // Keep failed rows with their inline error messages, remove successful rows

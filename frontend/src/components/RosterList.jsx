@@ -497,8 +497,20 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
   }
 
   function handleEditMember(member) {
-    navigate(`/roster/${member.id}/edit`);
+    navigate(`/edit-member/${member.id}`);
   }
+
+  const [highlightedInviteEmail, setHighlightedInviteEmail] = useState(null);
+  const [inviteRefreshKey, setInviteRefreshKey] = useState(0);
+
+  const handleInviteSent = () => {
+    setHighlightedInviteEmail(null);
+    setInviteRefreshKey(k => k + 1);
+  };
+
+  const handleDuplicateInvite = (email) => {
+    setHighlightedInviteEmail(email);
+  };
 
   if (loading) return <div style={{ padding: '2rem' }}>Loading roster...</div>;
 
@@ -510,8 +522,16 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
       {/* ── Leaders tab: Invite form & Invite Status ───────────────────── */}
       {activeTab === 'leaders' && (
         <>
-          <InviteUser troopId={troopId} />
-          <InviteStatusList troopId={troopId} />
+          <InviteUser
+            troopId={troopId}
+            onInviteSent={handleInviteSent}
+            onDuplicateInvite={handleDuplicateInvite}
+          />
+          <InviteStatusList
+            troopId={troopId}
+            highlightedEmail={highlightedInviteEmail}
+            refreshKey={inviteRefreshKey}
+          />
         </>
       )}
 

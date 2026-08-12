@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { supabase } from '../lib/supabaseClient';
 import { FilterPopover } from './common/FilterPopover';
+import { useToast } from './common/ToastContext';
+import { useConfirm } from './common/ConfirmContext';
 
-const MOCK_INVITES = [
-  { id: '1', email: 'john.doe@example.com', role: 'Badge Scanner', status: 'Accepted', sent_at: 'Aug 9, 2026 3:15 PM' },
-  { id: '2', email: 'sarah.smith@example.com', role: 'Troop Admin', status: 'Invited', sent_at: 'Aug 9, 2026 4:00 PM' },
-  { id: '3', email: 'mike.jones@example.com', role: 'Badge Scanner', status: 'Failed', sent_at: 'Aug 9, 2026 4:05 PM' },
-];
+export function InviteStatusList({ troopId, highlightedEmail, refreshKey }) {
+  const { addToast } = useToast();
+  const confirm = useConfirm();
 
-export function InviteStatusList({ troopId }) {
   // Collapsible section state
   const [isOpen, setIsOpen] = useState(() => {
     try {
@@ -18,14 +18,72 @@ export function InviteStatusList({ troopId }) {
     }
   });
 
+  const [invites, setInvites] = useState([]);
+  const [loading, setLoading] = useState(false);
+
   useEffect(() => {
     try {
       localStorage.setItem('tlc_invite_status_section_open', String(isOpen));
     } catch (_) { }
   }, [isOpen]);
 
-  // TODO: wire to real invite log data via Supabase when available
-  const invites = MOCK_INVITES;
+  useEffect(() => {
+    if (!troopId) return;
+    fetchInvites();
+  }, [troopId, refreshKey, highlightedEmail]);
+
+  async function fetchInvites() {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('pending_invites')
+        .select('*')
+        .eq('troop_id', troopId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const formatted = (data || []).map(item => ({
+        id: item.id,
+        email: item.email,
+        role: item.role === 'troop_admin' ? 'Troop Admin' : 'Badge Scanner',
+        status: new Date(item.expires_at) < new Date() ? 'Expired' : 'Invited',
+        sent_at: item.created_at ? new Date(item.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Recently'
+      }));
+
+      setInvites(formatted);
+    } catch (err) {
+      console.error('Error fetching pending invites:', err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const handleDeleteInvite = async (id, email) => {
+    const isConfirmed = await confirm({
+      title: 'Revoke Invitation',
+      message: `Are you sure you want to revoke the invite for ${email}?`,
+      confirmText: 'Revoke',
+      isDestructive: true,
+    });
+
+    if (!isConfirmed) return;
+
+    try {
+      const { error } = await supabase
+        .from('pending_invites')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      addToast('Invitation revoked.', 'success');
+      fetchInvites();
+    } catch (err) {
+      console.error('Error revoking invite:', err);
+      addToast('Failed to revoke invitation.', 'error');
+    }
+  };
 
   // Search & Filter & Sort state
   const [search, setSearch] = useState('');
@@ -33,7 +91,7 @@ export function InviteStatusList({ troopId }) {
 
   const defaultFilters = { email: [], role: [], status: [], sent_at: [] };
   const defaultSort = { key: null, direction: 'asc' };
-  const defaultColumnWidths = useMemo(() => ({ email: 2.0, role: 1.2, status: 1.0, sent_at: 1.5 }), []);
+  const defaultColumnWidths = useMemo(() => ({ email: 2.0, role: 1.2, status: 1.0, sent_at: 1.5, actions: 0.6 }), []);
 
   const [columnFilters, setColumnFilters] = useState(defaultFilters);
   const [sortConfig, setSortConfig] = useState(defaultSort);
@@ -41,7 +99,7 @@ export function InviteStatusList({ troopId }) {
 
   // Column resize logic
   const headerRef = useRef(null);
-  const colKeys = useMemo(() => ['email', 'role', 'status', 'sent_at'], []);
+  const colKeys = useMemo(() => ['email', 'role', 'status', 'sent_at', 'actions'], []);
 
   const gridTemplateStyle = useMemo(() => {
     const colTracks = colKeys.map(k => `minmax(0, ${columnWidths[k] ?? defaultColumnWidths[k] ?? 1}fr)`).join(' ');
@@ -173,7 +231,7 @@ export function InviteStatusList({ troopId }) {
 
   const getStatusBadge = (status) => {
     if (status === 'Accepted') return <span className="badge badge-success">Accepted</span>;
-    if (status === 'Failed') return <span className="badge badge-destructive" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}>Failed</span>;
+    if (status === 'Expired') return <span className="badge badge-destructive" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}>Expired</span>;
     return <span className="badge badge-neutral">Invited</span>;
   };
 
@@ -194,7 +252,7 @@ export function InviteStatusList({ troopId }) {
             <polyline points="6 9 12 15 18 9" />
           </svg>
           <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: 'var(--foreground)' }}>
-            Invite Status - <span style={{ color: 'red', fontWeight: 400 }}>THIS SECTION IS DEV PLACEHOLDER TEXT</span> ({processedInvites.length})
+            Pending Invitations ({processedInvites.length})
           </h3>
         </div>
       </div>
@@ -206,7 +264,7 @@ export function InviteStatusList({ troopId }) {
             <div style={{ flex: 1, minWidth: '240px', position: 'relative' }}>
               <input
                 type="text"
-                placeholder="Search invite status..."
+                placeholder="Search invites..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 style={{
@@ -333,38 +391,77 @@ export function InviteStatusList({ troopId }) {
                     sortAscLabel="Sort Oldest to Newest" sortDescLabel="Sort Newest to Oldest"
                   />
                 )}
+                <div className="column-resizer" onMouseDown={e => handleStartResize(e, 'sent_at', 'actions')} title="Drag to resize column" />
+              </div>
+
+              {/* Actions Header */}
+              <div role="columnheader" className="column-header-cell" style={{ justifyContent: 'center' }}>
+                <span className="column-header-btn" style={{ cursor: 'default' }}>Actions</span>
               </div>
             </div>
 
             {/* Rows */}
-            {processedInvites.length === 0 ? (
+            {loading ? (
               <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                No invite records found{activeChips.length > 0 || search ? ' matching your filters' : ''}.
+                Loading pending invites...
+              </div>
+            ) : processedInvites.length === 0 ? (
+              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                No pending invitations{activeChips.length > 0 || search ? ' matching your filters' : ''}.
               </div>
             ) : (
-              processedInvites.map(item => (
-                <div key={item.id} className="grid-table-row no-manage" role="row" style={gridTemplateStyle}>
-                  <div className="grid-table-cell" role="cell">
-                    <span className="grid-table-label">Email</span>
-                    <span style={{ fontSize: '0.875rem', color: 'var(--foreground)' }}>{item.email}</span>
-                  </div>
+              processedInvites.map(item => {
+                const isHighlighted = highlightedEmail && item.email.toLowerCase() === highlightedEmail.toLowerCase();
+                return (
+                  <div
+                    key={item.id}
+                    className={`grid-table-row no-manage ${isHighlighted ? 'row-highlight-error' : ''}`}
+                    role="row"
+                    style={gridTemplateStyle}
+                  >
+                    <div className="grid-table-cell" role="cell">
+                      <span className="grid-table-label">Email</span>
+                      <span style={{ fontSize: '0.875rem', color: 'var(--foreground)', fontWeight: isHighlighted ? 600 : 400 }}>
+                        {item.email}
+                      </span>
+                    </div>
 
-                  <div className="grid-table-cell" role="cell">
-                    <span className="grid-table-label">Role</span>
-                    <span style={{ fontSize: '0.875rem', color: 'var(--foreground)' }}>{item.role}</span>
-                  </div>
+                    <div className="grid-table-cell" role="cell">
+                      <span className="grid-table-label">Role</span>
+                      <span style={{ fontSize: '0.875rem', color: 'var(--foreground)' }}>{item.role}</span>
+                    </div>
 
-                  <div className="grid-table-cell" role="cell">
-                    <span className="grid-table-label">Status</span>
-                    {getStatusBadge(item.status)}
-                  </div>
+                    <div className="grid-table-cell" role="cell">
+                      <span className="grid-table-label">Status</span>
+                      {getStatusBadge(item.status)}
+                    </div>
 
-                  <div className="grid-table-cell" role="cell">
-                    <span className="grid-table-label">Sent At</span>
-                    <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{item.sent_at}</span>
+                    <div className="grid-table-cell" role="cell">
+                      <span className="grid-table-label">Sent At</span>
+                      <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{item.sent_at}</span>
+                    </div>
+
+                    <div className="grid-table-cell" role="cell" style={{ justifyContent: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteInvite(item.id, item.email)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--color-danger, #ef4444)',
+                          cursor: 'pointer',
+                          fontSize: '1rem',
+                          padding: '0.2rem 0.5rem',
+                          borderRadius: 'var(--radius-sm)'
+                        }}
+                        title="Revoke invitation"
+                      >
+                        🗑️
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
@@ -372,3 +469,4 @@ export function InviteStatusList({ troopId }) {
     </div>
   );
 }
+

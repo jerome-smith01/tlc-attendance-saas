@@ -71,7 +71,8 @@ export function TroopProvider({ children }) {
       setDefaultTroop(formattedTroops);
 
       const needsOnboarding = data?.some(tu => tu.onboarding_completed === false);
-      if (needsOnboarding) {
+      const currentHash = window.location.hash || '';
+      if (needsOnboarding && !currentHash.includes('/accept-invite') && !currentHash.includes('/login')) {
         window.location.hash = '#/profile';
         return;
       }

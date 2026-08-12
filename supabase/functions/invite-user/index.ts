@@ -92,13 +92,29 @@ serve(async (req) => {
     // 2. Fail early if they are already in roster for this troop
     const { data: existingRoster } = await supabaseAdmin
       .from('roster')
-      .select('id, user_id')
+      .select('id')
       .eq('troop_id', troop_id)
       .eq('email', normalizedEmail)
       .maybeSingle();
 
-    if (existingRoster && existingRoster.user_id) {
-      return new Response(JSON.stringify({ error: 'This person is already a member of this troop.' }), {
+    if (existingRoster) {
+      return new Response(JSON.stringify({ error: 'This person is already a member of this troop roster.' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 409,
+      })
+    }
+
+    // 2b. Fail early if an invitation has already been sent to this email address
+    const { data: existingInvite } = await supabaseAdmin
+      .from('pending_invites')
+      .select('id')
+      .eq('troop_id', troop_id)
+      .eq('email', normalizedEmail)
+      .gt('expires_at', new Date().toISOString())
+      .maybeSingle();
+
+    if (existingInvite) {
+      return new Response(JSON.stringify({ error: 'An invitation has already been sent to this email address.' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 409,
       })

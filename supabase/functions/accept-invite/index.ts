@@ -119,12 +119,14 @@ serve(async (req) => {
     }
 
     // 6. Link or create roster entry for this troop
-    const { data: targetRoster } = await supabaseAdmin
+    const { data: rosterEntries } = await supabaseAdmin
       .from('roster')
       .select('id')
       .eq('troop_id', inviteData.troop_id)
       .or(`user_id.eq.${user.id},email.eq.${invitedEmail}`)
-      .maybeSingle()
+      .limit(1)
+
+    const targetRoster = rosterEntries && rosterEntries.length > 0 ? rosterEntries[0] : null
 
     if (targetRoster) {
       // Link existing roster record to user_id and sync name if available

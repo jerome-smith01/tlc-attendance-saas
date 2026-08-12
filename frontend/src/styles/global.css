@@ -65,6 +65,8 @@
   --bg-elevated:       #f8fafc;
   --text-primary:      var(--foreground);
   --text-secondary:    var(--muted-foreground);
+  --bg-soft-red:       rgba(239, 68, 68, 0.12);
+  --border-soft-red:   rgba(239, 68, 68, 0.4);
 }
 
 /* ── Dark Theme ── */
@@ -90,6 +92,15 @@
   --bg-elevated:       #2d3f55;
   --glass-bg:          rgba(36, 51, 71, 0.75);
   --glass-border:      rgba(255, 255, 255, 0.14);
+  --bg-soft-red:       rgba(239, 68, 68, 0.22);
+  --border-soft-red:   rgba(239, 68, 68, 0.5);
+}
+
+/* ── Global Soft Red Row Highlight Utility ── */
+.row-highlight-error {
+  background-color: var(--bg-soft-red) !important;
+  border-color: var(--border-soft-red) !important;
+  transition: background-color var(--transition-normal);
 }
 
 /* ── Glassmorphism Utility ── */
