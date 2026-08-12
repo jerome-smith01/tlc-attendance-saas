@@ -23,6 +23,8 @@ jobs:
         env:
           PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_DB_HOST: ${{ secrets.SUPABASE_DB_HOST }}
+          SUPABASE_DB_USER: ${{ secrets.SUPABASE_DB_USER }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
@@ -31,6 +33,12 @@ jobs:
           export AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID"
           export AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY"
 
+          # Fallback to Supabase Session Pooler (IPv4 compatible) if SUPABASE_DB_HOST is not provided
+          # Pooler host format: aws-0-[region].pooler.supabase.com
+          # Pooler username format: postgres.[project_ref]
+          HOST="${SUPABASE_DB_HOST:-aws-0-us-east-1.pooler.supabase.com}"
+          USER="${SUPABASE_DB_USER:-postgres.${SUPABASE_PROJECT_REF}}"
+
           DATE=$(date +'%Y-%m-%d')
           DAY_OF_WEEK=$(date +'%u') # 7 = Sunday
           WEEK_NUM=$(date +'%V')
@@ -38,10 +46,12 @@ jobs:
 
           FILENAME="backup_${DATE}.sql.gz"
 
-          # 1. Export database via pg_dump
-          pg_dump -h "db.${SUPABASE_PROJECT_REF}.supabase.co" \
+          echo "Connecting to database host: $HOST with user: $USER"
+
+          # 1. Export database via pg_dump using Session Mode (Port 5432)
+          pg_dump -h "$HOST" \
                   -p 5432 \
-                  -U postgres \
+                  -U "$USER" \
                   -d postgres \
                   --clean --if-exists --quote-all-identifiers \
                   | gzip > "$FILENAME"
