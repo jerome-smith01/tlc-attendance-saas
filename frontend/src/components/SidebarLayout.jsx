@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
+import { LayoutDashboard, Users, Calendar, CreditCard, User, Puzzle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTroop } from '../context/TroopContext';
 import { supabase } from '../lib/supabaseClient';
@@ -38,11 +39,14 @@ export function SidebarLayout() {
       isSectionMatch('roster') ||
       isSectionMatch('events') ||
       isSectionMatch('billing') ||
+      isSectionMatch('extension') ||
       location.pathname === path ||
       (path !== '/' && location.pathname.startsWith(path + '/'));
 
     return {
-      display: 'block',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.75rem',
       padding: '0.75rem 1rem',
       textDecoration: 'none',
       color: isActive ? 'var(--color-primary)' : 'var(--text-secondary)',
@@ -61,13 +65,15 @@ export function SidebarLayout() {
   const rosterPath = currentTroopIdentifier ? `/troop/${currentTroopIdentifier}/roster/members` : '/roster/members';
   const eventsPath = currentTroopIdentifier ? `/troop/${currentTroopIdentifier}/events` : '/events';
   const billingPath = currentTroopIdentifier ? `/troop/${currentTroopIdentifier}/billing` : '/billing';
+  const extensionPath = currentTroopIdentifier ? `/troop/${currentTroopIdentifier}/extension` : '/extension';
 
   const allNavLinks = [
-    { path: dashboardPath, label: 'Dashboard', allowedRoles: ['troop_admin', 'billing_admin', 'global_admin'] },
-    { path: rosterPath, label: 'Roster', allowedRoles: ['troop_admin', 'billing_admin', 'global_admin'] },
-    { path: eventsPath, label: 'Events', allowedRoles: ['badge_scanner', 'troop_admin', 'billing_admin', 'global_admin'] },
-    { path: billingPath, label: 'Billing', allowedRoles: ['billing_admin', 'global_admin'] },
-    { path: '/profile', label: 'Profile', allowedRoles: null },
+    { path: dashboardPath, label: 'Dashboard', icon: LayoutDashboard, allowedRoles: ['troop_admin', 'billing_admin', 'global_admin'] },
+    { path: rosterPath, label: 'Roster', icon: Users, allowedRoles: ['troop_admin', 'billing_admin', 'global_admin'] },
+    { path: eventsPath, label: 'Events', icon: Calendar, allowedRoles: ['badge_scanner', 'troop_admin', 'billing_admin', 'global_admin'] },
+    { path: billingPath, label: 'Billing', icon: CreditCard, allowedRoles: ['billing_admin', 'global_admin'] },
+    { path: extensionPath, label: 'TLC Extension', icon: Puzzle, allowedRoles: null },
+    { path: '/profile', label: 'Profile', icon: User, allowedRoles: null },
   ];
 
   const visibleNavLinks = allNavLinks.filter(link => {
@@ -246,16 +252,20 @@ export function SidebarLayout() {
           </button>
           
           <div style={{ flexGrow: 1 }}>
-            {visibleNavLinks.map(link => (
-              <Link 
-                key={link.path} 
-                to={link.path} 
-                style={linkStyle(link.path)} 
-                onClick={() => setMobileNavOpen(false)}
-              >
-                {link.label}
-              </Link>
-            ))}
+            {visibleNavLinks.map(link => {
+              const IconComponent = link.icon;
+              return (
+                <Link 
+                  key={link.path} 
+                  to={link.path} 
+                  style={linkStyle(link.path)} 
+                  onClick={() => setMobileNavOpen(false)}
+                >
+                  {IconComponent && <IconComponent size={18} />}
+                  <span>{link.label}</span>
+                </Link>
+              );
+            })}
           </div>
 
           <div style={{ padding: '1rem', borderTop: '1px solid var(--border-color)', marginTop: 'auto' }}>

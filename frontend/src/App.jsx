@@ -15,6 +15,7 @@ import { Roster } from './pages/Roster';
 import { EditMember } from './pages/EditMember';
 import { Events } from './pages/Events';
 import { Billing } from './pages/Billing';
+import { Extension } from './pages/Extension';
 
 export default function App() {
   return (
@@ -135,6 +136,14 @@ export default function App() {
                         <Billing />
                       </ProtectedRoute>
                     } 
+                  />
+                  <Route 
+                    path="/extension" 
+                    element={<Extension />} 
+                  />
+                  <Route 
+                    path="/troop/:troopNumber/extension" 
+                    element={<Extension />} 
                   />
                 </Route>
 

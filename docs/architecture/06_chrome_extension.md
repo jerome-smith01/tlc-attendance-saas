@@ -86,7 +86,19 @@ The extension relies on a specific DOM structure on `traillifeconnect.com`. This
 ---
 
 ## Known Limitations
-1. **No Chrome Web Store distribution** (deferred). Currently installed as an unpacked extension via `chrome://extensions`.
+1. **No Chrome Web Store distribution** (deferred). Currently installed as an unpacked extension via `chrome://extensions` or `edge://extensions`.
 2. **DOM dependency**: Any structural change to `traillifeconnect.com` attendance pages can break the sync.
 3. **Event ID extraction**: The `eventId` portion of the checkbox selector must be parsed from the current page. If the URL structure changes, this breaks.
-4. **Single browser session**: The extension only works in Chrome and requires the user to be navigated to the correct TLC attendance page before clicking Sync.
+4. **Desktop browser session**: The extension works in Chrome and Edge desktop browsers, requiring the user to be navigated to the correct TLC attendance page before clicking Sync.
+
+---
+
+## Packaging & Distribution Architecture
+
+1. **Build Scripts**:
+   - `build_extension.ps1`: PowerShell script located in the project root. Compiles the extension using Vite (`npm run build`) in `extension/` and packages `extension/dist` into `frontend/public/tlc_extension.zip`.
+   - `build_extension.bat`: Batch wrapper allowing one-click execution of the PowerShell build script.
+2. **Hosting & In-App Download**:
+   - The `.zip` package is served as a static asset at `/tlc_extension.zip` when the frontend application is deployed (e.g. to Cloudflare Pages).
+   - Dedicated `/extension` route (`frontend/src/pages/Extension.jsx`) provides installation guidelines, desktop compatibility notices, and direct download buttons.
+
