@@ -1,14 +1,40 @@
 import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useTroop } from '../context/TroopContext';
-import { Link } from 'react-router-dom';
 import { formatAppDate } from '../utils/date';
 
 export function Dashboard() {
-  const { selectedTroopId, selectedTroop, loadingTroops, error } = useTroop();
+  const { troopNumber } = useParams();
+  const navigate = useNavigate();
+  const { 
+    selectedTroopId, 
+    selectedTroop, 
+    selectedTroopIdentifier, 
+    selectTroopByNumberOrId, 
+    loadingTroops, 
+    error 
+  } = useTroop();
+
   const [activeUsersCount, setActiveUsersCount] = useState(0);
   const [events, setEvents] = useState([]);
   const [loadingStats, setLoadingStats] = useState(false);
+
+  // Sync TroopContext with URL parameter when troopNumber is present in URL
+  useEffect(() => {
+    if (loadingTroops) return;
+    if (troopNumber) {
+      selectTroopByNumberOrId(troopNumber);
+    }
+  }, [troopNumber, loadingTroops]);
+
+  // If URL lacks troopNumber (legacy /dashboard), redirect to troop-scoped URL once troops are loaded
+  useEffect(() => {
+    if (loadingTroops || !selectedTroopIdentifier) return;
+    if (!troopNumber) {
+      navigate(`/troop/${selectedTroopIdentifier}/dashboard`, { replace: true });
+    }
+  }, [troopNumber, selectedTroopIdentifier, loadingTroops, navigate]);
 
   useEffect(() => {
     if (selectedTroopId) {
@@ -87,8 +113,8 @@ export function Dashboard() {
               </div>
 
               <div style={{ display: 'flex', gap: '1rem', flexShrink: 0, marginLeft: 'auto' }}>
-                <Link to="/scanner" className="btn btn-primary" style={{ padding: '0.75rem 1.5rem', textDecoration: 'none' }}>
-                  Launch Scanner
+                <Link to={selectedTroopIdentifier ? `/troop/${selectedTroopIdentifier}/events` : '/events'} className="btn btn-primary" style={{ padding: '0.75rem 1.5rem', textDecoration: 'none' }}>
+                  View Events
                 </Link>
               </div>
             </div>

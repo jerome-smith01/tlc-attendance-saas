@@ -9,9 +9,11 @@ import { InviteStatusList } from './InviteStatusList';
 import { useToast } from './common/ToastContext';
 import { useConfirm } from './common/ConfirmContext';
 import { SingleBadgeScannerModal } from './SingleBadgeScannerModal';
+import { useTroop } from '../context/TroopContext';
 
 export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAdmin, activeTab, userId }) {
   const navigate = useNavigate();
+  const { selectedTroopIdentifier } = useTroop();
 
   // ── Permission check FIRST (before any hooks that depend on it) ──────────
   const canManageRoster = isGlobalAdmin || currentUserRole === 'troop_admin' || currentUserRole === 'billing_admin';
@@ -497,7 +499,12 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
   }
 
   function handleEditMember(member) {
-    navigate(`/edit-member/${member.id}`);
+    const ident = selectedTroopIdentifier || troopId;
+    if (ident) {
+      navigate(`/troop/${ident}/roster/${member.id}/edit`);
+    } else {
+      navigate(`/roster/${member.id}/edit`);
+    }
   }
 
   const [highlightedInviteEmail, setHighlightedInviteEmail] = useState(null);

@@ -103,15 +103,36 @@ export function TroopProvider({ children }) {
     }
   }, [selectedTroopId]);
 
+  const selectedTroop = troops.find(t => t.id === selectedTroopId);
+  const selectedTroopIdentifier = selectedTroop?.troop_number || selectedTroopId || '';
+
+  function getTroopByNumberOrId(identifier) {
+    if (!identifier) return null;
+    const lower = identifier.toLowerCase();
+    return troops.find(t => t.id === identifier || (t.troop_number && t.troop_number.toLowerCase() === lower)) || null;
+  }
+
+  function selectTroopByNumberOrId(identifier) {
+    const found = getTroopByNumberOrId(identifier);
+    if (found && found.id !== selectedTroopId) {
+      setSelectedTroopId(found.id);
+      return found;
+    }
+    return found;
+  }
+
   const value = {
     troops,
     selectedTroopId,
     setSelectedTroopId,
+    selectedTroop,
+    selectedTroopIdentifier,
+    getTroopByNumberOrId,
+    selectTroopByNumberOrId,
     loadingTroops,
     isGlobalAdmin,
     error,
-    refreshTroops: fetchTroops,
-    selectedTroop: troops.find(t => t.id === selectedTroopId)
+    refreshTroops: fetchTroops
   };
 
   return <TroopContext.Provider value={value}>{children}</TroopContext.Provider>;

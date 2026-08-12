@@ -8,12 +8,22 @@ import { useConfirm } from '../components/common/ConfirmContext';
 import { SingleBadgeScannerModal } from '../components/SingleBadgeScannerModal';
 
 export function EditMember() {
-  const { memberId } = useParams();
+  const { memberId, troopNumber } = useParams();
   const navigate = useNavigate();
-  const { selectedTroop, selectedTroopId, isGlobalAdmin } = useTroop();
+  const { selectedTroop, selectedTroopId, selectedTroopIdentifier, selectTroopByNumberOrId, loadingTroops, isGlobalAdmin } = useTroop();
   const { user } = useAuth();
   const { addToast } = useToast();
   const confirm = useConfirm();
+
+  useEffect(() => {
+    if (loadingTroops) return;
+    if (troopNumber) {
+      selectTroopByNumberOrId(troopNumber);
+    }
+  }, [troopNumber, loadingTroops]);
+
+  const currentTroopIdentifier = selectedTroopIdentifier || selectedTroopId;
+  const rosterBackPath = currentTroopIdentifier ? `/troop/${currentTroopIdentifier}/roster/members` : '/roster/members';
 
   const [member, setMember] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -67,7 +77,7 @@ export function EditMember() {
     } catch (err) {
       console.error('Error fetching member:', err);
       addToast('Failed to load member details.', 'error');
-      navigate('/roster/members');
+      navigate(rosterBackPath);
     } finally {
       setLoading(false);
     }
@@ -206,7 +216,6 @@ export function EditMember() {
       return;
     }
 
-    const memberDisplayName = `${firstName} ${lastInitial}.`;
     const isConfirmed = await confirm({
       title: 'Remove Member',
       message: `Are you sure you want to remove ${memberDisplayName} from the roster? This action cannot be undone.`,
@@ -226,7 +235,7 @@ export function EditMember() {
       if (error) throw error;
 
       addToast('Member deleted successfully.', 'success');
-      navigate('/roster/members');
+      navigate(rosterBackPath);
     } catch (err) {
       console.error('Error deleting member:', err);
       addToast('Failed to delete member.', 'error');
@@ -243,7 +252,7 @@ export function EditMember() {
       <div style={{ padding: '2rem', color: 'var(--foreground)' }}>
         <h2>Access Denied</h2>
         <p>You do not have permission to edit roster members.</p>
-        <button type="button" className="btn btn-secondary" onClick={() => navigate('/roster/members')}>
+        <button type="button" className="btn btn-secondary" onClick={() => navigate(rosterBackPath)}>
           Back to Roster
         </button>
       </div>
@@ -252,6 +261,7 @@ export function EditMember() {
 
   const isAccountUser = member && (!!member.user_id || !!member.email);
   const isNameDisabled = isAccountUser && !isGlobalAdmin;
+  const memberDisplayName = `${firstName} ${lastInitial ? lastInitial + '.' : ''}`.trim();
 
   return (
     <div style={{ width: '100%', maxWidth: '800px', margin: '0 auto', boxSizing: 'border-box', padding: '2rem' }}>
@@ -262,7 +272,7 @@ export function EditMember() {
           type="button"
           className="btn btn-secondary"
           title="Back to Roster"
-          onClick={() => navigate('/roster/members')}
+          onClick={() => navigate(rosterBackPath)}
           style={{ padding: '0.35rem 0.5rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-move-left-icon lucide-move-left">

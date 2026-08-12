@@ -66,10 +66,11 @@ All routes except `/login` are wrapped in `<ProtectedRoute>`. This component:
 3. Otherwise renders `<SidebarLayout>` with `<Outlet/>` for page content.
 
 ### URL Routing & Browser Back Button Standard
-Every distinct view state, tab, or screen MUST have its own unique URL (e.g., `/roster/members`, `/roster/leaders`, `/roster/:memberId/edit`, `/profile`).
-- Tab clicks must trigger router navigation (e.g. `navigate('/roster/members')`) rather than purely internal `useState` switching.
-- Root route paths (e.g., `/roster`) redirect automatically to their default tab/sub-route (e.g. `/roster/members`), and `/complete-profile` redirects to `/profile`.
-- This guarantees browser Back and Forward history buttons function correctly across all sub-views and tabs.
+Every distinct view state, tab, or screen MUST have its own unique URL (e.g., `/troop/:troopNumber/dashboard`, `/troop/:troopNumber/roster/members`, `/troop/:troopNumber/events`, `/troop/:troopNumber/events/:eventId`, `/troop/:troopNumber/billing`, `/profile`).
+- **Troop-Scoped URLs**: All primary app routes encode the user-friendly troop identifier (`troop_number` such as `DEMO-001` or `SC-0110`) in the path hierarchy (e.g. `/troop/DEMO-001/dashboard`, `/troop/DEMO-001/events`, `/troop/DEMO-001/billing`).
+- **Two-Way URL & Context Sync**: Route parameters (`:troopNumber`) automatically synchronize with `TroopContext.selectedTroopId` via `selectTroopByNumberOrId`.
+- **Navigation History**: Section and tab transitions add distinct history entries so browser Back and Forward buttons navigate seamlessly across all app sections.
+- **Legacy Route Compatibility**: Generic paths (e.g. `/dashboard`, `/roster`, `/events`, `/billing`) automatically redirect to their troop-scoped equivalents based on the user's active troop.
 
 ### Onboarding & Profile Setup (`/profile`)
 When a new user accepts a Supabase email invite, they land on `/profile` (or are redirected from `/complete-profile`). This page:

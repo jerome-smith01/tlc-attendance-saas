@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useTroop } from '../context/TroopContext';
 import { useAuth } from '../context/AuthContext';
@@ -13,11 +13,36 @@ import { formatAppDate } from '../utils/date';
 
 
 export function Events() {
+  const { troopNumber } = useParams();
   const navigate = useNavigate();
-  const { selectedTroopId, selectedTroop, isGlobalAdmin, loadingTroops } = useTroop();
+  const { 
+    selectedTroopId, 
+    selectedTroop, 
+    selectedTroopIdentifier, 
+    selectTroopByNumberOrId, 
+    isGlobalAdmin, 
+    loadingTroops 
+  } = useTroop();
+
   const { session: authSession } = useAuth();
   const userId = authSession?.user?.id || 'anonymous';
   const storageKey = `tlc_table_events_${userId}`;
+
+  // Sync TroopContext with URL parameter when troopNumber is present in URL
+  useEffect(() => {
+    if (loadingTroops) return;
+    if (troopNumber) {
+      selectTroopByNumberOrId(troopNumber);
+    }
+  }, [troopNumber, loadingTroops]);
+
+  // If URL lacks troopNumber (legacy /events), redirect to troop-scoped URL once troops are loaded
+  useEffect(() => {
+    if (loadingTroops || !selectedTroopIdentifier) return;
+    if (!troopNumber) {
+      navigate(`/troop/${selectedTroopIdentifier}/events`, { replace: true });
+    }
+  }, [troopNumber, selectedTroopIdentifier, loadingTroops, navigate]);
 
   const [events, setEvents] = useState([]);
   const [usersMap, setUsersMap] = useState({});
@@ -184,7 +209,12 @@ export function Events() {
   }
 
   const handleViewAttendees = (eventObj) => {
-    navigate(`/events/${eventObj.id}`);
+    const currentIdent = selectedTroopIdentifier || selectedTroopId;
+    if (currentIdent) {
+      navigate(`/troop/${currentIdent}/events/${eventObj.id}`);
+    } else {
+      navigate(`/events/${eventObj.id}`);
+    }
   };
 
   const handleCreateEvent = async (e) => {

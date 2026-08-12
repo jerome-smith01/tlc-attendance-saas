@@ -1,8 +1,37 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useTroop } from '../context/TroopContext';
 
 export function Billing() {
-  const { selectedTroopId, selectedTroop } = useTroop();
+  const { troopNumber } = useParams();
+  const navigate = useNavigate();
+  const { 
+    selectedTroopId, 
+    selectedTroop, 
+    selectedTroopIdentifier, 
+    selectTroopByNumberOrId, 
+    loadingTroops 
+  } = useTroop();
+
+  // Sync TroopContext with URL parameter when troopNumber is present in URL
+  useEffect(() => {
+    if (loadingTroops) return;
+    if (troopNumber) {
+      selectTroopByNumberOrId(troopNumber);
+    }
+  }, [troopNumber, loadingTroops]);
+
+  // If URL lacks troopNumber (legacy /billing), redirect to troop-scoped URL once troops are loaded
+  useEffect(() => {
+    if (loadingTroops || !selectedTroopIdentifier) return;
+    if (!troopNumber) {
+      navigate(`/troop/${selectedTroopIdentifier}/billing`, { replace: true });
+    }
+  }, [troopNumber, selectedTroopIdentifier, loadingTroops, navigate]);
+
+  if (loadingTroops) {
+    return <div style={{ padding: '2rem' }}>Loading Billing...</div>;
+  }
 
   if (!selectedTroopId) {
     return (

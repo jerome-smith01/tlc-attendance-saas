@@ -7,7 +7,7 @@ import { ThemeToggle } from './ThemeToggle';
 
 export function SidebarLayout() {
   const { signOut, user } = useAuth();
-  const { troops, selectedTroopId, setSelectedTroopId, loadingTroops, selectedTroop, isGlobalAdmin } = useTroop();
+  const { troops, selectedTroopId, setSelectedTroopId, loadingTroops, selectedTroop, selectedTroopIdentifier, isGlobalAdmin } = useTroop();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -32,7 +32,15 @@ export function SidebarLayout() {
   };
 
   const linkStyle = (path) => {
-    const isActive = location.pathname === path || (path !== '/' && location.pathname.startsWith(path + '/')) || (path.startsWith('/roster') && location.pathname.startsWith('/roster'));
+    const isSectionMatch = (section) => path.includes(`/${section}`) && location.pathname.includes(`/${section}`);
+    const isActive = 
+      isSectionMatch('dashboard') ||
+      isSectionMatch('roster') ||
+      isSectionMatch('events') ||
+      isSectionMatch('billing') ||
+      location.pathname === path ||
+      (path !== '/' && location.pathname.startsWith(path + '/'));
+
     return {
       display: 'block',
       padding: '0.75rem 1rem',
@@ -47,12 +55,18 @@ export function SidebarLayout() {
   };
 
   const currentUserRole = selectedTroop?.currentUserRole || '';
+  const currentTroopIdentifier = selectedTroopIdentifier || selectedTroopId;
+
+  const dashboardPath = currentTroopIdentifier ? `/troop/${currentTroopIdentifier}/dashboard` : '/dashboard';
+  const rosterPath = currentTroopIdentifier ? `/troop/${currentTroopIdentifier}/roster/members` : '/roster/members';
+  const eventsPath = currentTroopIdentifier ? `/troop/${currentTroopIdentifier}/events` : '/events';
+  const billingPath = currentTroopIdentifier ? `/troop/${currentTroopIdentifier}/billing` : '/billing';
 
   const allNavLinks = [
-    { path: '/dashboard', label: 'Dashboard', allowedRoles: ['troop_admin', 'billing_admin', 'global_admin'] },
-    { path: '/roster/members', label: 'Roster', allowedRoles: ['troop_admin', 'billing_admin', 'global_admin'] },
-    { path: '/events', label: 'Events', allowedRoles: ['badge_scanner', 'troop_admin', 'billing_admin', 'global_admin'] },
-    { path: '/billing', label: 'Billing', allowedRoles: ['billing_admin', 'global_admin'] },
+    { path: dashboardPath, label: 'Dashboard', allowedRoles: ['troop_admin', 'billing_admin', 'global_admin'] },
+    { path: rosterPath, label: 'Roster', allowedRoles: ['troop_admin', 'billing_admin', 'global_admin'] },
+    { path: eventsPath, label: 'Events', allowedRoles: ['badge_scanner', 'troop_admin', 'billing_admin', 'global_admin'] },
+    { path: billingPath, label: 'Billing', allowedRoles: ['billing_admin', 'global_admin'] },
     { path: '/profile', label: 'Profile', allowedRoles: null },
   ];
 
@@ -179,6 +193,19 @@ export function SidebarLayout() {
                     onClick={() => {
                       setSelectedTroopId(t.id);
                       setTroopDropdownOpen(false);
+                      const troopIdent = t.troop_number || t.id;
+                      if (location.pathname.includes('/dashboard')) {
+                        navigate(`/troop/${troopIdent}/dashboard`);
+                      } else if (location.pathname.includes('/roster')) {
+                        const isLeaders = location.pathname.endsWith('/leaders');
+                        const targetTab = isLeaders ? 'leaders' : 'members';
+                        navigate(`/troop/${troopIdent}/roster/${targetTab}`);
+                      } else if (location.pathname.includes('/events')) {
+                        const eventMatch = location.pathname.match(/\/events\/([^\/]+)/);
+                        navigate(eventMatch ? `/troop/${troopIdent}/events/${eventMatch[1]}` : `/troop/${troopIdent}/events`);
+                      } else if (location.pathname.includes('/billing')) {
+                        navigate(`/troop/${troopIdent}/billing`);
+                      }
                     }}
                     style={{
                       padding: '0.5rem 1rem',
@@ -232,7 +259,11 @@ export function SidebarLayout() {
           </div>
 
           <div style={{ padding: '1rem', borderTop: '1px solid var(--border-color)', marginTop: 'auto' }}>
-            <div style={{ margin: '0 0 1rem 0', overflow: 'hidden' }}>
+            <Link 
+              to="/profile" 
+              className="sidebar-user-profile"
+              onClick={() => setMobileNavOpen(false)}
+            >
               <p style={{ margin: '0 0 0.25rem 0', color: 'var(--text-primary)', fontSize: '0.875rem', fontWeight: '500', textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' }}>
                 {getDisplayName()}
               </p>
@@ -241,7 +272,7 @@ export function SidebarLayout() {
                   {getFriendlyRole()}
                 </p>
               )}
-            </div>
+            </Link>
             <button 
               onClick={handleSignOut}
               style={{ 

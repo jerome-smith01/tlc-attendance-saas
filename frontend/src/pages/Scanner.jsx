@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Html5Qrcode } from 'html5-qrcode';
 import { useAuth } from '../context/AuthContext';
+import { useTroop } from '../context/TroopContext';
 import { supabase } from '../lib/supabaseClient';
 import { useScanLogic } from '../hooks/useScanLogic';
 import { useConfirm } from '../components/common/ConfirmContext';
@@ -11,8 +12,19 @@ import { FilterPopover } from '../components/common/FilterPopover';
 import { formatAppDate } from '../utils/date';
 
 export function Scanner() {
-  const { eventId } = useParams();
+  const { eventId, troopNumber } = useParams();
   const navigate = useNavigate();
+  const { selectedTroopIdentifier, selectTroopByNumberOrId, loadingTroops } = useTroop();
+
+  // Sync TroopContext with URL parameter when troopNumber is present in URL
+  useEffect(() => {
+    if (loadingTroops) return;
+    if (troopNumber) {
+      selectTroopByNumberOrId(troopNumber);
+    }
+  }, [troopNumber, loadingTroops]);
+
+  const eventsBackPath = selectedTroopIdentifier ? `/troop/${selectedTroopIdentifier}/events` : '/events';
   const { user } = useAuth();
   const userId = user?.id || 'anonymous';
   const storageKey = `tlc_scanner_filters_${userId}`;
@@ -167,7 +179,7 @@ export function Scanner() {
         }
       } else {
         addToast({ type: 'error', message: 'Event not found.' });
-        navigate('/events');
+        navigate(eventsBackPath);
       }
       setLoadingEvent(false);
     }
@@ -388,7 +400,7 @@ export function Scanner() {
       } else {
         addToast({ type: 'success', message: 'Event deleted' });
         await stopScanner();
-        navigate('/events');
+        navigate(eventsBackPath);
       }
     }
   };
@@ -908,7 +920,7 @@ export function Scanner() {
         <div className="glass-card scan-empty-state">
           <h2>Event Not Found</h2>
           <p style={{ marginBottom: '1rem' }}>The requested event could not be found.</p>
-          <Link to="/events" className="btn btn-primary">&larr; Back to Events</Link>
+          <Link to={eventsBackPath} className="btn btn-primary">&larr; Back to Events</Link>
         </div>
       </div>
     );
@@ -919,7 +931,7 @@ export function Scanner() {
       {/* Top Sticky Pinned Title Bar (Floating, No Card) */}
       <div className="scanner-sticky-title">
         <Link
-          to="/events"
+          to={eventsBackPath}
           className="btn btn-secondary"
           style={{ padding: '0.35rem 0.5rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
           title="Back to Events"
