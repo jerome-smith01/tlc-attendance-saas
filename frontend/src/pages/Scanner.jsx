@@ -1038,6 +1038,37 @@ export function Scanner() {
     return 'Leader';
   };
 
+  // Status display and styling helpers
+  const getDisplayStatus = (scan) => {
+    const isOffline = scan.is_offline || scan.message === 'Saved Offline' || String(scan.id).startsWith('temp-');
+    const isSignedOut = !!scan.raw_sign_out_time;
+    if (isOffline) {
+      return isSignedOut ? 'SIGNED OUT - OFFLINE' : 'SIGNED IN - OFFLINE';
+    }
+    return isSignedOut ? 'SIGNED OUT' : 'SIGNED IN';
+  };
+
+  const getStatusBadgeStyle = (scan) => {
+    const isOffline = scan.is_offline || scan.message === 'Saved Offline' || String(scan.id).startsWith('temp-');
+    const isSignedOut = !!scan.raw_sign_out_time;
+    if (isOffline) {
+      return {
+        backgroundColor: '#eab308',
+        color: '#ffffff'
+      };
+    }
+    if (isSignedOut) {
+      return {
+        backgroundColor: '#3b82f6',
+        color: '#ffffff'
+      };
+    }
+    return {
+      backgroundColor: '#10b981',
+      color: '#ffffff'
+    };
+  };
+
   // Dynamic Options & Filtering for Attendance Table
   const uniqueMemberNames = useMemo(() => {
     const names = attendance.map(a => a.member ? `${a.member.first_name} ${a.member.last_initial}`.trim() : 'Unknown').filter(Boolean);
@@ -1045,7 +1076,7 @@ export function Scanner() {
   }, [attendance]);
 
   const uniqueStatuses = useMemo(() => {
-    const statuses = attendance.map(a => a.message || 'Scanned In').filter(Boolean);
+    const statuses = attendance.map(a => getDisplayStatus(a)).filter(Boolean);
     return [...new Set(statuses)].sort();
   }, [attendance]);
 
@@ -1095,7 +1126,7 @@ export function Scanner() {
     }
 
     if (columnFilters.status?.length > 0) {
-      result = result.filter(a => columnFilters.status.includes(a.message || 'Scanned In'));
+      result = result.filter(a => columnFilters.status.includes(getDisplayStatus(a)));
     }
 
     if (columnFilters.in_date?.length > 0) {
@@ -1317,51 +1348,7 @@ export function Scanner() {
             );
           })()}
 
-          {/* Offline Queue Row */}
-          {(() => {
-            const offlineCount = attendance.filter(s => s.message === 'Saved Offline').length;
-            return (
-              <div ref={offlineInfoRef} style={{ position: 'relative' }}>
-                <div
-                  className="grid-table-cell"
-                  role="cell"
-                  onClick={() => setShowOfflineInfo(prev => !prev)}
-                  style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '0.2rem 0' }}
-                  title="Click to view Offline Queue details"
-                >
-                  <span className="header-card-label">Offline Queue</span>
-                  <div>
-                    {offlineCount > 0 ? (
-                      <span className="badge badge-pending">{offlineCount}</span>
-                    ) : (
-                      <span style={{ color: 'var(--text-secondary)' }}>0</span>
-                    )}
-                  </div>
-                </div>
-
-                {showOfflineInfo && (
-                  <div className="status-popover-menu" style={{ right: 0, left: 'auto', minWidth: '220px', maxWidth: '280px', padding: '0.75rem' }}>
-                    <div style={{ fontWeight: '600', fontSize: '0.85rem', marginBottom: '0.35rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span>Offline Queue</span>
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); setShowOfflineInfo(false); }}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-foreground)', fontSize: '0.9rem', padding: 0 }}
-                      >
-                        ✕
-                      </button>
-                    </div>
-                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-                      Scans taken while offline or during weak network conditions are saved locally on your device.
-                    </p>
-                    <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border-color)', fontSize: '0.75rem', color: 'var(--muted-foreground)' }}>
-                      <strong>How to resolve:</strong> Reconnect to the internet and the app will automatically sync queued scans to the server.
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })()}        </div>
+        </div>
 
         {/* New Scanner Viewfinder & Controls Layout */}
         <div className="scanner-layout-wrapper">
@@ -1521,6 +1508,39 @@ export function Scanner() {
                     </button>
                   </div>
                 </div>
+
+                {isAdminOrLeader && (
+                  <button
+                    type="button"
+                    onClick={handleDeleteSession}
+                    className="scanner-btn-delete"
+                    style={{
+                      alignSelf: 'flex-end',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justify: 'center',
+                      gap: '0.5rem',
+                      padding: '0.75rem 1.25rem',
+                      fontSize: '0.88rem',
+                      fontWeight: '700',
+                      color: '#ffffff',
+                      backgroundColor: 'var(--color-error, #dc2626)',
+                      border: 'none',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      width: 'auto',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.03em',
+                      boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)'
+                    }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" style={{ width: '1.25rem', height: '1.25rem' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    </svg>
+                    <span>DELETE EVENT</span>
+                  </button>
+                )}
               </div>
             </>
           ) : (
@@ -1926,18 +1946,17 @@ export function Scanner() {
                           <button
                             type="button"
                             onClick={() => handleToggleScanStatus(scan)}
-                            className={`badge ${scan.raw_sign_out_time ? 'badge-info' : 'badge-success'}`}
+                            className="badge"
                             style={{ 
                               cursor: isAdminOrLeader ? 'pointer' : 'default', 
                               border: 'none', 
-                              backgroundColor: scan.raw_sign_out_time ? '#3b82f6' : '#10b981',
-                              color: '#ffffff',
                               fontWeight: '600',
-                              padding: '0.25rem 0.65rem'
+                              padding: '0.25rem 0.65rem',
+                              ...getStatusBadgeStyle(scan)
                             }}
                             title={isAdminOrLeader ? "Click to toggle between Signed In and Signed Out" : undefined}
                           >
-                            {scan.raw_sign_out_time ? 'Signed Out' : 'Signed In'}
+                            {getDisplayStatus(scan)}
                           </button>
                         </div>
 
