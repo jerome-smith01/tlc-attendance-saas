@@ -30,12 +30,12 @@ jobs:
           R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
           BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
         run: |
+          set -e -o pipefail
+
           export AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID"
           export AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY"
+          export PGSSLMODE="require"
 
-          # Fallback to Supabase Session Pooler (IPv4 compatible) if SUPABASE_DB_HOST is not provided
-          # Pooler host format: aws-0-[region].pooler.supabase.com
-          # Pooler username format: postgres.[project_ref]
           HOST="${SUPABASE_DB_HOST:-aws-0-us-east-1.pooler.supabase.com}"
           USER="${SUPABASE_DB_USER:-postgres.${SUPABASE_PROJECT_REF}}"
 
@@ -46,7 +46,7 @@ jobs:
 
           FILENAME="backup_${DATE}.sql.gz"
 
-          echo "Connecting to database host: $HOST with user: $USER"
+          echo "Connecting to database host: $HOST with user: $USER..."
 
           # 1. Export database via pg_dump using Session Mode (Port 5432)
           pg_dump -h "$HOST" \
@@ -55,6 +55,15 @@ jobs:
                   -d postgres \
                   --clean --if-exists --quote-all-identifiers \
                   | gzip > "$FILENAME"
+
+          # Verify backup file is non-empty before uploading (> 100 bytes)
+          FILESIZE=$(stat -c%s "$FILENAME" || echo 0)
+          echo "Generated backup size: $FILESIZE bytes"
+
+          if [ "$FILESIZE" -lt 200 ]; then
+            echo "ERROR: Backup file size is suspiciously small ($FILESIZE bytes). pg_dump may have failed."
+            exit 1
+          fi
 
           # 2. Upload Daily Backup
           aws --endpoint-url "$R2_ENDPOINT_URL" s3 cp "$FILENAME" "s3://${BUCKET_NAME}/daily/daily_${DATE}.sql.gz"
