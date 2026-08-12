@@ -6,6 +6,7 @@ import { SidebarLayout } from './components/SidebarLayout';
 import { ToastProvider } from './components/common/ToastContext';
 import { ConfirmProvider } from './components/common/ConfirmContext';
 import { Login } from './pages/Login';
+import { Landing } from './pages/Landing';
 import { AcceptInvite } from './pages/AcceptInvite';
 import { Profile } from './pages/Profile';
 import { Dashboard } from './pages/Dashboard';
@@ -24,6 +25,7 @@ export default function App() {
             <HashRouter>
               <Routes>
                 {/* Public */}
+                <Route path="/" element={<Landing />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/accept-invite" element={<AcceptInvite />} />
 
@@ -136,9 +138,9 @@ export default function App() {
                   />
                 </Route>
 
-                {/* Default — redirect root to login; AuthContext will bounce to dashboard if logged in */}
-            <Route path="*" element={<Navigate to="/login" replace />} />
-          </Routes>
+                {/* Default — redirect unknown routes to root landing page */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
         </HashRouter>
           </ConfirmProvider>
         </ToastProvider>

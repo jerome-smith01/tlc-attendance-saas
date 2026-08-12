@@ -60,7 +60,7 @@ const { selectedTroopId, selectedTroop, troops, isGlobalAdmin } = useTroop();
 
 **Files**: `src/components/ProtectedRoute.jsx`, `src/pages/Profile.jsx`
 
-All routes except `/login` are wrapped in `<ProtectedRoute>`. This component:
+Public routes (`/` for Landing Page, `/login`, `/accept-invite`) do not require authentication. All protected routes are wrapped in `<ProtectedRoute>`. This component:
 1. Waits for `loading = false` before rendering anything.
 2. If `session = null`, silently redirects to `/login`.
 3. Otherwise renders `<SidebarLayout>` with `<Outlet/>` for page content.
