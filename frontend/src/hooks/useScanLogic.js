@@ -4,36 +4,39 @@ import { supabase } from '../lib/supabaseClient';
 export function useScanLogic(troopId, sessionId, user, roster, setRoster) {
   const lastScanRef = useRef({}); // Tracks { [badgePayload]: timestamp }
 
-  const handleScan = useCallback(async (payload, onResult) => {
+  const handleScan = useCallback(async (payload, modeOrResult, maybeResult) => {
+    let mode = 'IN';
+    let onResult = null;
+    if (typeof modeOrResult === 'function') {
+      onResult = modeOrResult;
+    } else if (typeof modeOrResult === 'string') {
+      mode = modeOrResult.toUpperCase();
+      onResult = maybeResult;
+    }
+
     if (!troopId || !sessionId || !user) {
-      onResult({ status: 'error', message: 'Missing session or user context.' });
+      if (onResult) onResult({ status: 'error', message: 'Missing session or user context.' });
       return;
     }
 
     const now = Date.now();
-    const lastScanTime = lastScanRef.current[payload] || 0;
+    const lastScanTime = lastScanRef.current[`${payload}_${mode}`] || 0;
 
-    // 3-second debounce
+    // 3-second debounce per payload and mode
     if (now - lastScanTime < 3000) {
-      // Silently ignore rapid duplicate scans of the exact same payload
       return;
     }
-    lastScanRef.current[payload] = now;
+    lastScanRef.current[`${payload}_${mode}`] = now;
 
-    // Parse payload (TLC format usually is memberId | tlcId or just tlcId)
-    // We will loosely check if it contains a pipe, or try to match both
     let parts = payload.split('|').map(p => p.trim());
     let tlcIdCandidate = parts.length > 1 ? parts[1] : parts[0];
     let memberIdCandidate = parts.length > 1 ? parts[0] : parts[0];
 
-    // Find match in roster
     let matchedMember = roster.find(m => m.tlc_id === tlcIdCandidate);
     
-    // Fallback: match by member_id
     if (!matchedMember) {
       matchedMember = roster.find(m => m.member_id === memberIdCandidate);
       
-      // TLC ID Backfill
       if (matchedMember) {
         try {
           const { error } = await supabase
@@ -42,7 +45,6 @@ export function useScanLogic(troopId, sessionId, user, roster, setRoster) {
             .eq('id', matchedMember.id);
             
           if (!error) {
-            // Update local roster state so we don't hit DB again for this
             setRoster(prev => prev.map(m => m.id === matchedMember.id ? { ...m, tlc_id: tlcIdCandidate } : m));
           }
         } catch (err) {
@@ -52,37 +54,81 @@ export function useScanLogic(troopId, sessionId, user, roster, setRoster) {
     }
 
     if (!matchedMember) {
-      // Unknown member logic: play error sound, trigger modal
-      onResult({ 
-        status: 'unknown', 
-        message: 'Unknown Member', 
-        payload: { tlcId: tlcIdCandidate, memberId: memberIdCandidate }
-      });
+      if (onResult) {
+        onResult({ 
+          status: 'unknown', 
+          message: 'Unknown Member', 
+          payload: { tlcId: tlcIdCandidate, memberId: memberIdCandidate }
+        });
+      }
       return;
     }
 
-    // Supabase Write (Online)
+    // Supabase Write
     try {
-      let { data, error } = await supabase
-        .from('scans')
-        .insert([{
+      const nowIso = new Date().toISOString();
+      let scanData = {};
+
+      if (mode === 'OUT') {
+        // First check if an existing scan record exists
+        let { data: existingScans } = await supabase
+          .from('scans')
+          .select('*')
+          .or(`event_id.eq.${sessionId},session_id.eq.${sessionId}`)
+          .eq('roster_id', matchedMember.id);
+
+        if (existingScans && existingScans.length > 0) {
+          const existing = existingScans[0];
+          let { data, error } = await supabase
+            .from('scans')
+            .update({
+              sign_out_time: nowIso,
+              signed_out_by: user.id
+            })
+            .eq('id', existing.id)
+            .select();
+
+          if (error) {
+            if (onResult) onResult({ status: 'error', message: error.message, member: matchedMember });
+          } else {
+            if (onResult) onResult({ status: 'success', message: 'Signed Out', member: matchedMember, scanRecord: data ? data[0] : existing, mode: 'OUT' });
+          }
+          return;
+        } else {
+          // Member was not scanned in first, insert new record with sign_out_time
+          scanData = {
+            event_id: sessionId,
+            roster_id: matchedMember.id,
+            status: 'pending',
+            sign_in_time: nowIso,
+            signed_in_by: user.id,
+            sign_out_time: nowIso,
+            signed_out_by: user.id
+          };
+        }
+      } else {
+        // Sign IN mode
+        scanData = {
           event_id: sessionId,
           roster_id: matchedMember.id,
           status: 'pending',
-          scanned_by: user.id
-        }])
+          sign_in_time: nowIso,
+          signed_in_by: user.id
+        };
+      }
+
+      let { data, error } = await supabase
+        .from('scans')
+        .insert([scanData])
         .select();
 
       // Fallback for pre-migration column name 'session_id'
       if (error && (error.code === 'PGRST204' || error.message?.includes('event_id') || error.message?.includes('session_id'))) {
+        delete scanData.event_id;
+        scanData.session_id = sessionId;
         const res = await supabase
           .from('scans')
-          .insert([{
-            session_id: sessionId,
-            roster_id: matchedMember.id,
-            status: 'pending',
-            scanned_by: user.id
-          }])
+          .insert([scanData])
           .select();
         data = res.data;
         error = res.error;
@@ -91,35 +137,34 @@ export function useScanLogic(troopId, sessionId, user, roster, setRoster) {
       if (error) {
         console.error('[useScanLogic] Supabase insert error:', error);
         if (error.code === '23505') { // Postgres UNIQUE violation code
-          onResult({ status: 'duplicate', message: 'Already Scanned', member: matchedMember });
+          if (mode === 'IN') {
+            // Already signed in, update sign in time or notify duplicate
+            if (onResult) onResult({ status: 'duplicate', message: 'Already Signed In', member: matchedMember });
+          } else {
+            if (onResult) onResult({ status: 'duplicate', message: 'Already Signed Out', member: matchedMember });
+          }
         } else if (error.message.includes('fetch') || error.message.includes('Failed to fetch')) {
-          // Network error -> Queue offline
           queueOfflineScan({
-            event_id: sessionId,
-            session_id: sessionId,
-            roster_id: matchedMember.id,
-            status: 'pending',
-            scanned_by: user.id,
-            scan_time: new Date().toISOString()
+            ...scanData,
+            scan_time: nowIso
           });
-          onResult({ status: 'offline_queued', message: 'Saved Offline', member: matchedMember });
+          if (onResult) onResult({ status: 'offline_queued', message: 'Saved Offline', member: matchedMember });
         } else {
-          onResult({ status: 'error', message: error.message, member: matchedMember });
+          if (onResult) onResult({ status: 'error', message: error.message, member: matchedMember });
         }
       } else {
-        onResult({ status: 'success', message: 'Success', member: matchedMember, scanRecord: data[0] });
+        if (onResult) onResult({ status: 'success', message: mode === 'OUT' ? 'Signed Out' : 'Success', member: matchedMember, scanRecord: data ? data[0] : null, mode });
       }
     } catch (err) {
-      // Fallback for network error exception
       queueOfflineScan({
         event_id: sessionId,
         session_id: sessionId,
         roster_id: matchedMember.id,
         status: 'pending',
-        scanned_by: user.id,
-        scan_time: new Date().toISOString()
+        signed_in_by: user.id,
+        sign_in_time: new Date().toISOString()
       });
-      onResult({ status: 'offline_queued', message: 'Saved Offline', member: matchedMember });
+      if (onResult) onResult({ status: 'offline_queued', message: 'Saved Offline', member: matchedMember });
     }
   }, [troopId, sessionId, user, roster, setRoster]);
 

@@ -116,10 +116,14 @@ An attendance session = one event on one date for one troop.
 - **Constraint**: `UNIQUE(troop_id, event_name, event_date)`.
 
 ### 6. `scans`
-Individual attendance scans.
-- `session_id` (UUID), `roster_id` (UUID).
+Individual attendance records (Sign In / Sign Out).
+- `event_id` / `session_id` (UUID), `roster_id` (UUID).
+- `sign_in_time` (TIMESTAMPTZ): Timestamp when member was signed in (replaces `scan_time`).
+- `signed_in_by` (UUID): References `auth.users(id)` — leader who signed the member in.
+- `sign_out_time` (TIMESTAMPTZ): Timestamp when member was signed out (nullable).
+- `signed_out_by` (UUID): References `auth.users(id)` — leader who signed the member out (nullable).
 - `status` (`scan_status` ENUM): `pending` → `approved` → `complete`.
-- **Constraint**: `UNIQUE(session_id, roster_id)` — prevents scanning the same member twice per session.
+- **Constraint**: `UNIQUE(event_id, roster_id)` — one attendance record per member per event.
 
 ## Enum Types
 
@@ -148,6 +152,7 @@ Individual attendance scans.
 |:---|:---|:---|
 | 001 | `001_initial_schema.sql` | Create all 5 tables, enums, triggers, seed SC-0110 and DEMO-001 |
 | 002 | `002_rls_policies.sql` | Initial RLS policies with helper functions |
+| 016 | `016_add_sign_out_fields.sql` | Add sign_in_time, signed_in_by, sign_out_time, signed_out_by columns to scans |
 | 003a | `003_add_scanned_by.sql` | Add `scanned_by` to `scans` (experimental, may be superseded) |
 | 003b | `003_roles_and_sync.sql` | **Rename roles** (`admin`→`troop_admin`, `member`→`badge_scanner`), add `global_admins` table, add `synced_at`/`synced_by` to `sessions`, add immediate purge trigger (later replaced) |
 | 004 | `004_unified_roster_and_profiles.sql` | Add `role` and `user_id` columns to `roster` for unified youth+leader model; add self-update RLS |

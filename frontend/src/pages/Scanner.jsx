@@ -34,6 +34,7 @@ export function Scanner() {
   const [loadingEvent, setLoadingEvent] = useState(true);
   const [roster, setRoster] = useState([]);
   const [attendance, setAttendance] = useState([]);
+  const [scanMode, setScanMode] = useState('IN'); // 'IN' | 'OUT'
   const [selectedScans, setSelectedScans] = useState(new Set());
   const [recentlyScannedIds, setRecentlyScannedIds] = useState(new Set());
   const [scannerStatus, setScannerStatus] = useState('Idle');
@@ -187,6 +188,25 @@ export function Scanner() {
   }, [eventId, user]);
 
   useEffect(() => {
+    if (troopId && session?.id) {
+      fetchRoster();
+    }
+  }, [troopId, session?.id]);
+
+  async function fetchRoster() {
+    let { data, error } = await supabase
+      .from('roster')
+      .select('*')
+      .eq('troop_id', troopId);
+      
+    if (error) {
+      console.error('[fetchRoster] Supabase error:', error);
+      return;
+    }
+    setRoster(data || []);
+  }
+
+  useEffect(() => {
     if (session) {
       fetchAttendance();
     }
@@ -208,15 +228,13 @@ export function Scanner() {
     let { data, error } = await supabase
       .from('scans')
       .select(`*, roster (id, first_name, last_initial, member_id, tlc_id)`)
-      .eq('event_id', session.id)
-      .order('scan_time', { ascending: false });
+      .eq('event_id', session.id);
 
     if (error && (error.code === 'PGRST204' || error.message?.includes('event_id'))) {
       const res = await supabase
         .from('scans')
         .select(`*, roster (id, first_name, last_initial, member_id, tlc_id)`)
-        .eq('session_id', session.id)
-        .order('scan_time', { ascending: false });
+        .eq('session_id', session.id);
       data = res.data;
       error = res.error;
     }
@@ -231,13 +249,24 @@ export function Scanner() {
         const key = s.roster_id || s.roster?.id || s.id;
         if (key && !seen.has(key)) {
           seen.add(key);
+          const signInTimeRaw = s.sign_in_time || s.scan_time;
+          const signOutTimeRaw = s.sign_out_time;
+          const isSignedOut = !!signOutTimeRaw;
           formatted.push({
             id: s.id,
             roster_id: s.roster_id,
             member: s.roster,
-            time: new Date(s.scan_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
-            status: 'success',
-            message: 'Scanned In'
+            sign_in_time: signInTimeRaw ? new Date(signInTimeRaw).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null,
+            signed_in_by: s.signed_in_by || s.scanned_by,
+            signed_in_by_email: (s.signed_in_by === user?.id || s.scanned_by === user?.id) ? (user?.email || 'You') : 'Leader',
+            sign_out_time: signOutTimeRaw ? new Date(signOutTimeRaw).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null,
+            signed_out_by: s.signed_out_by,
+            signed_out_by_email: s.signed_out_by === user?.id ? (user?.email || 'You') : (s.signed_out_by ? 'Leader' : null),
+            time: isSignedOut
+              ? (signOutTimeRaw ? new Date(signOutTimeRaw).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'N/A')
+              : (signInTimeRaw ? new Date(signInTimeRaw).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'N/A'),
+            status: isSignedOut ? 'complete' : 'pending',
+            message: isSignedOut ? 'Signed Out' : 'Signed In'
           });
         }
       });
@@ -245,6 +274,41 @@ export function Scanner() {
       setSelectedScans(new Set());
     }
   }
+
+  const handleToggleScanStatus = async (scan) => {
+    const isAdminOrLeader = currentUserRole === 'admin' || currentUserRole === 'leader' || isGlobalAdmin;
+    if (!isAdminOrLeader || !scan.id || String(scan.id).startsWith('temp-')) return;
+    const nowIso = new Date().toISOString();
+    const isCurrentlySignedOut = !!scan.sign_out_time;
+
+    let updateData = {};
+    if (isCurrentlySignedOut) {
+      updateData = {
+        sign_out_time: null,
+        signed_out_by: null,
+        status: 'pending'
+      };
+    } else {
+      updateData = {
+        sign_out_time: nowIso,
+        signed_out_by: user?.id,
+        status: 'complete'
+      };
+    }
+
+    let { error } = await supabase.from('scans').update(updateData).eq('id', scan.id);
+    if (error) {
+      addToast({ type: 'error', message: "Failed to update attendance status: " + error.message });
+      return;
+    }
+
+    addToast({ 
+      type: 'success', 
+      message: `${scan.member ? scan.member.first_name : 'Member'} marked as ${isCurrentlySignedOut ? 'Signed In' : 'Signed Out'}.` 
+    });
+
+    await fetchAttendance();
+  };
 
   async function fetchUserRole(tId) {
     if (!user) return;
@@ -265,6 +329,54 @@ export function Scanner() {
       }
     };
   }, []);
+
+  const handleEndSession = async () => {
+    if (await confirm({ title: 'End Event', message: 'Are you sure you want to end this event? All members currently signed in will be automatically signed out at this time.', isDestructive: true })) {
+      const now = new Date().toISOString();
+      let { error } = await supabase.from('events').update({ ended_at: now }).eq('id', session.id);
+      if (error && (error.code === '42P01' || error.message?.includes('events'))) {
+        const res = await supabase.from('sessions').update({ ended_at: now }).eq('id', session.id);
+        error = res.error;
+      }
+      if (error) {
+        addToast({ type: 'error', message: "Failed to end event: " + error.message });
+        return;
+      }
+
+      // Auto Sign-Out remaining signed-in members
+      let { error: scansError } = await supabase
+        .from('scans')
+        .update({ 
+          status: 'complete',
+          sign_out_time: now,
+          signed_out_by: user?.id
+        })
+        .eq('event_id', session.id)
+        .is('sign_out_time', null);
+
+      if (scansError && (scansError.code === 'PGRST204' || scansError.message?.includes('event_id'))) {
+        const res = await supabase
+          .from('scans')
+          .update({ 
+            status: 'complete',
+            sign_out_time: now,
+            signed_out_by: user?.id
+          })
+          .eq('session_id', session.id)
+          .is('sign_out_time', null);
+        scansError = res.error;
+      }
+      if (scansError) {
+        addToast({ type: 'warning', message: "Event ended, but failed to auto sign-out members: " + scansError.message });
+      } else {
+        addToast({ type: 'success', message: "Event ended and remaining members signed out." });
+      }
+
+      setSession({ ...session, ended_at: now });
+      await stopScanner();
+      await fetchAttendance();
+    }
+  };
 
   // Pause camera when scrolled out of viewport
   useEffect(() => {
@@ -312,43 +424,6 @@ export function Scanner() {
     const { data } = await supabase.from('roster').select('*').eq('troop_id', tId);
     if (data) setRoster(data);
   }
-
-  const handleEndSession = async () => {
-    if (await confirm({ title: 'End Event', message: 'Are you sure you want to end this event? No more scans can be recorded after ending.', isDestructive: true })) {
-      const now = new Date().toISOString();
-      let { error } = await supabase.from('events').update({ ended_at: now }).eq('id', session.id);
-      if (error && (error.code === '42P01' || error.message?.includes('events'))) {
-        const res = await supabase.from('sessions').update({ ended_at: now }).eq('id', session.id);
-        error = res.error;
-      }
-      if (error) {
-        addToast({ type: 'error', message: "Failed to end event: " + error.message });
-        return;
-      }
-
-      let { error: scansError } = await supabase
-        .from('scans')
-        .update({ status: 'approved' })
-        .eq('event_id', session.id)
-        .eq('status', 'pending');
-      if (scansError && (scansError.code === 'PGRST204' || scansError.message?.includes('event_id'))) {
-        const res = await supabase
-          .from('scans')
-          .update({ status: 'approved' })
-          .eq('session_id', session.id)
-          .eq('status', 'pending');
-        scansError = res.error;
-      }
-      if (scansError) {
-        addToast({ type: 'warning', message: "Event ended, but failed to approve scans: " + scansError.message });
-      } else {
-        addToast({ type: 'success', message: "Event ended and scans approved." });
-      }
-
-      setSession({ ...session, ended_at: now });
-      await stopScanner();
-    }
-  };
 
   const handleReenableSession = async () => {
     if (await confirm({ title: 'Reenable Event', message: "Are you sure you want to reenable this event?" })) {
@@ -502,7 +577,7 @@ export function Scanner() {
 
   const processPayload = (payload) => {
     return new Promise((resolve) => {
-      handleScan(payload, (result) => {
+      handleScan(payload, scanMode, (result) => {
         if (result.status === 'unknown') {
           if (qrEngineRef.current?.getState() === 2) qrEngineRef.current.pause(true);
           playErrorSound();
@@ -1108,11 +1183,16 @@ export function Scanner() {
 
                     {/* STRICT SQUARE VIEWFINDER */}
                     <div className="scanner-strict-square">
+                      {/* Mode Label Overlay */}
+                      <div className={`scanner-mode-overlay-tag scanner-mode-overlay-${scanMode.toLowerCase()}`}>
+                        {scanMode === 'IN' ? 'Signing In' : 'Signing Out'}
+                      </div>
+
                       {/* Corner brackets */}
-                      <div className="scanner-corner scanner-corner-tl"></div>
-                      <div className="scanner-corner scanner-corner-tr"></div>
-                      <div className="scanner-corner scanner-corner-bl"></div>
-                      <div className="scanner-corner scanner-corner-br"></div>
+                      <div className={`scanner-corner scanner-corner-tl scanner-corner-${scanMode.toLowerCase()}`}></div>
+                      <div className={`scanner-corner scanner-corner-tr scanner-corner-${scanMode.toLowerCase()}`}></div>
+                      <div className={`scanner-corner scanner-corner-bl scanner-corner-${scanMode.toLowerCase()}`}></div>
+                      <div className={`scanner-corner scanner-corner-br scanner-corner-${scanMode.toLowerCase()}`}></div>
 
                       {/* Single Pass Scan Line */}
                       <div key={isScanning ? 'scanning' : 'idle'} className={`scanner-scan-line ${isScanning ? 'scan-line-active' : ''}`}></div>
@@ -1149,30 +1229,53 @@ export function Scanner() {
 
               {/* Right Column: Actions Panel */}
               <div className="scanner-actions-panel">
-                {/* Action Card 1: Primary Button */}
+                {/* Action Card 1: Primary Action Buttons */}
                 <div className="scanner-action-card">
-                  <span className="header-card-label">ACTION</span>
-                  <button 
-                    onClick={isScanning ? stopScanner : startScanner} 
-                    className={`btn ${isScanning ? 'btn-destructive' : 'btn-primary'} w-full`}
-                    style={{ padding: '0.85rem 1rem', fontSize: '0.95rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.6rem' }}
-                  >
-                    {isScanning ? (
-                      <>
+                  <span className="header-card-label">SCANNER ACTIONS</span>
+                  {!isScanning ? (
+                    <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
+                      <button 
+                        onClick={() => { setScanMode('IN'); startScanner(); }} 
+                        className="btn w-full"
+                        style={{ padding: '0.85rem 0.5rem', fontSize: '0.9rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem', backgroundColor: '#10b981', color: '#ffffff', fontWeight: '600' }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" style={{ width: '1.2rem', height: '1.2rem' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                        </svg>
+                        <span>SCAN IN</span>
+                      </button>
+                      <button 
+                        onClick={() => { setScanMode('OUT'); startScanner(); }} 
+                        className="btn w-full"
+                        style={{ padding: '0.85rem 0.5rem', fontSize: '0.9rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem', backgroundColor: '#3b82f6', color: '#ffffff', fontWeight: '600' }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" style={{ width: '1.2rem', height: '1.2rem' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                        <span>SCAN OUT</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
+                      <button 
+                        onClick={stopScanner} 
+                        className="btn btn-destructive w-full"
+                        style={{ padding: '0.75rem 1rem', fontSize: '0.9rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
+                      >
                         <svg xmlns="http://www.w3.org/2000/svg" style={{ width: '1.25rem', height: '1.25rem' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <span>STOP SCANNER</span>
-                      </>
-                    ) : (
-                      <>
-                        <svg xmlns="http://www.w3.org/2000/svg" style={{ width: '1.25rem', height: '1.25rem' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                        </svg>
-                        <span>OPEN SCANNER</span>
-                      </>
-                    )}
-                  </button>
+                      </button>
+                      <button 
+                        onClick={() => setScanMode(prev => prev === 'IN' ? 'OUT' : 'IN')} 
+                        className="btn btn-secondary w-full"
+                        style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem' }}
+                      >
+                        <span>Switch to {scanMode === 'IN' ? 'Scanning Out (Blue)' : 'Scanning In (Green)'}</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Action Card 2: Secondary Options */}
@@ -1451,14 +1554,36 @@ export function Scanner() {
 
                         <div className="grid-table-cell" role="cell" style={{ gridColumn: isAdminOrLeader ? 3 : 2 }}>
                           <span className="grid-table-label">Status</span>
-                          <span className={`badge badge-${scan.status === 'success' ? 'success' : scan.status === 'duplicate' ? 'warning' : 'error'}`}>
-                            {scan.message || 'Scanned In'}
-                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleScanStatus(scan)}
+                            className={`badge ${scan.sign_out_time ? 'badge-info' : 'badge-success'}`}
+                            style={{ 
+                              cursor: isAdminOrLeader ? 'pointer' : 'default', 
+                              border: 'none', 
+                              backgroundColor: scan.sign_out_time ? '#3b82f6' : '#10b981',
+                              color: '#ffffff',
+                              fontWeight: '600',
+                              padding: '0.25rem 0.65rem'
+                            }}
+                            title={isAdminOrLeader ? "Click to toggle between Signed In and Signed Out" : undefined}
+                          >
+                            {scan.sign_out_time ? 'Signed Out' : 'Signed In'}
+                          </button>
                         </div>
 
                         <div className="grid-table-cell" role="cell" style={{ gridColumn: isAdminOrLeader ? 4 : 3 }}>
-                          <span className="grid-table-label">Scan Time</span>
-                          <span style={{ color: 'var(--text-secondary)' }}>{scan.time}</span>
+                          <span className="grid-table-label">Audit Log</span>
+                          <div style={{ fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                            <span style={{ color: '#10b981', fontWeight: '500' }}>
+                              In: {scan.sign_in_time || scan.time || 'N/A'} {scan.signed_in_by_email ? `by ${scan.signed_in_by_email}` : ''}
+                            </span>
+                            {scan.sign_out_time && (
+                              <span style={{ color: '#3b82f6', fontWeight: '500' }}>
+                                Out: {scan.sign_out_time} {scan.signed_out_by_email ? `by ${scan.signed_out_by_email}` : ''}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
