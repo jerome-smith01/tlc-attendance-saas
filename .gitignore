@@ -2,6 +2,14 @@
 supabase/.temp/
 supabase/functions/.import_map.json
 
+# Dependencies & Build
+node_modules/
+dist/
+
+# Temporary files
+tmp/
+temp/
+
 # Local Env Files
 .env
 .env.local
