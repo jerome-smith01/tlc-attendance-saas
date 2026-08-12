@@ -250,7 +250,8 @@ export function EditMember() {
     );
   }
 
-  const memberDisplayName = `${member?.first_name || ''} ${member?.last_initial || ''}.`.trim();
+  const isAccountUser = member && (!!member.user_id || !!member.email);
+  const isNameDisabled = isAccountUser && !isGlobalAdmin;
 
   return (
     <div style={{ width: '100%', maxWidth: '800px', margin: '0 auto', boxSizing: 'border-box', padding: '2rem' }}>
@@ -293,7 +294,19 @@ export function EditMember() {
                 onChange={e => setFirstName(e.target.value)}
                 required
                 maxLength={100}
-                style={{ width: '100%', maxWidth: '320px', padding: '0.65rem 0.75rem', background: 'var(--bg-secondary)', color: 'var(--foreground)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', boxSizing: 'border-box' }}
+                disabled={isNameDisabled}
+                style={{
+                  width: '100%',
+                  maxWidth: '320px',
+                  padding: '0.65rem 0.75rem',
+                  background: 'var(--bg-secondary)',
+                  color: isNameDisabled ? 'var(--text-secondary)' : 'var(--foreground)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 'var(--radius-sm)',
+                  boxSizing: 'border-box',
+                  opacity: isNameDisabled ? 0.8 : 1,
+                  cursor: isNameDisabled ? 'not-allowed' : 'text'
+                }}
               />
             </div>
 
@@ -307,9 +320,26 @@ export function EditMember() {
                 onChange={e => setLastInitial(e.target.value)}
                 required
                 maxLength={1}
-                style={{ width: '100px', padding: '0.65rem 0.75rem', background: 'var(--bg-secondary)', color: 'var(--foreground)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', boxSizing: 'border-box' }}
+                disabled={isNameDisabled}
+                style={{
+                  width: '100px',
+                  padding: '0.65rem 0.75rem',
+                  background: 'var(--bg-secondary)',
+                  color: isNameDisabled ? 'var(--text-secondary)' : 'var(--foreground)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 'var(--radius-sm)',
+                  boxSizing: 'border-box',
+                  opacity: isNameDisabled ? 0.8 : 1,
+                  cursor: isNameDisabled ? 'not-allowed' : 'text'
+                }}
               />
             </div>
+
+            {isNameDisabled && (
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block' }}>
+                Note: Name is managed by the account holder. Only Global Admins can override it.
+              </span>
+            )}
           </div>
 
           <div>

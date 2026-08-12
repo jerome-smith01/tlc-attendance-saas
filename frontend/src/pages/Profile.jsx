@@ -82,10 +82,24 @@ export function Profile() {
         setMemberCode(data.member_id || '');
         setRole(data.role || '');
       } else {
-        const metaName = user?.user_metadata?.full_name || '';
-        const parts = metaName.split(' ');
-        if (parts.length > 0) setFirstName(parts[0]);
-        if (parts.length > 1) setLastInitial(parts[parts.length - 1][0]);
+        // Fallback: Check if user has an existing roster entry in another troop
+        const { data: existingRoster } = await supabase
+          .from('roster')
+          .select('first_name, last_initial')
+          .or(`user_id.eq.${user.id},email.eq.${user.email}`)
+          .not('first_name', 'is', null)
+          .limit(1)
+          .maybeSingle();
+
+        if (existingRoster?.first_name) {
+          setFirstName(existingRoster.first_name || '');
+          setLastInitial(existingRoster.last_initial || '');
+        } else {
+          const metaName = user?.user_metadata?.full_name || '';
+          const parts = metaName.split(' ');
+          if (parts.length > 0) setFirstName(parts[0]);
+          if (parts.length > 1) setLastInitial(parts[parts.length - 1][0]);
+        }
       }
     } catch (err) {
       console.error('Error loading profile:', err);
