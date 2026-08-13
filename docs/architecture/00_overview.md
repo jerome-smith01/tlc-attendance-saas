@@ -44,8 +44,8 @@ graph LR
 | `App.jsx` | Routing root: `HashRouter` + all routes. Wraps protected routes in `<ProtectedRoute><SidebarLayout>`. |
 | `lib/supabaseClient.js` | Singleton Supabase client. Generic error in production, detailed in dev only. |
 | `context/AuthContext.jsx` | Global auth state provider. Exposes `session`, `user`, `loading`, `signOut()`. |
-| `context/TroopContext.jsx` | Troop context. Fetches all troops a user belongs to, exposes `troops[]`, `selectedTroopId`, `setSelectedTroopId`, `isGlobalAdmin`. Persists selection in `localStorage` under `tlc_last_troop_id`. |
-| `components/ProtectedRoute.jsx` | Route guard. Blocks render during auth load; redirects unauthenticated users to `/login`. |
+| `context/TroopContext.jsx` | Troop context. Fetches all troops a user belongs to, exposes `troops[]`, `selectedTroopId`, `setSelectedTroopId`, `isGlobalAdmin`, `needsOnboarding`, `userDisplayName`, `refreshDisplayName()`. Persists selection in `localStorage` under `tlc_last_troop_id`. |
+| `components/ProtectedRoute.jsx` | Route guard. Blocks render during auth load; redirects unauthenticated users to `/login`. Enforces hard onboarding gate — redirects users with incomplete profiles to `/profile`. |
 | `components/SidebarLayout.jsx` | App shell. Renders full-width top layout header (app logo, title, troop switcher, theme toggle) with sidebar navigation and main content area beneath it. Renders `<Outlet/>` for page content. |
 | `components/AppSpinner.jsx` | Full-screen branded loading state. |
 | `components/ThemeToggle.jsx` | Sun/moon icon button wired to `useTheme`. |
@@ -97,6 +97,7 @@ Uses `HashRouter` for Cloudflare Pages static SPA compatibility (`/#/login`, `/#
 - [08_icon_and_color_scheme.md](./08_icon_and_color_scheme.md) — Icon set and standard visual color coding for actions
 - [09_popup_modals.md](./09_popup_modals.md) — Popup modal patterns, animations, and height handling
 - [10_forms_and_inputs.md](./10_forms_and_inputs.md) — Forms, DateInput component, and m/d/yy date formatting
+- [13_roles_and_permissions.md](./13_roles_and_permissions.md) — Role definitions, permission matrix, and onboarding flows
 - [../auth_flow.md](../auth_flow.md) — Supabase JWT lifecycle, AuthContext, PWA behavior
 - [../hosting.md](../hosting.md) — Cloudflare Pages deployment and environment config
 
