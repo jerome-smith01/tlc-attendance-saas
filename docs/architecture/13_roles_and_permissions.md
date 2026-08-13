@@ -16,11 +16,13 @@ This document outlines the plain-English role definitions, permission matrix, an
 | **See all troops in dropdown** | ✅ | ❌ (Own troops) | ❌ (Own troops) | ❌ (Own troops) |
 | **View Roster tab** | ✅ | ✅ | ✅ | ❌ (Redirected) |
 | **Add/Invite Leaders** | ✅ | ✅ | ✅ | ❌ |
+| **Edit Leaders** | ✅ | ✅ | ✅ | ❌ |
 | **Add/Edit Members (Youth)** | ✅ | ✅ | ✅ | ❌ |
 | **Scan Badges & Record Attendance** | ✅ | ✅ | ✅ | ✅ |
 | **View/Manage Billing** | ✅ | ✅ | ❌ | ❌ |
-| **Close / End Sessions** | ✅ | ✅ | ✅ | ❌ |
-| **Approve Scans** | ✅ | ✅ | ✅ | ❌ |
+| **Close / End Events (Approves for Sync)** | ✅ | ✅ | ✅ | ❌ |
+| **View TLC Extension tab** | ✅ | ✅ | ✅ | ❌ |
+| **Sync attendance** | ✅ | ✅ | ✅ | ❌ |
 | **Edit Troop Metadata** | ✅ | ✅ | ❌ | ❌ |
 | **Roster Visibility Rule** | ❌ (Not shown in roster) | Listed as Leader | Listed as Leader | Listed as Leader |
 | **Import CSV (Default Role)** | `trailman` | `trailman` | `trailman` | N/A |

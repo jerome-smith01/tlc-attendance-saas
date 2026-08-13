@@ -23,9 +23,9 @@ There are **two parallel role systems** in this app:
 
 All access is scoped to the user's registered troop(s). The `TroopContext` on the frontend allows users with multiple troop memberships to switch between them via a dropdown in the sidebar.
 
-| Role | Description / UI Landing | Can Read | Can Write Roster | Can Write Sessions/Scans | Can Approve/Sync | Can Manage Users | Can Edit Troop |
+| Role | Description / UI Landing | Can Read | Can Write Roster | Can Write Events/Scans | Can Close Event/Sync | Can Manage Users | Can Edit Troop |
 |:---|:---|:---:|:---:|:---:|:---:|:---:|:---:|
-| `badge_scanner` | Scanner-focused view | ✅ Own troop | ✅ Insert + Update | ✅ Insert (open sessions only) | ❌ | ❌ | ❌ |
+| `badge_scanner` | Scanner-focused view | ✅ Own troop | ✅ Insert + Update | ✅ Insert (open events only) | ❌ | ❌ | ❌ |
 | `roster_manager` | Full troop admin dashboard | ✅ Own troop | ✅ Full CRUD | ✅ Full CRUD | ✅ | ✅ Invite/remove | ❌ |
 | `troop_admin` | Owner dashboard + billing | ✅ Own troop | ✅ Full CRUD | ✅ Full CRUD | ✅ | ✅ Invite/remove | ✅ |
 | `global_admin` | All troops (platform owner) | ✅ All troops | ✅ All troops | ✅ All troops | ✅ | ✅ | ✅ |
@@ -36,23 +36,22 @@ All access is scoped to the user's registered troop(s). The `TroopContext` on th
 * **Purpose**: Event-level scanners — leaders checking in youth at a meeting or event.
 * **UI Workflow**:
   - Defaults to the **Scanner Page** or a simplified scanner view.
-  - Can create new sessions and select existing (open) sessions before scanning.
+  - Can create new events and select existing (open) events before scanning.
   - Scanner auto-creates roster records on unknown badge scans (INSERT).
   - Scanner backfills missing `tlc_id` on known members (UPDATE).
-  - Can view the attendance log for the current session.
+  - Can view the attendance log for the current event.
 * **UI Exclusions**:
   - Hide all user management and billing options.
-  - Hide "Approve Scans" and "Sync to Trail Life USA" actions.
+  - Hide "Close Event" and "Sync to Trail Life USA" actions.
   - No delete controls on roster items.
 
 #### 2. Roster Manager (`roster_manager`)
 * **Purpose**: General troop administrators who manage day-to-day operations.
 * **UI Workflow**:
-  - Lands on the main **Troop Dashboard** showing troop stats and unsynced session warnings.
+  - Lands on the main **Troop Dashboard** showing troop stats and unsynced event warnings.
   - **Roster Management**: Full CRUD on the roster, including CSV Import from Trail Life Connect.
-  - **Session Management**: Can view all sessions, drill into attendees, end sessions (`ended_at`), and delete sessions.
-  - **Scan Approval**: Can approve `pending` scans, updating their status to `approved`.
-  - **Chrome Extension Sync**: Can log into the extension and run DOM-based sync on `traillifeconnect.com`. Synced sessions have their `synced_at` and `synced_by` populated.
+  - **Event Management**: Can view all events, drill into attendees, close events (`ended_at`), and delete events.
+  - **Chrome Extension Sync**: Can log into the extension and run DOM-based sync on `traillifeconnect.com`. Synced events have their `synced_at` and `synced_by` populated.
   - **User Management**: Can invite users by email (Supabase invite), promote/demote between `badge_scanner` and `roster_manager`, and remove users from the troop.
 * **UI Exclusions**:
   - Hide subscription/billing management and Stripe portal.

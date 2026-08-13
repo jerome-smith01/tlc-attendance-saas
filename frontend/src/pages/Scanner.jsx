@@ -1307,11 +1307,17 @@ export function Scanner() {
 
             {showStatusMenu && (
               <div className="status-popover-menu">
-                {isAdminOrLeader && !session.ended_at && (
+                {!session.ended_at && (
                   <button
                     type="button"
                     className="status-popover-item"
-                    onClick={() => { setShowStatusMenu(false); handleEndSession(); }}
+                    disabled={!isAdminOrLeader}
+                    title={!isAdminOrLeader ? "Close unavailable: requires admin role" : undefined}
+                    onClick={() => {
+                      if (!isAdminOrLeader) return;
+                      setShowStatusMenu(false);
+                      handleEndSession();
+                    }}
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
@@ -1321,11 +1327,17 @@ export function Scanner() {
                   </button>
                 )}
 
-                {isAdminOrLeader && session.ended_at && !session.synced_at && (
+                {session.ended_at && !session.synced_at && (
                   <button
                     type="button"
                     className="status-popover-item"
-                    onClick={() => { setShowStatusMenu(false); handleReenableSession(); }}
+                    disabled={!isAdminOrLeader}
+                    title={!isAdminOrLeader ? "Reopen unavailable: requires admin role" : undefined}
+                    onClick={() => {
+                      if (!isAdminOrLeader) return;
+                      setShowStatusMenu(false);
+                      handleReenableSession();
+                    }}
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
@@ -1335,20 +1347,24 @@ export function Scanner() {
                   </button>
                 )}
 
-                {isAdminOrLeader && (
-                  <button
-                    type="button"
-                    className="status-popover-item"
-                    style={{ color: 'var(--color-error)' }}
-                    onClick={() => { setShowStatusMenu(false); handleDeleteSession(); }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="3 6 5 6 21 6" />
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                    </svg>
-                    Delete Event
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className="status-popover-item"
+                  disabled={!isAdminOrLeader}
+                  title={!isAdminOrLeader ? "Delete unavailable: requires admin role" : undefined}
+                  style={{ color: 'var(--color-error)' }}
+                  onClick={() => {
+                    if (!isAdminOrLeader) return;
+                    setShowStatusMenu(false);
+                    handleDeleteSession();
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3 6 5 6 21 6" />
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  </svg>
+                  Delete Event
+                </button>
               </div>
             )}
           </div>

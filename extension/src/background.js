@@ -59,13 +59,24 @@ async function handleGetEndedSessions() {
     const { data: { session }, error: authError } = await supabase.auth.getSession();
     if (authError || !session) return { error: 'Authentication required' };
 
-    // Fetch sessions that have an ended_at but no synced_at
-    const { data: sessions, error } = await supabase
-      .from('sessions')
+    // Fetch events/sessions that have an ended_at but no synced_at
+    let { data: sessions, error } = await supabase
+      .from('events')
       .select('id, event_name, event_date')
       .not('ended_at', 'is', null)
       .is('synced_at', null)
       .order('event_date', { ascending: false });
+
+    if (error && (error.code === '42P01' || error.message?.includes('events'))) {
+      const res = await supabase
+        .from('sessions')
+        .select('id, event_name, event_date')
+        .not('ended_at', 'is', null)
+        .is('synced_at', null)
+        .order('event_date', { ascending: false });
+      sessions = res.data;
+      error = res.error;
+    }
 
     if (error) {
       console.error('[TLC Sync] Error fetching sessions:', error);
@@ -85,7 +96,8 @@ async function handleSyncRequest(sessionId) {
     const { data: { session }, error: authError } = await supabase.auth.getSession();
     if (authError || !session) return { error: 'Authentication required' };
 
-    const { data: scans, error } = await supabase
+    // Fetch all recorded scans for the closed session (no individual approval filter)
+    let { data: scans, error } = await supabase
       .from('scans')
       .select(`
         id,
@@ -97,8 +109,25 @@ async function handleSyncRequest(sessionId) {
           last_initial
         )
       `)
-      .eq('session_id', sessionId)
-      .eq('status', 'approved');
+      .eq('event_id', sessionId);
+      
+    if (error && (error.code === 'PGRST204' || error.message?.includes('event_id'))) {
+      const res = await supabase
+        .from('scans')
+        .select(`
+          id,
+          status,
+          roster (
+            member_id,
+            tlc_id,
+            first_name,
+            last_initial
+          )
+        `)
+        .eq('session_id', sessionId);
+      scans = res.data;
+      error = res.error;
+    }
       
     if (error) {
       console.error('[TLC Sync] Supabase error:', error);
@@ -118,13 +147,24 @@ async function handleMarkSessionSynced(sessionId) {
     const { data: { session }, error: authError } = await supabase.auth.getSession();
     if (authError || !session) return { error: 'Authentication required' };
 
-    const { error } = await supabase
-      .from('sessions')
+    let { error } = await supabase
+      .from('events')
       .update({ 
         synced_at: new Date().toISOString(),
         synced_by: session.user.id
       })
       .eq('id', sessionId);
+
+    if (error && (error.code === '42P01' || error.message?.includes('events'))) {
+      const res = await supabase
+        .from('sessions')
+        .update({ 
+          synced_at: new Date().toISOString(),
+          synced_by: session.user.id
+        })
+        .eq('id', sessionId);
+      error = res.error;
+    }
 
     if (error) {
       console.error('[TLC Sync] Error marking synced:', error);

@@ -38,8 +38,8 @@ graph LR
 - Because it uses the official Supabase SDK, it inherits **automatic token refresh** — the session stays alive without user intervention.
 - Handles messages from `content.js` via `chrome.runtime.onMessage`:
   - `"GET_SESSION"`: Returns the current session from storage.
-  - `"FETCH_APPROVED_SCANS"`: Queries Supabase for all `approved` scans for a given session ID.
-  - `"MARK_COMPLETE"`: Updates scan status to `complete` and sets `sessions.synced_at` and `sessions.synced_by`.
+  - `"SYNC_ATTENDANCE"`: Queries Supabase for all recorded attendance scans for a given closed event ID.
+  - `"MARK_SESSION_SYNCED"`: Sets `events.synced_at` and `events.synced_by`.
 
 ### `content.js` (Injected into `traillifeconnect.com`)
 - Injected by the manifest into pages matching `https://traillifeconnect.com/groups/*/attendance*`.

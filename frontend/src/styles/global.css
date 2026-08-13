@@ -2427,8 +2427,13 @@ input[type="date"].filter-input::-webkit-calendar-picker-indicator:hover {
   transition: background-color 0.15s ease;
 }
 
-.status-popover-item:hover {
+.status-popover-item:hover:not(:disabled) {
   background-color: var(--muted, rgba(0, 0, 0, 0.05));
+}
+
+.status-popover-item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* ── Profile & Independent Form Cards ── */

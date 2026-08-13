@@ -2,88 +2,74 @@
 
 ## Status Overview
 
-A scan progresses through three statuses, each representing a stage in the attendance workflow:
+A scan progresses through its lifecycle as part of an event's attendance workflow:
 
 ```mermaid
 stateDiagram-v2
-    [*] --> pending : Badge scanned by leader
-    pending --> approved : Admin approves in dashboard
-    approved --> complete : Chrome Extension syncs to TLC
-    complete --> [*] : Scan deleted after 14-day expiry
+    [*] --> Scanned : Badge scanned / member added
+    Scanned --> Closed : Admin closes event (ended_at set)
+    Closed --> Synced : Chrome Extension syncs to TLC
+    Synced --> [*] : Scans deleted after 14-day expiry
 ```
 
-| Status | Meaning | Who Sets It |
+| State / Trigger | Meaning | Who Performs It |
 |:---|:---|:---|
-| `pending` | Scan recorded, not yet reviewed | Scanner (any troop member) |
-| `approved` | Admin confirmed the record is valid | `troop_admin` or `billing_admin` |
-| `complete` | Chrome Extension successfully toggled the checkbox on `traillifeconnect.com` | Chrome Extension (`troop_admin`/`billing_admin`) |
+| **Scanned** | Scan recorded / attendance logged | Scanner / Leader |
+| **Closed (Approved)** | Event is closed; attendance is locked and ready to sync | `troop_admin` or `roster_manager` |
+| **Synced** | Chrome Extension toggled checkboxes on `traillifeconnect.com` | `troop_admin` or `roster_manager` (via Extension) |
 
 ---
 
-## Session Lifecycle
+## Session / Event Lifecycle
 
-A **session** represents one event on one date for one troop. Sessions have their own lifecycle separate from individual scans:
+A **session / event** represents one meeting or activity on one date for one troop.
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Open : Session created (by any troop member)
-    Open --> Ended : Admin sets ended_at
-    Ended --> Synced : Extension sets synced_at
+    [*] --> Open : Event created
+    Open --> Closed : Admin closes event (ended_at)
+    Closed --> Synced : Extension sets synced_at
     Synced --> Purged : pg_cron deletes scans after purge_after
 ```
 
-| Session State | Condition | Effect |
+| Event State | Condition | Effect |
 |:---|:---|:---|
-| **Open** | `ended_at IS NULL` | Scans can be inserted (RLS enforced) |
-| **Ended** | `ended_at IS NOT NULL` | No new scans allowed (DB-level enforcement) |
+| **Open** | `ended_at IS NULL` | Scans can be inserted / logged |
+| **Closed** | `ended_at IS NOT NULL` | Scans are locked; ready for TLC Extension sync |
 | **Synced** | `synced_at IS NOT NULL` | `purge_after` automatically set to `synced_at + 14 days` |
-| **Purged** | `purge_after <= now()` | Nightly `pg_cron` job deletes all child `scans` rows |
+| **Purged** | `purge_after <= now()` | Nightly `pg_cron` job deletes child `scans` rows |
 
 ---
 
 ## End-to-End Data Flow
 
-1. **Import**: Admin imports the roster CSV. Roster rows are created with `member_id` (no `tlc_id` yet).
-2. **Create Session / Select Event**: A leader creates or selects an event on the Events page (`/events`), then clicks into the event to open its dedicated Scanner page (`/events/:eventId`). No role restriction — any authenticated troop member can do this.
-3. **Scan**: Leader scans a badge. The QR is parsed, matched by `tlc_id` then `member_id`, and the `tlc_id` is backfilled if it was missing.
-4. **Record**: A `scans` row is inserted with `status = pending`. Database `UNIQUE(session_id, roster_id)` prevents duplicates.
-5. **Cooldown**: A 3-second frontend cooldown (`lastScanRef` in `useScanLogic.js`) prevents duplicate consecutive scans in the UI. The DB constraint is the authoritative safeguard.
-6. **End Session**: Admin optionally marks the session as ended (`ended_at = now()`). After this, the RLS policy blocks new scan inserts even if someone tries via API.
-7. **Approval**: Admin reviews `pending` scans on the Sessions page or Dashboard and marks them `approved`.
-8. **Extension Sync**: Admin logs into the Chrome Extension on the Trail Life Connect attendance page, selects the event, and clicks "Sync". The extension:
-   - Fetches all `approved` scans for the selected session from Supabase.
-   - Locates each member's checkbox in the DOM using the selector `#${tlcId}-${eventId}-attended`.
+1. **Import**: Admin imports the roster CSV. Roster rows are created with `member_id` (and `tlc_id` once populated).
+2. **Create / Select Event**: A leader creates or selects an event on the Events page (`/events`), then opens its dedicated Scanner page. Any authenticated leader/scanner can do this.
+3. **Scan**: Leader scans a badge or logs attendance.
+4. **Record**: Attendance is inserted into `scans`. Database constraints prevent duplicate active records.
+5. **Cooldown**: A 3-second frontend cooldown (`lastScanRef` in `useScanLogic.js`) prevents accidental double scans.
+6. **Close Event (Approval)**: Admin marks the event as closed (`ended_at = now()`). This locks attendance from new scans and automatically approves all recorded attendance for sync.
+7. **Extension Sync**: Admin opens the Chrome Extension on the Trail Life Connect attendance page, selects the closed event, and clicks "Sync". The extension:
+   - Fetches all attendance records for the selected closed event from Supabase.
+   - Locates each member's checkbox in the DOM on `traillifeconnect.com`.
    - Clicks each unchecked checkbox.
-   - Sets each scan's `status` to `complete`.
-   - Sets `sessions.synced_at = now()` and `sessions.synced_by = auth.uid()`.
-9. **Purge Countdown**: A database trigger automatically sets `sessions.purge_after = synced_at + 14 days`.
-10. **Nightly Purge**: A `pg_cron` job runs at 03:00 UTC daily and deletes all `scans` rows for sessions where `purge_after <= now()`.
+   - Sets `events.synced_at = now()` and `events.synced_by = auth.uid()`.
+8. **Purge Countdown**: A database trigger automatically sets `events.purge_after = synced_at + 14 days`.
+9. **Nightly Purge**: A `pg_cron` job runs at 03:00 UTC daily and deletes all `scans` rows for events where `purge_after <= now()`.
 
-> **Un-Sync**: If `synced_at` is cleared on a session (e.g., admin reverts a sync), the trigger in migration 009 also resets `purge_after = NULL`, halting the purge countdown.
-
----
+> **Un-Sync**: If `synced_at` is cleared on an event (e.g., admin reverts a sync), the trigger in migration 009 also resets `purge_after = NULL`, halting the purge countdown.
 
 ---
 
-## Approval Queue
+## Approval Model
 
-> **Important architectural note**: There is currently no dedicated "Approval Queue" page or view. Scan approval is a session-level bulk action, not an individual scan-by-scan review UI. This is a deliberate MVP-1 simplification.
+> **Event-Level Approval**: Approval is not done scan-by-scan. Closing an event (`ended_at IS NOT NULL`) acts as the approval gate. Once an event is marked closed, all recorded scans for that event are eligible for synchronization.
 
-### How Approval Works
+### How Closing an Event Works
 
-Approval is triggered by the **"End Session"** action, available to `troop_admin` and `billing_admin` users on both the **Scanner page** and the **Sessions page**.
-
-When an admin clicks "End Session":
-1. `sessions.ended_at` is set to `now()`. This closes the session to new scans (DB-level RLS enforcement).
-2. All `scans` rows with `status = 'pending'` for that session are batch-updated to `status = 'approved'`.
-3. The session is now ready for the Chrome Extension to sync.
-
-```js
-// The two-step approval pattern (from Sessions.jsx and Scanner.jsx)
-await supabase.from('sessions').update({ ended_at: now }).eq('id', sessionId);
-await supabase.from('scans').update({ status: 'approved' })
-  .eq('session_id', sessionId).eq('status', 'pending');
-```
+1. Admin clicks **"Close Event"** in the UI.
+2. `events.ended_at` is set to `now()`. This locks the event from new scans (enforced by RLS).
+3. The event immediately appears in the Chrome Extension's list of closed events ready to sync.
 
 ### Individual Scan Removal & Manual Status Toggle (Pre-Approval)
 
