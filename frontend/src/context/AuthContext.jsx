@@ -7,8 +7,8 @@ async function ensureOAuthProfileMetadata(user) {
   if (!user) return;
   if (user.user_metadata?.first_name && user.user_metadata?.last_initial) return;
 
-  const metaFirst = user.user_metadata?.given_name || user.user_metadata?.first_name || '';
-  const metaLast = user.user_metadata?.family_name || user.user_metadata?.last_name || user.user_metadata?.last_initial || '';
+  const metaFirst = user.user_metadata?.first_name || user.user_metadata?.given_name || '';
+  const metaLast = user.user_metadata?.last_initial || user.user_metadata?.family_name || user.user_metadata?.last_name || '';
   const metaFullName = (user.user_metadata?.full_name || user.user_metadata?.name || '').trim();
 
   let extractedFirst = metaFirst.trim();

@@ -106,7 +106,7 @@ export function Profile() {
         // 2. Check auth user_metadata
         if (!currentFirst || !currentLastInitial) {
           const metaFirst = user?.user_metadata?.first_name || user?.user_metadata?.given_name || '';
-          const metaLast = user?.user_metadata?.last_name || user?.user_metadata?.family_name || user?.user_metadata?.last_initial || '';
+          const metaLast = user?.user_metadata?.last_initial || user?.user_metadata?.last_name || user?.user_metadata?.family_name || '';
           const metaFullName = (user?.user_metadata?.full_name || user?.user_metadata?.name || '').trim();
 
           if (!currentFirst && metaFirst) currentFirst = metaFirst.trim();
@@ -165,6 +165,14 @@ export function Profile() {
       });
       if (authUpdateError) {
         console.error('[Profile] Auth metadata update error:', authUpdateError);
+        if (authUpdateError.message?.includes('JWT') || authUpdateError.message?.includes('sub claim')) {
+          throw new Error('Your session is invalid or has expired. Please sign out and log back in.');
+        }
+        // Throw other auth update errors so we don't pretend it succeeded
+        throw new Error(authUpdateError.message || 'Failed to update authentication profile.');
+      } else {
+        // Force refresh session to ensure local storage and AuthContext receive the new user_metadata immediately
+        await supabase.auth.refreshSession();
       }
 
       const { data: troopUsers, error: tuError } = await supabase

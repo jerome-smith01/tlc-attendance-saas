@@ -30,7 +30,8 @@ export function TroopProvider({ children }) {
   }, [user, authLoading]);
 
   async function refreshDisplayName() {
-    const activeUser = user || (await supabase.auth.getUser())?.data?.user;
+    const { data: sessionData } = await supabase.auth.getSession();
+    const activeUser = sessionData?.session?.user || user;
     if (!activeUser?.id) {
       setUserDisplayName('');
       return;
