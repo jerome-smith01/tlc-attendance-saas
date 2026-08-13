@@ -29,6 +29,15 @@ export function Login() {
     }
   }, [session, loadingTroops, selectedTroop, troops, navigate]);
 
+  // If we have a session, don't render the login form while waiting to redirect
+  if (session) {
+    return (
+      <div className="login-page" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <span className="spinner" style={{ width: '40px', height: '40px', borderTopColor: 'var(--color-primary)' }} />
+      </div>
+    );
+  }
+
   // Clear error as soon as the user starts correcting their input
   const handleEmailChange    = (e) => { setError(''); setMessage(''); setEmail(e.target.value); };
   const handlePasswordChange = (e) => { setError(''); setMessage(''); setPassword(e.target.value); };

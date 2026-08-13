@@ -1,11 +1,36 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { useTroop } from '../context/TroopContext';
 import { ThemeToggle } from '../components/ThemeToggle';
 import './Landing.css';
 
 export function Landing() {
   const navigate = useNavigate();
+  const { session } = useAuth();
+  const { selectedTroop, troops, loadingTroops } = useTroop();
   const [showSignUpModal, setShowSignUpModal] = useState(false);
+
+  // If already logged in (e.g., returning from OAuth), bounce to appropriate home route
+  useEffect(() => {
+    if (session && !loadingTroops) {
+      const userRole = selectedTroop?.currentUserRole || troops?.[0]?.currentUserRole;
+      if (userRole === 'badge_scanner') {
+        navigate('/events', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
+    }
+  }, [session, loadingTroops, selectedTroop, troops, navigate]);
+
+  // If we have a session, don't render the landing page while waiting to redirect
+  if (session) {
+    return (
+      <div className="landing-page" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <span className="spinner" style={{ width: '40px', height: '40px', borderTopColor: 'var(--color-primary)' }} />
+      </div>
+    );
+  }
 
   return (
     <div className="landing-page">

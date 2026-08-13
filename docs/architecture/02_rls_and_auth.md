@@ -1,7 +1,9 @@
 # Row Level Security, Authentication, and Roles
 
 ## Auth Model
-Supabase email/password authentication is used. No OAuth in MVP-1. The JWT lifecycle is managed entirely by the `supabase-js` client.
+Supabase authentication supports both email/password credentials and Google OAuth (`supabase.auth.signInWithOAuth()`). The JWT lifecycle is managed entirely by the `supabase-js` client.
+
+For invitation flows, a `sessionStorage` token bridge (`pending_invite_token`) preserves the invitation token across OAuth redirects. Dual-provider password linking allows OAuth users to optionally add a password to their account from their Profile settings page.
 
 ---
 

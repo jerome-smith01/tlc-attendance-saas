@@ -277,12 +277,12 @@ The existing auto-accept `useEffect` then handles validation + acceptance as nor
 
 ### ✅ Phase 7 Verification Gate
 Before advancing to Phase 8, verify:
-- [ ] "Continue with Google" button appears on `/login`
-- [ ] Clicking opens Google auth dialog
-- [ ] After Google sign-in: lands on `/events` (or `/profile` if onboarding needed)
-- [ ] Invite link for existing user → click "Sign in with Google" → after OAuth, invite is auto-accepted → lands on `/events`
-- [ ] Invite for `userA@gmail.com`, sign in with Google as `userB@gmail.com` → mismatch screen shown
-- [ ] New email/password user still works (OAuth is additive only)
+- [x] "Continue with Google" button appears on `/login`
+- [x] Clicking opens Google auth dialog
+- [x] After Google sign-in: lands on `/events` (or `/profile` if onboarding needed)
+- [x] Invite link for existing user → click "Sign in with Google" → after OAuth, invite is auto-accepted → lands on `/events`
+- [x] Invite for `userA@gmail.com`, sign in with Google as `userB@gmail.com` → mismatch screen shown
+- [x] New email/password user still works (OAuth is additive only)
 
 ---
 

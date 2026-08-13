@@ -389,9 +389,6 @@ export function EditMember() {
                   disabled
                   style={{ width: '100%', padding: '0.65rem 0.75rem', background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', boxSizing: 'border-box', opacity: 0.8, cursor: 'not-allowed' }}
                 />
-                <span style={{ fontSize: '0.75rem', color: 'var(--color-danger, #ef4444)', marginTop: '0.25rem', display: 'block' }}>
-                  Note: Email editing feature is coming in a future update.
-                </span>
               </div>
 
               <div>
