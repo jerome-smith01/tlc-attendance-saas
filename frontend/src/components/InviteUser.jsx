@@ -116,17 +116,6 @@ export function InviteUser({ troopId, onInviteSent, onDuplicateInvite }) {
         updated[index] = { ...targetRow, email: '', error: null };
       }
 
-      // Automatically append a new blank row if the last row is non-empty
-      const lastRow = updated[updated.length - 1];
-      if (lastRow && lastRow.email.trim() !== '') {
-        updated.push({
-          id: `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-          email: '',
-          role: 'badge_scanner',
-          error: null
-        });
-      }
-
       return updated;
     });
   }
@@ -138,6 +127,20 @@ export function InviteUser({ troopId, onInviteSent, onDuplicateInvite }) {
         return [{ id: `${Date.now()}`, email: '', role: 'badge_scanner', error: null }];
       }
       return filtered;
+    });
+  }
+
+  function handleAddRow(role, index) {
+    setRows(prev => {
+      const newRow = {
+        id: `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        email: '',
+        role: role,
+        error: null
+      };
+      const updated = [...prev];
+      updated.splice(index + 1, 0, newRow);
+      return updated;
     });
   }
 
@@ -228,9 +231,8 @@ export function InviteUser({ troopId, onInviteSent, onDuplicateInvite }) {
       const remaining = prev.filter(r => failedIds.has(r.id) || r.email.trim() === '');
       const updated = remaining.map(r => rowErrors[r.id] ? { ...r, error: rowErrors[r.id] } : r);
 
-      // Ensure trailing blank row exists
-      const last = updated[updated.length - 1];
-      if (!last || last.email.trim() !== '') {
+      // Ensure at least one row remains
+      if (updated.length === 0) {
         updated.push({
           id: `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
           email: '',
@@ -320,6 +322,25 @@ export function InviteUser({ troopId, onInviteSent, onDuplicateInvite }) {
                           Troop Admin
                         </label>
                       </div>
+
+                      {/* Add row button */}
+                      <button
+                        type="button"
+                        onClick={() => handleAddRow(row.role, index)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--text-secondary)',
+                          cursor: 'pointer',
+                          fontSize: '1.2rem',
+                          lineHeight: 1,
+                          padding: '0.2rem 0.4rem',
+                          borderRadius: 'var(--radius-sm)'
+                        }}
+                        title="Add another"
+                      >
+                        +
+                      </button>
 
                       {/* Remove row button */}
                       {canDelete && (
