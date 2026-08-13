@@ -10,6 +10,8 @@ export function TroopProvider({ children }) {
   const [selectedTroopId, setSelectedTroopId] = useState('');
   const [loadingTroops, setLoadingTroops] = useState(true);
   const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  const [userDisplayName, setUserDisplayName] = useState('');
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -21,9 +23,46 @@ export function TroopProvider({ children }) {
       setTroops([]);
       setSelectedTroopId('');
       setIsGlobalAdmin(false);
+      setNeedsOnboarding(false);
+      setUserDisplayName('');
       setLoadingTroops(false);
     }
   }, [user, authLoading]);
+
+  async function refreshDisplayName() {
+    const activeUser = user || (await supabase.auth.getUser())?.data?.user;
+    if (!activeUser?.id || !selectedTroopId) {
+      setUserDisplayName('');
+      return;
+    }
+    try {
+      const { data, error } = await supabase
+        .from('roster')
+        .select('first_name, last_initial')
+        .eq('user_id', activeUser.id)
+        .eq('troop_id', selectedTroopId)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (data && data.first_name) {
+        const initial = data.last_initial ? ` ${data.last_initial.charAt(0).toUpperCase()}.` : '';
+        setUserDisplayName(`${data.first_name.trim()}${initial}`);
+      } else {
+        setUserDisplayName('');
+      }
+    } catch (err) {
+      console.error('Error fetching user display name:', err);
+      setUserDisplayName('');
+    }
+  }
+
+  useEffect(() => {
+    if (user && selectedTroopId) {
+      refreshDisplayName();
+    } else {
+      setUserDisplayName('');
+    }
+  }, [user, selectedTroopId]);
 
   async function fetchTroops() {
     try {
@@ -34,6 +73,8 @@ export function TroopProvider({ children }) {
         setTroops([]);
         setSelectedTroopId('');
         setIsGlobalAdmin(false);
+        setNeedsOnboarding(false);
+        setUserDisplayName('');
         setLoadingTroops(false);
         return;
       }
@@ -46,6 +87,7 @@ export function TroopProvider({ children }) {
         
       if (globalAdminData) {
         setIsGlobalAdmin(true);
+        setNeedsOnboarding(false);
         const { data: allTroops, error: troopsError } = await supabase
           .from('troops')
           .select('id, troop_number');
@@ -79,12 +121,8 @@ export function TroopProvider({ children }) {
       setTroops(formattedTroops);
       setDefaultTroop(formattedTroops);
 
-      const needsOnboarding = data?.some(tu => tu.onboarding_completed === false);
-      const currentHash = window.location.hash || '';
-      if (needsOnboarding && !currentHash.includes('/accept-invite') && !currentHash.includes('/login')) {
-        window.location.hash = '#/profile';
-        return;
-      }
+      const needsOnboardingFlag = data?.some(tu => tu.onboarding_completed === false);
+      setNeedsOnboarding(needsOnboardingFlag || false);
       
     } catch (err) {
       console.error('Error fetching troops:', err);
@@ -140,6 +178,9 @@ export function TroopProvider({ children }) {
     selectTroopByNumberOrId,
     loadingTroops,
     isGlobalAdmin,
+    needsOnboarding,
+    userDisplayName,
+    refreshDisplayName,
     error,
     refreshTroops: fetchTroops
   };

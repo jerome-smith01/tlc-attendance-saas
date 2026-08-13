@@ -43,13 +43,15 @@ supabase.auth.onAuthStateChange((_event, session) => {
 This context is critical for any multi-user or multi-troop scenario. It:
 - Fetches all troops the authenticated user belongs to from `troop_users`.
 - Checks the `global_admins` table to set the `isGlobalAdmin` flag.
+- Tracks `needsOnboarding` boolean flag (`true` if any associated `troop_users` entry has `onboarding_completed = false`).
+- Maintains shared `userDisplayName` state (formatted as `"FirstName L."`) and provides `refreshDisplayName()` to refresh display name from the `roster` table for the user and active troop.
 - Exposes a `selectedTroopId` that drives all data queries on every page.
 - Persists the selected troop in `localStorage` under `tlc_last_troop_id` so the user's selection survives page refreshes.
 
 **Key rule**: Every page component (Dashboard, Roster, Events, Scanner) should consume `selectedTroopId` from `TroopContext` rather than fetching it directly. This ensures the troop switcher in the sidebar header controls the entire app context.
 
 ```js
-const { selectedTroopId, selectedTroop, troops, isGlobalAdmin } = useTroop();
+const { selectedTroopId, selectedTroop, troops, isGlobalAdmin, needsOnboarding, userDisplayName, refreshDisplayName } = useTroop();
 ```
 
 **Global Admin behavior**: When `isGlobalAdmin = true`, the `TroopContext` fetches all troops from the database (not just those in `troop_users`) and makes them available in the troop switcher.
@@ -346,3 +348,33 @@ The event scanner layout pairs live camera QR recognition with high-visibility a
 When an authorized user (`isGlobalAdmin`, `troop_admin`, `billing_admin`, `admin`, `leader`) toggles a member's attendance status in the scanner attendance grid (`handleToggleScanStatus`):
 1. **Confirmation Modal Prompt**: Prompts for confirmation via `confirm(...)` displaying title `Sign Member Back In` / `Sign Member Out` and explicitly showing the member's full name (`memberName`).
 2. **Database Update & Toast**: Updates `sign_out_time`, `signed_out_by`, and `status` in Supabase, then displays a toast confirmation containing `${memberName} marked as Signed In / Signed Out`.
+
+---
+
+## 14. Password Strength Meter Pattern (`PasswordStrengthMeter.jsx`)
+
+**File**: `src/components/PasswordStrengthMeter.jsx`
+
+The `PasswordStrengthMeter` component provides reusable, client-side password security scoring and real-time requirement feedback across authentication and account creation flows (such as invitation acceptance and profile security updates).
+
+### 14.1 Password Rules & Minimum Helper
+The exported helper function `passwordMeetsMinimum(password)` gates form submit buttons. A password meets minimum security standards if and only if all three rules are satisfied:
+1. **Length**: At least 8 characters (`password.length >= 8`)
+2. **Uppercase**: At least 1 uppercase letter (`/[A-Z]/`)
+3. **Number or Special Character**: At least 1 number or special character (`/[0-9]/` or `/[^A-Za-z0-9]/`)
+
+```js
+import { PasswordStrengthMeter, passwordMeetsMinimum } from '../components/PasswordStrengthMeter';
+
+// Example: submit button gating
+<button disabled={!passwordMeetsMinimum(password)}>Submit</button>
+```
+
+### 14.2 Visual Scoring & Rule Checklist
+The component evaluates the password against a 4-level scoring scale and renders:
+- **Color-Coded Strength Bar**:
+  - `Weak` (Red: `var(--color-error)`): 0 or 1 rule met, or empty.
+  - `Fair` (Orange: `var(--color-warning)`): 2 rules met.
+  - `Strong` (Green: `var(--color-success)`): All 3 rules met.
+  - `Very Strong` (Emerald `#10b981`): All 3 rules met + extra length (≥ 12 chars) or both number and special character.
+- **Inline Checklist (`✓`/`✗`)**: Displays status indicator icons and labels for each rule, updating dynamically in green (`var(--color-success)`) when met and muted gray (`var(--muted-foreground)`) when unfulfilled.

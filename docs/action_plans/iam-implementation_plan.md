@@ -2,6 +2,7 @@
 
 > **Status**: Approved — ready for implementation.
 > **Model default**: Google Flash 3.6 Medium (unless noted otherwise per phase)
+> **Architecture Docs Rule**: Architecture documentation in `docs/architecture/` must be updated at each phase as features are implemented, with Phase 9 serving as the final audit and consolidation step.
 
 ---
 
@@ -34,6 +35,9 @@ A reusable UI component accepting a `password` string prop. Renders:
 
 **Exported helper**: `passwordMeetsMinimum(password): boolean` — used by any form to gate its submit button.
 
+#### [MODIFY] [`docs/architecture/05_frontend_patterns.md`](file:///C:/Users/Jerom/My%20Apps/tlc_attendance_saas/docs/architecture/05_frontend_patterns.md)
+- Added Section 14: "Password Strength Meter Pattern" — documents `PasswordStrengthMeter` component and `passwordMeetsMinimum()` helper function. ✓
+
 ### ✅ Phase 1 Verification Gate
 Before advancing to Phase 2, verify:
 - [ ] Component renders without errors when imported into `AcceptInvite.jsx` (temporary test placement)
@@ -61,6 +65,9 @@ Before advancing to Phase 2, verify:
 - Runs automatically when `user` or `selectedTroopId` changes (replaces the inline fetch in `SidebarLayout`)
 - Add both to context value
 
+#### [MODIFY] [`docs/architecture/05_frontend_patterns.md`](file:///C:/Users/Jerom/My%20Apps/tlc_attendance_saas/docs/architecture/05_frontend_patterns.md)
+- Update Section 2 "Troop Context & Multi-Troop Switching": document `needsOnboarding` state, `userDisplayName`, and `refreshDisplayName()`.
+
 ### ✅ Phase 2 Verification Gate
 Before advancing to Phase 3, verify:
 - [ ] For a user with `onboarding_completed = false` in the DB: `useTroop().needsOnboarding` is `true` (verify via `console.log` or React DevTools)
@@ -87,6 +94,9 @@ if (needsOnboarding && location.pathname !== '/profile') {
 - Uses `useLocation()` from `react-router-dom` (already available via import)
 - `/profile` is allowed through so the user can complete onboarding without an infinite redirect loop
 - `/accept-invite` and `/login` are public routes outside `ProtectedRoute` — unaffected
+
+#### [MODIFY] [`docs/architecture/02_rls_and_auth.md`](file:///C:/Users/Jerom/My%20Apps/tlc_attendance_saas/docs/architecture/02_rls_and_auth.md) & [`docs/architecture/05_frontend_patterns.md`](file:///C:/Users/Jerom/My%20Apps/tlc_attendance_saas/docs/architecture/05_frontend_patterns.md)
+- Document hard route-level onboarding gate pattern in `ProtectedRoute` and `needsOnboarding` enforcement.
 
 ### ✅ Phase 3 Verification Gate
 Before advancing to Phase 4, verify:
@@ -118,6 +128,9 @@ Before advancing to Phase 4, verify:
 - On success: use `navigate('/events')` — **no `window.location.reload()`**
 
 **Existing-user form (`accountExists = true`):** No field changes (password only). Google OAuth button added in Phase 7.
+
+#### [MODIFY] [`docs/architecture/05_frontend_patterns.md`](file:///C:/Users/Jerom/My%20Apps/tlc_attendance_saas/docs/architecture/05_frontend_patterns.md)
+- Document single-form new user invitation acceptance pattern (Email, First Name, Last Initial, Password).
 
 ### ✅ Phase 4 Verification Gate
 Before advancing to Phase 5, verify:
@@ -153,6 +166,9 @@ Before advancing to Phase 5, verify:
 #### [MODIFY] [`accept-invite/index.ts`](file:///C:/Users/Jerom/My%20Apps/tlc_attendance_saas/supabase/functions/accept-invite/index.ts)
 
 No logic changes. Minor only: update any password error message wording to reference 8 characters for consistency.
+
+#### [MODIFY] [`docs/architecture/02_rls_and_auth.md`](file:///C:/Users/Jerom/My%20Apps/tlc_attendance_saas/docs/architecture/02_rls_and_auth.md)
+- Document `accept-invite-new-user` edge function flow & instant roster row creation with rollback logic.
 
 ### ✅ Phase 5 Verification Gate
 Before advancing to Phase 6, verify:
@@ -194,6 +210,9 @@ Before advancing to Phase 6, verify:
 - Add `<PasswordStrengthMeter />` below the New Password field
 - Update validation to 8-char + uppercase + number/special char
 - For OAuth-only users (no `email` provider): replace the "Change Password" section with an "Add a Password" section that does not require a current password (dual-provider — sets a password for the first time)
+
+#### [MODIFY] [`docs/architecture/05_frontend_patterns.md`](file:///C:/Users/Jerom/My%20Apps/tlc_attendance_saas/docs/architecture/05_frontend_patterns.md)
+- Update Section 12 "User Profile & Security Settings Pattern": document Onboarding Wizard mode for incomplete profiles.
 
 ### ✅ Phase 6 Verification Gate
 Before advancing to Phase 7, verify:
@@ -253,6 +272,9 @@ The existing auto-accept `useEffect` then handles validation + acceptance as nor
 
 **Email mismatch via OAuth**: If the Google account email ≠ invited email → show existing mismatch screen.
 
+#### [MODIFY] [`docs/architecture/02_rls_and_auth.md`](file:///C:/Users/Jerom/My%20Apps/tlc_attendance_saas/docs/architecture/02_rls_and_auth.md) & [`docs/architecture/05_frontend_patterns.md`](file:///C:/Users/Jerom/My%20Apps/tlc_attendance_saas/docs/architecture/05_frontend_patterns.md)
+- Document Google OAuth provider, sessionStorage invite token bridge, and dual-provider password linking.
+
 ### ✅ Phase 7 Verification Gate
 Before advancing to Phase 8, verify:
 - [ ] "Continue with Google" button appears on `/login`
@@ -275,6 +297,9 @@ Before advancing to Phase 8, verify:
 - Remove inline `loadUserName` `useEffect` and `userName` local state
 - Read `userDisplayName` from `useTroop()` instead
 - `getDisplayName()` checks `userDisplayName` first, falls back to `user_metadata.full_name`, then email prefix (same fallback order as before)
+
+#### [MODIFY] [`docs/architecture/05_frontend_patterns.md`](file:///C:/Users/Jerom/My%20Apps/tlc_attendance_saas/docs/architecture/05_frontend_patterns.md)
+- Document sidebar display name auto-refresh from context.
 
 ### ✅ Phase 8 Verification Gate
 Before advancing to Phase 9, verify:
