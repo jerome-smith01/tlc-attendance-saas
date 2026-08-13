@@ -8,7 +8,7 @@ import './Login.css';
 
 export function Login() {
   const { session } = useAuth();
-  const { selectedTroop, loadingTroops } = useTroop();
+  const { selectedTroop, troops, loadingTroops } = useTroop();
   const navigate     = useNavigate();
 
   const [email,    setEmail]    = useState('');
@@ -20,14 +20,14 @@ export function Login() {
   // If already logged in, bounce to appropriate home route immediately once troops settle
   useEffect(() => {
     if (session && !loadingTroops) {
-      const userRole = selectedTroop?.currentUserRole;
+      const userRole = selectedTroop?.currentUserRole || troops?.[0]?.currentUserRole;
       if (userRole === 'badge_scanner') {
         navigate('/events', { replace: true });
       } else {
         navigate('/dashboard', { replace: true });
       }
     }
-  }, [session, loadingTroops, selectedTroop, navigate]);
+  }, [session, loadingTroops, selectedTroop, troops, navigate]);
 
   // Clear error as soon as the user starts correcting their input
   const handleEmailChange    = (e) => { setError(''); setMessage(''); setEmail(e.target.value); };

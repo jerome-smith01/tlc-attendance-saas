@@ -69,7 +69,12 @@ serve(async (req) => {
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email: normalizedEmail,
       password: password,
-      email_confirm: true // Mark email confirmed automatically since they received the invite link
+      email_confirm: true, // Mark email confirmed automatically since they received the invite link
+      user_metadata: {
+        first_name: trimmedFirstName,
+        last_initial: trimmedLastInitial,
+        full_name: `${trimmedFirstName} ${trimmedLastInitial}`
+      }
     })
 
     if (createError) {
@@ -119,7 +124,7 @@ serve(async (req) => {
     // 5. Delete the invite
     await supabaseAdmin.from('pending_invites').delete().eq('id', inviteData.id)
 
-    return new Response(JSON.stringify({ success: true, email: normalizedEmail }), {
+    return new Response(JSON.stringify({ success: true, email: normalizedEmail, troop_id: inviteData.troop_id }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })

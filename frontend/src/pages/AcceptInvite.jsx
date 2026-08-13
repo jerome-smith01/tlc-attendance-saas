@@ -121,29 +121,40 @@ export function AcceptInvite() {
       if (functionError) {
         let errMsg = functionError.message;
         try {
-          const body = await functionError.context?.json?.();
-          if (body?.emailMismatch) {
-            setMismatchData({
-              loggedInEmail: body.loggedInEmail,
-              invitedEmail: body.invitedEmail
-            });
-            return;
+          if (functionError.context && typeof functionError.context.json === 'function') {
+            const body = await functionError.context.json();
+            if (body?.emailMismatch) {
+              setMismatchData({
+                loggedInEmail: body.loggedInEmail,
+                invitedEmail: body.invitedEmail
+              });
+              return;
+            }
+            if (body?.error) errMsg = body.error;
           }
-          if (body?.error) errMsg = body.error;
         } catch (_) { }
         throw new Error(errMsg || 'Failed to accept invite');
       }
 
+      let targetRole = selectedTroop?.currentUserRole;
+      let targetTroopId = data?.troop_id;
+
       if (refreshTroops) {
-        await refreshTroops();
-      }
-      if (data?.troop_id) {
-        setSelectedTroopId(data.troop_id);
+        const res = await refreshTroops();
+        if (res?.troops && res.troops.length > 0) {
+          const matchedTroop = targetTroopId
+            ? res.troops.find(t => t.id === targetTroopId)
+            : res.troops[0];
+          if (matchedTroop) {
+            targetRole = matchedTroop.currentUserRole;
+            setSelectedTroopId(matchedTroop.id);
+          }
+        }
       }
 
       setSuccess(true);
       addToast('Invite accepted successfully!', 'success');
-      const targetPath = (selectedTroop?.currentUserRole === 'badge_scanner') ? '/events' : '/dashboard';
+      const targetPath = (targetRole === 'badge_scanner') ? '/events' : '/dashboard';
       setTimeout(() => navigate(targetPath, { replace: true }), 1500);
     } catch (err) {
       console.error('Accept invite error:', err);
@@ -249,8 +260,10 @@ export function AcceptInvite() {
       if (fnError) {
         let errMsg = fnError.message;
         try {
-          const body = await fnError.context?.json?.();
-          if (body?.error) errMsg = body.error;
+          if (fnError.context && typeof fnError.context.json === 'function') {
+            const body = await fnError.context.json();
+            if (body?.error) errMsg = body.error;
+          }
         } catch (_) { }
         // Navigate to error page BEFORE any signInWithPassword call — otherwise the
         // auth state change silently redirects the user away without showing the error.
@@ -274,13 +287,25 @@ export function AcceptInvite() {
         throw new Error('Account created! Please log in on the main screen.');
       }
 
+      let targetRole = selectedTroop?.currentUserRole;
+      let targetTroopId = data?.troop_id;
+
       if (refreshTroops) {
-        await refreshTroops();
+        const res = await refreshTroops();
+        if (res?.troops && res.troops.length > 0) {
+          const matchedTroop = targetTroopId
+            ? res.troops.find(t => t.id === targetTroopId)
+            : res.troops[0];
+          if (matchedTroop) {
+            targetRole = matchedTroop.currentUserRole;
+            setSelectedTroopId(matchedTroop.id);
+          }
+        }
       }
 
       setSuccess(true);
       addToast('Account created and invite accepted!', 'success');
-      const targetPath = (selectedTroop?.currentUserRole === 'badge_scanner') ? '/events' : '/dashboard';
+      const targetPath = (targetRole === 'badge_scanner') ? '/events' : '/dashboard';
       setTimeout(() => navigate(targetPath, { replace: true }), 1500);
     } catch (err) {
       console.error('Create account error:', err);

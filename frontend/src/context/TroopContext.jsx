@@ -95,7 +95,7 @@ export function TroopProvider({ children }) {
         if (troopsError) throw troopsError;
         setTroops(allTroops || []);
         setDefaultTroop(allTroops || []);
-        return;
+        return { troops: allTroops || [], isGlobalAdmin: true, needsOnboarding: false };
       }
 
       const { data, error } = await supabase
@@ -123,6 +123,8 @@ export function TroopProvider({ children }) {
 
       const needsOnboardingFlag = data?.some(tu => tu.onboarding_completed === false);
       setNeedsOnboarding(needsOnboardingFlag || false);
+
+      return { troops: formattedTroops, isGlobalAdmin: false, needsOnboarding: needsOnboardingFlag || false };
       
     } catch (err) {
       console.error('Error fetching troops:', err);

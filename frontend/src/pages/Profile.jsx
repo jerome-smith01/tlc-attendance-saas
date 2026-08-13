@@ -77,32 +77,63 @@ export function Profile() {
         console.error('Error fetching profile roster:', error);
       }
 
+      let currentFirst = (data?.first_name || '').trim();
+      let currentLastInitial = (data?.last_initial || '').trim();
+
       if (data) {
         setMember(data);
-        setFirstName(data.first_name || '');
-        setLastInitial(data.last_initial || '');
         setMemberCode(data.member_id || '');
         setRole(data.role || '');
-      } else {
-        // Fallback: Check if user has an existing roster entry in another troop
+      }
+
+      // If either first name or last initial is missing from the current troop roster entry (or no roster entry exists)
+      if (!currentFirst || !currentLastInitial) {
+        // 1. Look for existing roster entry across all troops for this user or email
         const { data: existingRoster } = await supabase
           .from('roster')
           .select('first_name, last_initial')
           .or(`user_id.eq.${user.id},email.eq.${user.email}`)
           .not('first_name', 'is', null)
+          .neq('first_name', '')
           .limit(1)
           .maybeSingle();
 
         if (existingRoster?.first_name) {
-          setFirstName(existingRoster.first_name || '');
-          setLastInitial(existingRoster.last_initial || '');
-        } else {
-          const metaName = user?.user_metadata?.full_name || '';
-          const parts = metaName.split(' ');
-          if (parts.length > 0) setFirstName(parts[0]);
-          if (parts.length > 1) setLastInitial(parts[parts.length - 1][0]);
+          if (!currentFirst) currentFirst = existingRoster.first_name.trim();
+          if (!currentLastInitial && existingRoster.last_initial) currentLastInitial = existingRoster.last_initial.trim().charAt(0).toUpperCase();
+        }
+
+        // 2. Check auth user_metadata
+        if (!currentFirst || !currentLastInitial) {
+          const metaFirst = user?.user_metadata?.first_name || user?.user_metadata?.given_name || '';
+          const metaLast = user?.user_metadata?.last_name || user?.user_metadata?.family_name || user?.user_metadata?.last_initial || '';
+          const metaFullName = (user?.user_metadata?.full_name || user?.user_metadata?.name || '').trim();
+
+          if (!currentFirst && metaFirst) currentFirst = metaFirst.trim();
+          if (!currentLastInitial && metaLast) currentLastInitial = metaLast.trim().charAt(0).toUpperCase();
+
+          if ((!currentFirst || !currentLastInitial) && metaFullName) {
+            const parts = metaFullName.split(/\s+/);
+            if (!currentFirst && parts.length > 0) currentFirst = parts[0];
+            if (!currentLastInitial && parts.length > 1) currentLastInitial = parts[parts.length - 1].charAt(0).toUpperCase();
+          }
+        }
+
+        // 3. Fallback to extracting from email if still missing
+        if ((!currentFirst || !currentLastInitial) && user?.email) {
+          const emailPrefix = user.email.split('@')[0];
+          const nameParts = emailPrefix.split(/[._-]/).filter(Boolean);
+          if (!currentFirst && nameParts.length > 0) {
+            currentFirst = nameParts[0].charAt(0).toUpperCase() + nameParts[0].slice(1).toLowerCase();
+          }
+          if (!currentLastInitial && nameParts.length > 1) {
+            currentLastInitial = nameParts[nameParts.length - 1].charAt(0).toUpperCase();
+          }
         }
       }
+
+      setFirstName(currentFirst);
+      setLastInitial(currentLastInitial);
     } catch (err) {
       console.error('Error loading profile:', err);
       addToast('Failed to load profile details.', 'error');

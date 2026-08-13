@@ -84,7 +84,7 @@ serve(async (req) => {
       })
     }
 
-    // 4. Check if user already has a roster entry in any troop to reuse their name
+    // 4. Check if user already has a roster entry in any troop or user_metadata to reuse their name
     const { data: existingRoster } = await supabaseAdmin
       .from('roster')
       .select('first_name, last_initial')
@@ -93,14 +93,24 @@ serve(async (req) => {
       .limit(1)
       .maybeSingle()
 
-    const hasExistingName = !!(existingRoster?.first_name)
+    let firstNameToUse = existingRoster?.first_name || user.user_metadata?.first_name || user.user_metadata?.given_name || ''
+    let lastInitialToUse = existingRoster?.last_initial || user.user_metadata?.last_initial || user.user_metadata?.last_name || user.user_metadata?.family_name || ''
+
+    if (!firstNameToUse && (user.user_metadata?.full_name || user.user_metadata?.name)) {
+      const fullName = (user.user_metadata.full_name || user.user_metadata.name).trim()
+      const parts = fullName.split(/\s+/)
+      if (parts.length > 0) firstNameToUse = parts[0]
+      if (parts.length > 1 && !lastInitialToUse) lastInitialToUse = parts[parts.length - 1].charAt(0).toUpperCase()
+    }
+
+    const hasName = !!(firstNameToUse && lastInitialToUse)
 
     // 5. Insert into troop_users
     const { error: linkError } = await supabaseAdmin.from('troop_users').insert([{
       user_id: user.id,
       troop_id: inviteData.troop_id,
       role: inviteData.role,
-      onboarding_completed: hasExistingName
+      onboarding_completed: hasName
     }])
 
     if (linkError) {
@@ -131,19 +141,17 @@ serve(async (req) => {
     if (targetRoster) {
       // Link existing roster record to user_id and sync name if available
       const updateData: any = { user_id: user.id }
-      if (hasExistingName) {
-        updateData.first_name = existingRoster.first_name
-        updateData.last_initial = existingRoster.last_initial
-      }
+      if (firstNameToUse) updateData.first_name = firstNameToUse
+      if (lastInitialToUse) updateData.last_initial = lastInitialToUse
       await supabaseAdmin.from('roster').update(updateData).eq('id', targetRoster.id)
-    } else if (hasExistingName) {
+    } else {
       // Create new roster entry pre-filled with user's name
       await supabaseAdmin.from('roster').insert([{
         troop_id: inviteData.troop_id,
         user_id: user.id,
         email: invitedEmail,
-        first_name: existingRoster.first_name,
-        last_initial: existingRoster.last_initial,
+        first_name: firstNameToUse || null,
+        last_initial: lastInitialToUse || null,
         role: inviteData.role
       }])
     }
