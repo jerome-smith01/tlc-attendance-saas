@@ -10,7 +10,7 @@ import './Login.css';
 
 export function AcceptInvite() {
   const { session, user, signOut, loading: authLoading } = useAuth();
-  const { refreshTroops, setSelectedTroopId } = useTroop();
+  const { refreshTroops, setSelectedTroopId, selectedTroop } = useTroop();
   const navigate = useNavigate();
   const { addToast } = useToast();
   const [searchParams] = useSearchParams();
@@ -130,9 +130,20 @@ export function AcceptInvite() {
 
       setSuccess(true);
       addToast('Invite accepted successfully!', 'success');
-      setTimeout(() => navigate('/dashboard', { replace: true }), 1500);
+      const targetPath = (selectedTroop?.currentUserRole === 'badge_scanner') ? '/events' : '/dashboard';
+      setTimeout(() => navigate(targetPath, { replace: true }), 1500);
     } catch (err) {
       console.error('Accept invite error:', err);
+
+      // If the user's account was deleted in Supabase but their local session is still active,
+      // the edge function will return 401 Unauthorized. Clear the stale session and stay on the page.
+      if (err.message && err.message.toLowerCase().includes('unauthorized')) {
+        await signOut();
+        acceptHandled.current = false;
+        setSubmitting(false);
+        return;
+      }
+
       // Navigate to the dedicated error page so the auth redirect can't swallow the error
       navigate('/invite-error', {
         replace: true,
@@ -239,7 +250,8 @@ export function AcceptInvite() {
 
       setSuccess(true);
       addToast('Account created and invite accepted!', 'success');
-      setTimeout(() => navigate('/dashboard', { replace: true }), 1500);
+      const targetPath = (selectedTroop?.currentUserRole === 'badge_scanner') ? '/events' : '/dashboard';
+      setTimeout(() => navigate(targetPath, { replace: true }), 1500);
     } catch (err) {
       console.error('Create account error:', err);
       setFormError(err.message);
@@ -289,7 +301,7 @@ export function AcceptInvite() {
             <div style={{ color: 'var(--color-success)', fontSize: '1.2rem', marginBottom: '1rem', fontWeight: 600 }}>
               ✓ Invitation accepted!
             </div>
-            <p style={{ color: 'var(--text-secondary)' }}>Redirecting you to your events...</p>
+            <p style={{ color: 'var(--text-secondary)' }}>Redirecting you now...</p>
           </div>
         ) : mismatchData ? (
           <div style={{ padding: '0.5rem 0' }}>

@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
+import { useTroop } from '../context/TroopContext';
 import { ThemeToggle } from '../components/ThemeToggle';
 import './Login.css';
 
 export function Login() {
   const { session } = useAuth();
+  const { selectedTroop, loadingTroops } = useTroop();
   const navigate     = useNavigate();
 
   const [email,    setEmail]    = useState('');
@@ -15,10 +17,17 @@ export function Login() {
   const [message,  setMessage]  = useState('');
   const [loading,  setLoading]  = useState(false);
 
-  // If already logged in, bounce to dashboard immediately
+  // If already logged in, bounce to appropriate home route immediately once troops settle
   useEffect(() => {
-    if (session) navigate('/dashboard', { replace: true });
-  }, [session, navigate]);
+    if (session && !loadingTroops) {
+      const userRole = selectedTroop?.currentUserRole;
+      if (userRole === 'badge_scanner') {
+        navigate('/events', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
+    }
+  }, [session, loadingTroops, selectedTroop, navigate]);
 
   // Clear error as soon as the user starts correcting their input
   const handleEmailChange    = (e) => { setError(''); setMessage(''); setEmail(e.target.value); };
