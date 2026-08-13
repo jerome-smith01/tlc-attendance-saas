@@ -29,7 +29,7 @@ export function SidebarLayout() {
   const handleSignOut = async () => {
     setMobileNavOpen(false);
     await signOut();
-    navigate('/login');
+    navigate('/');
   };
 
   const linkStyle = (path) => {
