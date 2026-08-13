@@ -41,7 +41,7 @@ export function EditMember() {
   const [isMemberIdHighlighted, setIsMemberIdHighlighted] = useState(false);
 
   const currentUserRole = selectedTroop?.currentUserRole;
-  const canManageRoster = isGlobalAdmin || currentUserRole === 'troop_admin' || currentUserRole === 'billing_admin';
+  const canManageRoster = isGlobalAdmin || currentUserRole === 'roster_manager' || currentUserRole === 'troop_admin';
 
   const triggerMemberIdHighlight = () => {
     setIsMemberIdHighlighted(true);
@@ -84,7 +84,7 @@ export function EditMember() {
   }
 
   const isLeader = member && member.role !== null && member.role !== 'trailman';
-  const isProtectedRole = member && (member.role === 'billing_admin' || member.role === 'global_admin');
+  const isProtectedRole = member && (member.role === 'troop_admin' || member.role === 'global_admin');
   const isOwnAccount = member && member.user_id === user?.id;
 
   const handleSave = async (e) => {
@@ -398,7 +398,7 @@ export function EditMember() {
                 {isProtectedRole ? (
                   <input
                     type="text"
-                    value={role === 'billing_admin' ? 'Billing Admin' : 'Global Admin'}
+                    value={role === 'troop_admin' ? 'Troop Admin' : 'Global Admin'}
                     readOnly
                     disabled
                     style={{ width: '100%', padding: '0.65rem 0.75rem', background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', boxSizing: 'border-box', opacity: 0.8, cursor: 'not-allowed' }}
@@ -409,7 +409,7 @@ export function EditMember() {
                     onChange={e => setRole(e.target.value)}
                     style={{ width: '100%', padding: '0.65rem 0.75rem', background: 'var(--bg-secondary)', color: 'var(--foreground)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', boxSizing: 'border-box' }}
                   >
-                    <option value="troop_admin">Troop Admin</option>
+                    <option value="roster_manager">Roster Manager</option>
                     <option value="badge_scanner">Badge Scanner</option>
                   </select>
                 )}

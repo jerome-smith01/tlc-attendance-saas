@@ -38,7 +38,7 @@ export default function App() {
                   <Route 
                     path="/dashboard" 
                     element={
-                      <ProtectedRoute allowedRoles={['troop_admin', 'billing_admin', 'global_admin']}>
+                      <ProtectedRoute allowedRoles={['roster_manager', 'troop_admin', 'global_admin']}>
                         <Dashboard />
                       </ProtectedRoute>
                     } 
@@ -46,7 +46,7 @@ export default function App() {
                   <Route 
                     path="/troop/:troopNumber/dashboard" 
                     element={
-                      <ProtectedRoute allowedRoles={['troop_admin', 'billing_admin', 'global_admin']}>
+                      <ProtectedRoute allowedRoles={['roster_manager', 'troop_admin', 'global_admin']}>
                         <Dashboard />
                       </ProtectedRoute>
                     } 
@@ -54,7 +54,7 @@ export default function App() {
                   <Route 
                     path="/events/:eventId" 
                     element={
-                      <ProtectedRoute allowedRoles={['badge_scanner', 'troop_admin', 'billing_admin', 'global_admin']}>
+                      <ProtectedRoute allowedRoles={['badge_scanner', 'roster_manager', 'troop_admin', 'global_admin']}>
                         <Scanner />
                       </ProtectedRoute>
                     } 
@@ -62,7 +62,7 @@ export default function App() {
                   <Route 
                     path="/troop/:troopNumber/events/:eventId" 
                     element={
-                      <ProtectedRoute allowedRoles={['badge_scanner', 'troop_admin', 'billing_admin', 'global_admin']}>
+                      <ProtectedRoute allowedRoles={['badge_scanner', 'roster_manager', 'troop_admin', 'global_admin']}>
                         <Scanner />
                       </ProtectedRoute>
                     } 
@@ -74,7 +74,7 @@ export default function App() {
                   <Route 
                     path="/roster/:tab" 
                     element={
-                      <ProtectedRoute allowedRoles={['troop_admin', 'billing_admin', 'global_admin']}>
+                      <ProtectedRoute allowedRoles={['roster_manager', 'troop_admin', 'global_admin']}>
                         <Roster />
                       </ProtectedRoute>
                     } 
@@ -82,7 +82,7 @@ export default function App() {
                   <Route 
                     path="/roster/:memberId/edit" 
                     element={
-                      <ProtectedRoute allowedRoles={['troop_admin', 'billing_admin', 'global_admin']}>
+                      <ProtectedRoute allowedRoles={['roster_manager', 'troop_admin', 'global_admin']}>
                         <EditMember />
                       </ProtectedRoute>
                     } 
@@ -90,7 +90,7 @@ export default function App() {
                   <Route 
                     path="/troop/:troopNumber/roster/:tab" 
                     element={
-                      <ProtectedRoute allowedRoles={['troop_admin', 'billing_admin', 'global_admin']}>
+                      <ProtectedRoute allowedRoles={['roster_manager', 'troop_admin', 'global_admin']}>
                         <Roster />
                       </ProtectedRoute>
                     } 
@@ -98,7 +98,7 @@ export default function App() {
                   <Route 
                     path="/troop/:troopNumber/roster/:memberId/edit" 
                     element={
-                      <ProtectedRoute allowedRoles={['troop_admin', 'billing_admin', 'global_admin']}>
+                      <ProtectedRoute allowedRoles={['roster_manager', 'troop_admin', 'global_admin']}>
                         <EditMember />
                       </ProtectedRoute>
                     } 
@@ -106,7 +106,7 @@ export default function App() {
                   <Route 
                     path="/events" 
                     element={
-                      <ProtectedRoute allowedRoles={['badge_scanner', 'troop_admin', 'billing_admin', 'global_admin']}>
+                      <ProtectedRoute allowedRoles={['badge_scanner', 'roster_manager', 'troop_admin', 'global_admin']}>
                         <Events />
                       </ProtectedRoute>
                     } 
@@ -114,7 +114,7 @@ export default function App() {
                   <Route 
                     path="/troop/:troopNumber/events" 
                     element={
-                      <ProtectedRoute allowedRoles={['badge_scanner', 'troop_admin', 'billing_admin', 'global_admin']}>
+                      <ProtectedRoute allowedRoles={['badge_scanner', 'roster_manager', 'troop_admin', 'global_admin']}>
                         <Events />
                       </ProtectedRoute>
                     } 
@@ -126,7 +126,7 @@ export default function App() {
                   <Route 
                     path="/billing" 
                     element={
-                      <ProtectedRoute allowedRoles={['billing_admin', 'global_admin']}>
+                      <ProtectedRoute allowedRoles={['troop_admin', 'global_admin']}>
                         <Billing />
                       </ProtectedRoute>
                     } 
@@ -134,7 +134,7 @@ export default function App() {
                   <Route 
                     path="/troop/:troopNumber/billing" 
                     element={
-                      <ProtectedRoute allowedRoles={['billing_admin', 'global_admin']}>
+                      <ProtectedRoute allowedRoles={['troop_admin', 'global_admin']}>
                         <Billing />
                       </ProtectedRoute>
                     } 

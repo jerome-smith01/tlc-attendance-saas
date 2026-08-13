@@ -462,7 +462,7 @@ export function Events() {
 
   // Admin / Leader check
   const currentUserRole = selectedTroop?.currentUserRole;
-  const canManage = isGlobalAdmin || currentUserRole === 'billing_admin' || currentUserRole === 'troop_admin';
+  const canManage = isGlobalAdmin || currentUserRole === 'roster_manager' || currentUserRole === 'troop_admin';
 
   const headerRef = useRef(null);
 

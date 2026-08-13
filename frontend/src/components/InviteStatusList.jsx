@@ -46,7 +46,7 @@ export function InviteStatusList({ troopId, highlightedEmail, refreshKey }) {
       const formatted = (data || []).map(item => ({
         id: item.id,
         email: item.email,
-        role: item.role === 'troop_admin' ? 'Troop Admin' : 'Badge Scanner',
+        role: item.role === 'troop_admin' ? 'Troop Admin' : item.role === 'roster_manager' ? 'Roster Manager' : 'Badge Scanner',
         status: new Date(item.expires_at) < new Date() ? 'Expired' : 'Invited',
         sent_at: item.created_at ? new Date(item.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Recently'
       }));

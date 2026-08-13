@@ -9,7 +9,7 @@
 
 Two things v3 got wrong, now resolved by the docs:
 
-1. **Role names.** The roles are **not** `member`/`admin`/`billing_admin` as v3 assumed — they were renamed in migration 003. The real `troop_role` enum is **`badge_scanner`, `troop_admin`, `billing_admin`**, plus a separate platform-level `global_admin` (via the `global_admins` table, not a troop role — bypasses all troop-scoped RLS). Every reference to "member" or "admin" role-gating in this document and in the codebase should use the real names. See Section 3 for the corrected role table.
+1. **Role names.** The roles are **not** `member`/`admin`/`billing_admin` as v3 assumed — they were renamed in migration 003 and 017. The real `troop_role` enum is **`badge_scanner`, `roster_manager`, `troop_admin`**, plus a separate platform-level `global_admin` (via the `global_admins` table, not a troop role — bypasses all troop-scoped RLS). Every reference to "member" or "admin" role-gating in this document and in the codebase should use the real names. See Section 3 for the corrected role table.
 2. **Two things flagged as "missing" in v3 are not missing — they're deliberate, already-documented decisions:**
    - **Approval Queue:** `04_scan_lifecycle.md` states explicitly there is *no* dedicated per-scan approval screen by design — "a deliberate MVP-1 simplification." Approval happens in bulk via "End Session" (sets `ended_at`, batch-updates all `pending` scans to `approved`). This is not a gap to fill; it's the intended MVP-1 pattern. A future per-scan review UI is noted as a possible later addition, not part of this pass.
    - **CSV Import:** Fully implemented in `RosterList.jsx` (not one of the files originally shared — only the `Roster.jsx` wrapper was). It has a real spec: maps `Last Name`/`Nickname`/`First Name`/`Member Number`, title-cases names, applies a PII guardrail (ignores every other CSV column), and upserts on `(troop_id, member_id)` with `ignoreDuplicates: true`. **Preserve this logic exactly** — it's not being redesigned, only restyled if it's touched at all.
@@ -18,7 +18,7 @@ Two things v3 got wrong, now resolved by the docs:
 
 ## 2. Resolved Open Questions (from product owner)
 
-- **Dashboard's role:** confirmed — `badge_scanner` users see **only** the Scanner page. No lightweight stats view needed for them anywhere. Dashboard is purely `troop_admin`/`billing_admin`/`global_admin` territory.
+- **Dashboard's role:** confirmed — `badge_scanner` users see **only** the Scanner page. No lightweight stats view needed for them anywhere. Dashboard is purely `roster_manager`/`troop_admin`/`global_admin` territory.
 - **PWA/offline conversion:** confirmed **out of scope** for this pass. The existing manual offline queue (localStorage + CSV/JSON export) is sufficient for now; a full installable PWA with background sync is a later project.
 - **DataTable state scope:** confirmed **per-user** (from the previous round) — each leader has their own phone/login, no shared-device design needed.
 
@@ -29,11 +29,11 @@ Two things v3 got wrong, now resolved by the docs:
 | Role | Landing | Sees | Does NOT see |
 |:---|:---|:---|:---|
 | `badge_scanner` | **Scanner page — nothing else.** | Scanner, current session's attendance log | Dashboard, Roster, Sessions, Billing, user management, approval/sync actions, roster delete |
-| `troop_admin` | Troop Dashboard | Everything above + full roster CRUD (incl. CSV import), Sessions history, End/Reenable/Delete sessions, approve via End Session, Chrome Extension sync, invite/promote/remove users | Billing/Stripe, troop metadata (city/state/troop number) |
-| `billing_admin` | Troop Dashboard (admin view + billing) | Everything `troop_admin` sees + troop metadata editing, Stripe billing portal | Nothing hidden — full troop access |
+| `roster_manager` | Troop Dashboard | Everything above + full roster CRUD (incl. CSV import), Sessions history, End/Reenable/Delete sessions, approve via End Session, Chrome Extension sync, invite/promote/remove users | Billing/Stripe, troop metadata (city/state/troop number) |
+| `troop_admin` | Troop Dashboard (admin view + billing) | Everything `roster_manager` sees + troop metadata editing, Stripe billing portal | Nothing hidden — full troop access |
 | `global_admin` | N/A — platform-owner bypass, not a normal login persona | All troops via `TroopContext`'s `isGlobalAdmin` flag (troop switcher shows every troop, not just memberships) | N/A |
 
-Two parallel role systems exist and matter for Roster.jsx specifically: `troop_users.role` (drives RLS/access) vs. `roster.role` (labels a roster *row* as `trailman`, `billing_admin`, `troop_admin`, or `badge_scanner` — youth vs. leader distinction within the same table). The Roster DataTable needs role-aware columns: `email` and `user_id`-linked fields are only meaningful for leader rows, not youth rows — don't show empty `email` cells for every trailman.
+Two parallel role systems exist and matter for Roster.jsx specifically: `troop_users.role` (drives RLS/access) vs. `roster.role` (labels a roster *row* as `trailman`, `troop_admin`, `roster_manager`, or `badge_scanner` — youth vs. leader distinction within the same table). The Roster DataTable needs role-aware columns: `email` and `user_id`-linked fields are only meaningful for leader rows, not youth rows — don't show empty `email` cells for every trailman.
 
 **Route/access matrix (from `App.jsx`, confirmed in docs):**
 
@@ -41,11 +41,11 @@ Two parallel role systems exist and matter for Roster.jsx specifically: `troop_u
 |:---|:---|:---|
 | `/login` | Login.jsx | Public |
 | `/complete-profile` | CompleteProfile.jsx | Any authenticated user, post-invite |
-| `/dashboard` | Dashboard.jsx | `troop_admin` / `billing_admin` / `global_admin` only |
-| `/roster` | Roster.jsx | `troop_admin` / `billing_admin` / `global_admin` only |
-| `/sessions` | Sessions.jsx | `troop_admin` / `billing_admin` / `global_admin` only |
+| `/dashboard` | Dashboard.jsx | `roster_manager` / `troop_admin` / `global_admin` only |
+| `/roster` | Roster.jsx | `roster_manager` / `troop_admin` / `global_admin` only |
+| `/sessions` | Sessions.jsx | `roster_manager` / `troop_admin` / `global_admin` only |
 | `/scanner` | Scanner.jsx | **Everyone** — this is `badge_scanner`'s only destination |
-| `/billing` | Billing.jsx | `billing_admin` / `global_admin` only |
+| `/billing` | Billing.jsx | `troop_admin` / `global_admin` only |
 
 Currently all routes are behind one generic `<ProtectedRoute>` with no role branching. This is the concrete implementation target for Section 5, item 3 (role-based routing).
 
@@ -73,7 +73,7 @@ Currently all routes are behind one generic `<ProtectedRoute>` with no role bran
 - No glassmorphic card treatment outside Login/CompleteProfile.
 - Ad hoc modal styling instead of `.app-modal-*`.
 - UI only shows session-level sync state, not the per-scan `pending → approved → complete` lifecycle.
-- No role-based routing — everyone gets the same `<ProtectedRoute>` treatment regardless of `badge_scanner` vs. `troop_admin`/`billing_admin`.
+- No role-based routing — everyone gets the same `<ProtectedRoute>` treatment regardless of `badge_scanner` vs. `roster_manager`/`troop_admin`.
 - **Content bug, not just a visual one:** Dashboard's warning banner reads "Data will be automatically purged in X days" for any unsynced session, using a 30-day soft countdown. But per `04_scan_lifecycle.md`, **scans for sessions that have never been synced are not purged automatically at all** — the real 14-day hard purge only starts counting *after* `synced_at` is set. As written, the banner tells leaders/admins something will be auto-deleted when it won't be. This should be corrected as part of the redesign, not just restyled: the warning should instead communicate "this session hasn't been synced yet" without implying an automatic deletion deadline that doesn't apply to it.
 
 ---
@@ -81,7 +81,7 @@ Currently all routes are behind one generic `<ProtectedRoute>` with no role bran
 ## 6. Primary User & Context of Use, by Role
 
 - **`badge_scanner` (highest priority — the entire outdoor use case):** Volunteer leaders, outdoors, one-handed, bright sun/glare, spotty signal, scanning 10-40 kids quickly, own phone. Their entire app experience is the Scanner page — no nav, no dashboard, no distraction.
-- **`troop_admin` / `billing_admin`:** Indoors/at a desk more often — roster management, session review, running the Chrome Extension. Lower time-pressure, conventional desktop-friendly patterns are fine.
+- **`roster_manager` / `troop_admin`:** Indoors/at a desk more often — roster management, session review, running the Chrome Extension. Lower time-pressure, conventional desktop-friendly patterns are fine.
 
 ---
 
@@ -89,7 +89,7 @@ Currently all routes are behind one generic `<ProtectedRoute>` with no role bran
 
 1. **Fix the color drift.** Swap every hardcoded hex for the matching `var(--color-*)`, using `color-mix()` (already used in Login.css) for tinted backgrounds.
 2. **Formalize the glass-card component**, applied across Dashboard, Scanner's status bar, Sessions, Roster, Billing.
-3. **Implement role-based routing.** `badge_scanner` → Scanner only, no sidebar/dashboard access at all. `troop_admin`/`billing_admin`/`global_admin` → full nav per the route matrix in Section 3. This is likely the single highest-leverage change in the whole redesign — bigger than any visual polish.
+3. **Implement role-based routing.** `badge_scanner` → Scanner only, no sidebar/dashboard access at all. `roster_manager`/`troop_admin`/`global_admin` → full nav per the route matrix in Section 3. This is likely the single highest-leverage change in the whole redesign — bigger than any visual polish.
 4. **Verify the existing responsive sidebar is used correctly** in `SidebarLayout.jsx` and that its nav items are filtered by role rather than shown-then-disabled.
 5. **Standardize buttons**: add missing secondary/neutral and destructive (`--color-error`-based) variants alongside the existing `.btn-primary` (blue) and `.btn-action` (should reference `--color-success`, not repeat its hex).
 6. **Adopt `.app-modal-*`** for Scanner's unknown-member modal and Sessions' attendee modal.
@@ -112,28 +112,28 @@ Reference standard, minor polish only (placeholder logo, hardcoded success/error
 - Success/warning overlays should reference `--color-success`/`--color-warning` via `color-mix()`.
 - Attendance table reachable without scrolling past the viewfinder (collapsible panel/swipe-up sheet); add the scan-status badge (item 9).
 - Unknown-member modal: adopt `.app-modal-*`, confirm single-column mobile stacking.
-- "End Session" (visible to `troop_admin`/`billing_admin` when they use Scanner too) gets the new destructive button variant and a confirm modal, kept visible rather than hidden in a menu.
+- "End Session" (visible to `roster_manager`/`troop_admin` when they use Scanner too) gets the new destructive button variant and a confirm modal, kept visible rather than hidden in a menu.
 - `SessionSelector` becomes a DataTable instance, not a dropdown.
 
-### 8.3 Dashboard.jsx — `troop_admin`/`billing_admin`/`global_admin` only
+### 8.3 Dashboard.jsx — `roster_manager`/`troop_admin`/`global_admin` only
 - Wrap the overview panel in the glass-card component.
 - **Fix the warning banner's copy and token usage together** (Section 5/7 item 10) — this is the one place a pure visual restyle would leave a factual error in place if not addressed explicitly.
 - No Approval Queue to build here (Section 1) — the existing bulk End-Session-approves pattern stays as-is.
 - Troop switcher becomes a table/list picker.
 
-### 8.4 Sessions.jsx — `troop_admin`/`billing_admin`/`global_admin` only
+### 8.4 Sessions.jsx — `roster_manager`/`troop_admin`/`global_admin` only
 - Upgrade to the shared DataTable (sort, filter, column show/hide/reorder, reset).
 - Status badges extended to show per-scan lifecycle when a session is expanded, not just session-level sync status.
 - Row actions (Reset Sync/Reenable/End/Delete) stay as visible inline buttons, never a dropdown.
 - Attendee modal: adopt `.app-modal-*`, otherwise structurally solid.
 
-### 8.5 Roster.jsx — `troop_admin`/`billing_admin`/`global_admin` only
+### 8.5 Roster.jsx — `roster_manager`/`troop_admin`/`global_admin` only
 - CSV import already exists in `RosterList.jsx` — preserve exactly, just apply tokens/glass-card to its surrounding UI if touched.
 - Roster DataTable needs role-aware columns (Section 3) — don't show leader-only fields (`email`) as empty for every youth row.
 - Not time-critical, no one-handed constraint.
 
-### 8.6 Billing.jsx — `billing_admin`/`global_admin` only
-Still a placeholder. Apply tokens for consistency; confirm route-gating hides it from `badge_scanner`/`troop_admin`.
+### 8.6 Billing.jsx — `troop_admin`/`global_admin` only
+Still a placeholder. Apply tokens for consistency; confirm route-gating hides it from `badge_scanner`/`roster_manager`.
 
 ---
 
@@ -182,7 +182,7 @@ Consolidated from the whole review — things worth explicit attention rather th
 
 ### Corrections likely to be missed if the agent works section-by-section
 7. **The Dashboard warning banner is a content bug, not just an unstyled element** (Section 5/7 item 10) — easy to fix the colors/tokens and leave the misleading "automatically purged" copy in place if the agent treats this as a pure visual task.
-8. **Role name migration:** old names (`member`, `admin`) may still appear in comments, variable names, or stale code paths even though the enum itself was renamed to `badge_scanner`/`troop_admin`/`billing_admin` in migration 003. Worth a repo-wide search for the old names to catch anything the docs didn't mention.
+8. **Role name migration:** old names (`member`, `admin`) may still appear in comments, variable names, or stale code paths even though the enum itself was renamed to `badge_scanner`/`roster_manager`/`troop_admin` in migration 017. Worth a repo-wide search for the old names to catch anything the docs didn't mention.
 9. **Roster's dual role systems** (`troop_users.role` for access control vs. `roster.role` for youth/leader labeling) are easy to conflate. The DataTable column logic needs to key off the right one depending on whether it's controlling access or just display.
 
 ### Sequencing risk

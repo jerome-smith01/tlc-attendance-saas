@@ -68,10 +68,10 @@ export function SidebarLayout() {
   const extensionPath = currentTroopIdentifier ? `/troop/${currentTroopIdentifier}/extension` : '/extension';
 
   const allNavLinks = [
-    { path: dashboardPath, label: 'Dashboard', icon: LayoutDashboard, allowedRoles: ['troop_admin', 'billing_admin', 'global_admin'] },
-    { path: rosterPath, label: 'Roster', icon: Users, allowedRoles: ['troop_admin', 'billing_admin', 'global_admin'] },
-    { path: eventsPath, label: 'Events', icon: Calendar, allowedRoles: ['badge_scanner', 'troop_admin', 'billing_admin', 'global_admin'] },
-    { path: billingPath, label: 'Billing', icon: CreditCard, allowedRoles: ['billing_admin', 'global_admin'] },
+    { path: dashboardPath, label: 'Dashboard', icon: LayoutDashboard, allowedRoles: ['roster_manager', 'troop_admin', 'global_admin'] },
+    { path: rosterPath, label: 'Roster', icon: Users, allowedRoles: ['roster_manager', 'troop_admin', 'global_admin'] },
+    { path: eventsPath, label: 'Events', icon: Calendar, allowedRoles: ['badge_scanner', 'roster_manager', 'troop_admin', 'global_admin'] },
+    { path: billingPath, label: 'Billing', icon: CreditCard, allowedRoles: ['troop_admin', 'global_admin'] },
     { path: extensionPath, label: 'TLC Extension', icon: Puzzle, allowedRoles: null },
     { path: '/profile', label: 'Profile', icon: User, allowedRoles: null },
   ];
@@ -103,8 +103,8 @@ export function SidebarLayout() {
 
   const getFriendlyRole = () => {
     if (isGlobalAdmin) return 'Global Admin';
-    if (currentUserRole === 'billing_admin') return 'Billing Admin';
     if (currentUserRole === 'troop_admin') return 'Troop Admin';
+    if (currentUserRole === 'roster_manager') return 'Roster Manager';
     if (currentUserRole === 'badge_scanner') return 'Scanner';
     return '';
   };

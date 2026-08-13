@@ -316,7 +316,7 @@ export function Scanner() {
   }
 
   const handleToggleScanStatus = async (scan) => {
-    const canToggle = isGlobalAdmin || currentUserRole === 'troop_admin' || currentUserRole === 'billing_admin' || currentUserRole === 'admin' || currentUserRole === 'leader';
+    const canToggle = isGlobalAdmin || currentUserRole === 'roster_manager' || currentUserRole === 'troop_admin' || currentUserRole === 'admin' || currentUserRole === 'leader';
     if (!canToggle || !scan.id || String(scan.id).startsWith('temp-')) return;
     const isCurrentlySignedOut = !!(scan.raw_sign_out_time || scan.sign_out_time);
     const memberName = scan.member
@@ -1009,7 +1009,7 @@ export function Scanner() {
   };
 
   const membersWithoutIds = roster.filter(m => !m.member_id);
-  const isAdminOrLeader = isGlobalAdmin || currentUserRole === 'troop_admin' || currentUserRole === 'billing_admin';
+  const isAdminOrLeader = isGlobalAdmin || currentUserRole === 'roster_manager' || currentUserRole === 'troop_admin';
 
   // Grid Table Resizing Handle Drag Handler
   const handleStartResize = (e, leftCol, rightCol) => {

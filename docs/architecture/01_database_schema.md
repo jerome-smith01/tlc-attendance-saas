@@ -48,7 +48,7 @@ erDiagram
         text member_id "nullable — badge-printed ID"
         text tlc_id "nullable — from QR code"
         text email "nullable — for leaders"
-        text role "trailman|billing_admin|troop_admin|badge_scanner"
+        text role "trailman|troop_admin|roster_manager|badge_scanner"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -97,7 +97,7 @@ System-level bypass table. Users listed here bypass all troop-level RLS checks v
 ### 4. `roster`
 Unified roster for both youth (Trailmen) and adult leaders.
 - **Youth records**: `role = 'trailman'`. `user_id` and `email` are NULL.
-- **Leader records**: `role` ∈ `{billing_admin, troop_admin, badge_scanner}`. `user_id` links to their Supabase auth account; `email` stores their email address.
+- **Leader records**: `role` ∈ `{troop_admin, roster_manager, badge_scanner}`. `user_id` links to their Supabase auth account; `email` stores their email address.
 - `first_name` (TEXT): Nickname if available, else First Name. Title-cased on import.
 - `last_initial` (CHAR(1)): First character of Last Name. COPPA mitigation for youth.
 - `member_id` (TEXT): Badge-printed ID in `YYYY-NNNNNN` format (from CSV). Nullable (leaders may not have one).
@@ -130,10 +130,10 @@ Individual attendance records (Sign In / Sign Out).
 | Enum | Values | Notes |
 |:---|:---|:---|
 | `subscription_status` | `active`, `past_due`, `canceled`, `unpaid` | Used on `troops` table |
-| `troop_role` | `billing_admin`, `troop_admin`, `badge_scanner` | Used on `troop_users` table. **Note: originally `billing_admin`, `admin`, `member` — renamed in migration 003.** |
+| `troop_role` | `troop_admin`, `roster_manager`, `badge_scanner` | Used on `troop_users` table. **Note: renamed in migrations 003 and 017.** |
 | `scan_status` | `pending`, `approved`, `complete` | Scan workflow status |
 
-> **Important naming note**: The roles in `troop_users` are `troop_admin` and `badge_scanner`. The `roster.role` column uses a separate TEXT check constraint with values `trailman`, `billing_admin`, `troop_admin`, `badge_scanner`. These are parallel systems.
+> **Important naming note**: The roles in `troop_users` are `roster_manager` and `badge_scanner`. The `roster.role` column uses a separate TEXT check constraint with values `trailman`, `troop_admin`, `roster_manager`, `badge_scanner`. These are parallel systems.
 
 ## TLC ID vs Member ID (Dual-ID Strategy)
 - `member_id`: Comes from the CSV import (printed on the physical badge, format `YYYY-NNNNNN`).
@@ -161,3 +161,4 @@ Individual attendance records (Sign In / Sign Out).
 | 007 | `007_add_session_ended_at.sql` | Add `ended_at` to `sessions`; restrict scan inserts to open sessions |
 | 008 | `008_scan_purge_14_day_expiry.sql` | Replace immediate purge trigger with 14-day delayed expiry; add `purge_after` column; schedule `pg_cron` nightly job |
 | 009 | `009_reset_purge_after_on_unsync.sql` | Update trigger so clearing `synced_at` also resets `purge_after` to NULL (enables un-sync) |
+| 017 | `017_rename_roles.sql` | Rename roles (`troop_admin`→`roster_manager`, `billing_admin`→`troop_admin`) |

@@ -314,12 +314,12 @@ export function InviteUser({ troopId, onInviteSent, onDuplicateInvite }) {
                           <input
                             type="radio"
                             name={`role_${row.id}`}
-                            value="troop_admin"
-                            checked={row.role === 'troop_admin'}
-                            onChange={() => handleRoleChange(row.id, 'troop_admin')}
+                            value="roster_manager"
+                            checked={row.role === 'roster_manager'}
+                            onChange={() => handleRoleChange(row.id, 'roster_manager')}
                             style={{ accentColor: 'var(--color-primary)', cursor: 'pointer' }}
                           />
-                          Troop Admin
+                          Roster Manager
                         </label>
                       </div>
 

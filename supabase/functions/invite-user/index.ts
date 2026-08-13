@@ -58,7 +58,7 @@ serve(async (req) => {
         .eq('troop_id', troop_id)
         .single()
         
-      if (troopUser && (troopUser.role === 'troop_admin' || troopUser.role === 'billing_admin')) {
+      if (troopUser && (troopUser.role === 'roster_manager' || troopUser.role === 'troop_admin')) {
         hasPermission = true;
       }
     }
@@ -169,7 +169,7 @@ serve(async (req) => {
         html: `
           <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
             <h2 style="color: #0284c7;">You're invited!</h2>
-            <p>You have been invited to join a troop on TLC Attendance as a <strong>${role === 'troop_admin' ? 'Troop Admin' : 'Badge Scanner'}</strong>.</p>
+            <p>You have been invited to join a troop on TLC Attendance as a <strong>${role === 'troop_admin' ? 'Troop Admin' : role === 'roster_manager' ? 'Roster Manager' : 'Badge Scanner'}</strong>.</p>
             <p>Click the button below to accept the invitation and access your troop dashboard.</p>
             <div style="margin: 30px 0;">
               <a href="${acceptUrl}" style="background-color: #0284c7; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Accept Invitation</a>

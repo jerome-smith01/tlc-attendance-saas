@@ -16,7 +16,7 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
   const { selectedTroopIdentifier } = useTroop();
 
   // ── Permission check FIRST (before any hooks that depend on it) ──────────
-  const canManageRoster = isGlobalAdmin || currentUserRole === 'troop_admin' || currentUserRole === 'billing_admin';
+  const canManageRoster = isGlobalAdmin || currentUserRole === 'roster_manager' || currentUserRole === 'troop_admin';
 
   const { addToast } = useToast();
   const confirm = useConfirm();

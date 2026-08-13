@@ -417,8 +417,8 @@ export function Profile() {
   const formatRoleName = (r) => {
     if (!r) return 'Member';
     switch (r) {
-      case 'billing_admin': return 'Billing Admin';
       case 'troop_admin': return 'Troop Admin';
+      case 'roster_manager': return 'Roster Manager';
       case 'badge_scanner': return 'Badge Scanner';
       case 'global_admin': return 'Global Admin';
       default:

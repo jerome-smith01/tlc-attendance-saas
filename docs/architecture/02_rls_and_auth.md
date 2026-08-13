@@ -11,11 +11,11 @@ For invitation flows, a `sessionStorage` token bridge (`pending_invite_token`) p
 
 There are **two parallel role systems** in this app:
 
-1. **`troop_users.role`** (`troop_role` ENUM): Controls backend database access via RLS. Values: `billing_admin`, `troop_admin`, `badge_scanner`.
-2. **`roster.role`** (TEXT check constraint): Labels a roster row as a person type. Values: `trailman`, `billing_admin`, `troop_admin`, `badge_scanner`. Mirrors the `troop_role` for leaders; Trailmen (youth) use `trailman`.
+1. **`troop_users.role`** (`troop_role` ENUM): Controls backend database access via RLS. Values: `troop_admin`, `roster_manager`, `badge_scanner`.
+2. **`roster.role`** (TEXT check constraint): Labels a roster row as a person type. Values: `trailman`, `troop_admin`, `roster_manager`, `badge_scanner`. Mirrors the `troop_role` for leaders; Trailmen (youth) use `trailman`.
 3. **`global_admins` table**: A system-level bypass. Users in this table bypass all troop-level role checks. Used for platform owner access only.
 
-> **Naming History**: The roles were originally `admin` and `member` (migration 001). They were renamed to `troop_admin` and `badge_scanner` in migration 003. All code and policies use the new names.
+> **Naming History**: The roles were originally `admin` and `member` (migration 001). They were renamed to `troop_admin` and `badge_scanner` in migration 003. They were later renamed to `roster_manager` and `troop_admin` in migration 017. All code and policies use the new names.
 
 ---
 
@@ -26,8 +26,8 @@ All access is scoped to the user's registered troop(s). The `TroopContext` on th
 | Role | Description / UI Landing | Can Read | Can Write Roster | Can Write Sessions/Scans | Can Approve/Sync | Can Manage Users | Can Edit Troop |
 |:---|:---|:---:|:---:|:---:|:---:|:---:|:---:|
 | `badge_scanner` | Scanner-focused view | ✅ Own troop | ✅ Insert + Update | ✅ Insert (open sessions only) | ❌ | ❌ | ❌ |
-| `troop_admin` | Full troop admin dashboard | ✅ Own troop | ✅ Full CRUD | ✅ Full CRUD | ✅ | ✅ Invite/remove | ❌ |
-| `billing_admin` | Owner dashboard + billing | ✅ Own troop | ✅ Full CRUD | ✅ Full CRUD | ✅ | ✅ Invite/remove | ✅ |
+| `roster_manager` | Full troop admin dashboard | ✅ Own troop | ✅ Full CRUD | ✅ Full CRUD | ✅ | ✅ Invite/remove | ❌ |
+| `troop_admin` | Owner dashboard + billing | ✅ Own troop | ✅ Full CRUD | ✅ Full CRUD | ✅ | ✅ Invite/remove | ✅ |
 | `global_admin` | All troops (platform owner) | ✅ All troops | ✅ All troops | ✅ All troops | ✅ | ✅ | ✅ |
 
 ### Role Details & UI Capabilities
@@ -45,7 +45,7 @@ All access is scoped to the user's registered troop(s). The `TroopContext` on th
   - Hide "Approve Scans" and "Sync to Trail Life USA" actions.
   - No delete controls on roster items.
 
-#### 2. Troop Admin (`troop_admin`)
+#### 2. Roster Manager (`roster_manager`)
 * **Purpose**: General troop administrators who manage day-to-day operations.
 * **UI Workflow**:
   - Lands on the main **Troop Dashboard** showing troop stats and unsynced session warnings.
@@ -53,15 +53,15 @@ All access is scoped to the user's registered troop(s). The `TroopContext` on th
   - **Session Management**: Can view all sessions, drill into attendees, end sessions (`ended_at`), and delete sessions.
   - **Scan Approval**: Can approve `pending` scans, updating their status to `approved`.
   - **Chrome Extension Sync**: Can log into the extension and run DOM-based sync on `traillifeconnect.com`. Synced sessions have their `synced_at` and `synced_by` populated.
-  - **User Management**: Can invite users by email (Supabase invite), promote/demote between `badge_scanner` and `troop_admin`, and remove users from the troop.
+  - **User Management**: Can invite users by email (Supabase invite), promote/demote between `badge_scanner` and `roster_manager`, and remove users from the troop.
 * **UI Exclusions**:
   - Hide subscription/billing management and Stripe portal.
   - Cannot edit core troop metadata (city, state, troop number).
 
-#### 3. Billing Admin (`billing_admin`)
+#### 3. Troop Admin (`troop_admin`)
 * **Purpose**: Troop owner and billing contact.
 * **UI Workflow**:
-  - Inherits all **Troop Admin** workflows.
+  - Inherits all **Roster Manager** workflows.
   - **Troop Settings**: Can edit core troop attributes (city, state, troop number).
   - **Billing & Stripe Portal**: Displays billing status banners; links to the Stripe Customer Portal for subscription, payment, and invoice management.
 
@@ -87,7 +87,7 @@ USING (troop_id IN (SELECT user_troop_ids()))
 Returns TRUE if the user is a `global_admin` OR has one of the specified roles in the given troop.
 ```sql
 -- Used for UPDATE, DELETE, and write-specific INSERT policies
-USING (user_has_role_in_troop(troop_id, ARRAY['billing_admin', 'troop_admin']::troop_role[]))
+USING (user_has_role_in_troop(troop_id, ARRAY['troop_admin', 'roster_manager']::troop_role[]))
 ```
 This function is declared `SECURITY DEFINER STABLE`, so it runs with elevated privileges to avoid RLS recursion.
 
@@ -97,28 +97,28 @@ This function is declared `SECURITY DEFINER STABLE`, so it runs with elevated pr
 
 ### `troops`
 - **SELECT**: Users can see troops they belong to (via `user_troop_ids()`).
-- **UPDATE**: Only `billing_admin` (or `global_admin`).
+- **UPDATE**: Only `troop_admin` (or `global_admin`).
 
 ### `troop_users`
 - **SELECT**: Users can see all members of their own troops.
-- **INSERT / UPDATE / DELETE**: Only `troop_admin` and `billing_admin` (or `global_admin`).
+- **INSERT / UPDATE / DELETE**: Only `roster_manager` and `troop_admin` (or `global_admin`).
 - **RPC `complete_user_onboarding()`**: `SECURITY DEFINER` function allowing any authenticated user to set `onboarding_completed = true` for their own `troop_users` rows upon completing profile setup.
 
 ### `roster`
 - **SELECT**: Any troop member.
 - **INSERT**: Any troop member OR a user inserting their own record (`user_id = auth.uid()`).
-- **UPDATE**: Any troop member for scanning-related updates; OR a user updating their own record; OR `troop_admin`/`billing_admin` for admin edits.
-- **DELETE**: Only `troop_admin` and `billing_admin` (or `global_admin`).
+- **UPDATE**: Any troop member for scanning-related updates; OR a user updating their own record; OR `roster_manager`/`troop_admin` for admin edits.
+- **DELETE**: Only `roster_manager` and `troop_admin` (or `global_admin`).
 
 ### `sessions`
 - **SELECT**: Any troop member.
 - **INSERT**: Any troop member (leaders can create sessions before scanning).
-- **UPDATE / DELETE**: Only `troop_admin` and `billing_admin` (or `global_admin`).
+- **UPDATE / DELETE**: Only `roster_manager` and `troop_admin` (or `global_admin`).
 
 ### `scans`
 - **SELECT**: Any troop member.
 - **INSERT**: Any troop member, **but only if the session's `ended_at IS NULL`** (enforced by the RLS policy, not just the frontend).
-- **UPDATE / DELETE**: Only `troop_admin` and `billing_admin` (or `global_admin`).
+- **UPDATE / DELETE**: Only `roster_manager` and `troop_admin` (or `global_admin`).
 
 ---
 
