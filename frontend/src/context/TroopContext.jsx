@@ -28,11 +28,20 @@ export function TroopProvider({ children }) {
   async function fetchTroops() {
     try {
       setLoadingTroops(true);
-      
+
+      const activeUser = user || (await supabase.auth.getUser())?.data?.user;
+      if (!activeUser?.id) {
+        setTroops([]);
+        setSelectedTroopId('');
+        setIsGlobalAdmin(false);
+        setLoadingTroops(false);
+        return;
+      }
+
       const { data: globalAdminData, error: globalAdminError } = await supabase
         .from('global_admins')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('user_id', activeUser.id)
         .maybeSingle();
         
       if (globalAdminData) {
@@ -57,7 +66,7 @@ export function TroopProvider({ children }) {
             troop_number
           )
         `)
-        .eq('user_id', user.id);
+        .eq('user_id', activeUser.id);
 
       if (error) throw error;
       

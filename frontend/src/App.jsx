@@ -8,6 +8,7 @@ import { ConfirmProvider } from './components/common/ConfirmContext';
 import { Login } from './pages/Login';
 import { Landing } from './pages/Landing';
 import { AcceptInvite } from './pages/AcceptInvite';
+import { InviteError } from './pages/InviteError';
 import { Profile } from './pages/Profile';
 import { Dashboard } from './pages/Dashboard';
 import { Scanner } from './pages/Scanner';
@@ -29,6 +30,7 @@ export default function App() {
                 <Route path="/" element={<Landing />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/accept-invite" element={<AcceptInvite />} />
+                <Route path="/invite-error" element={<InviteError />} />
 
                 {/* Protected with Sidebar Layout */}
                 <Route element={<ProtectedRoute><SidebarLayout /></ProtectedRoute>}>

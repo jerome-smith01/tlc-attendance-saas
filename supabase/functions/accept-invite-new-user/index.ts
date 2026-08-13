@@ -12,17 +12,25 @@ serve(async (req) => {
   }
 
   try {
-    const { token, password } = await req.json()
+    const { token, password, firstName, lastInitial } = await req.json()
 
-    if (!token || !password) {
-      return new Response(JSON.stringify({ error: 'Missing token or password' }), {
+    if (!token || !password || !firstName?.trim() || !lastInitial?.trim()) {
+      return new Response(JSON.stringify({ error: 'Missing required fields: token, password, first name, or last initial.' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
       })
     }
 
-    if (password.length < 6) {
-      return new Response(JSON.stringify({ error: 'Password must be at least 6 characters' }), {
+    const trimmedFirstName = firstName.trim()
+    const trimmedLastInitial = lastInitial.trim().charAt(0).toUpperCase()
+
+    // Validate password rules (min 8 chars, 1 uppercase, 1 number or special char)
+    const hasMinLength = password.length >= 8
+    const hasUppercase = /[A-Z]/.test(password)
+    const hasNumOrSpecial = /[0-9]/.test(password) || /[^A-Za-z0-9]/.test(password)
+
+    if (!hasMinLength || !hasUppercase || !hasNumOrSpecial) {
+      return new Response(JSON.stringify({ error: 'Password does not meet minimum security requirements (at least 8 characters, 1 uppercase letter, and 1 number or special character).' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
       })
@@ -71,11 +79,12 @@ serve(async (req) => {
       })
     }
 
-    // 3. Link user to troop
+    // 3. Link user to troop with onboarding_completed = true
     const { error: linkError } = await supabaseAdmin.from('troop_users').insert([{
       user_id: newUser.user.id,
       troop_id: inviteData.troop_id,
-      role: inviteData.role
+      role: inviteData.role,
+      onboarding_completed: true
     }])
 
     if (linkError) {
@@ -87,7 +96,27 @@ serve(async (req) => {
       })
     }
 
-    // 4. Delete the invite
+    // 4. Create roster entry for the new user
+    const { error: rosterError } = await supabaseAdmin.from('roster').insert([{
+      troop_id: inviteData.troop_id,
+      user_id: newUser.user.id,
+      email: normalizedEmail,
+      first_name: trimmedFirstName,
+      last_initial: trimmedLastInitial,
+      role: inviteData.role
+    }])
+
+    if (rosterError) {
+      // Rollback troop_users link and auth user if roster creation fails
+      await supabaseAdmin.from('troop_users').delete().eq('user_id', newUser.user.id).eq('troop_id', inviteData.troop_id)
+      await supabaseAdmin.auth.admin.deleteUser(newUser.user.id)
+      return new Response(JSON.stringify({ error: rosterError.message }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      })
+    }
+
+    // 5. Delete the invite
     await supabaseAdmin.from('pending_invites').delete().eq('id', inviteData.id)
 
     return new Response(JSON.stringify({ success: true, email: normalizedEmail }), {

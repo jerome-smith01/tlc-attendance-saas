@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTroop } from '../context/TroopContext';
 import { useToast } from '../components/common/ToastContext';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { PasswordStrengthMeter, passwordMeetsMinimum } from '../components/PasswordStrengthMeter';
 import './Login.css';
 
 export function AcceptInvite() {
@@ -22,6 +23,8 @@ export function AcceptInvite() {
   const [validationError, setValidationError] = useState('');
 
   // Form states
+  const [firstName, setFirstName] = useState('');
+  const [lastInitial, setLastInitial] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -118,10 +121,14 @@ export function AcceptInvite() {
 
       setSuccess(true);
       addToast('Invite accepted successfully!', 'success');
-      setTimeout(() => navigate('/events', { replace: true }), 1500);
+      setTimeout(() => navigate('/dashboard', { replace: true }), 1500);
     } catch (err) {
       console.error('Accept invite error:', err);
-      setFormError(err.message || 'An error occurred while accepting the invite.');
+      // Navigate to the dedicated error page so the auth redirect can't swallow the error
+      navigate('/invite-error', {
+        replace: true,
+        state: { errorMessage: err.message || 'An error occurred while accepting the invite.' }
+      });
     } finally {
       setSubmitting(false);
     }
@@ -154,22 +161,39 @@ export function AcceptInvite() {
     setSubmitting(true);
     setFormError('');
 
+    if (!firstName.trim()) {
+      setFormError('Please enter your First Name.');
+      setSubmitting(false);
+      return;
+    }
+
+    if (!lastInitial.trim()) {
+      setFormError('Please enter your Last Initial.');
+      setSubmitting(false);
+      return;
+    }
+
+    if (!passwordMeetsMinimum(password)) {
+      setFormError('Password does not meet minimum security requirements.');
+      setSubmitting(false);
+      return;
+    }
+
     if (password !== confirmPassword) {
       setFormError('Passwords do not match.');
       setSubmitting(false);
       return;
     }
 
-    if (password.length < 6) {
-      setFormError('Password must be at least 6 characters.');
-      setSubmitting(false);
-      return;
-    }
-
     try {
-      // 1. Call edge function to create user & link to troop
+      // 1. Call edge function to create user & link to troop with roster entry
       const { data, error: fnError } = await supabase.functions.invoke('accept-invite-new-user', {
-        body: { token, password }
+        body: {
+          token,
+          password,
+          firstName: firstName.trim(),
+          lastInitial: lastInitial.trim().charAt(0).toUpperCase()
+        }
       });
 
       if (fnError) {
@@ -178,10 +202,16 @@ export function AcceptInvite() {
           const body = await fnError.context?.json?.();
           if (body?.error) errMsg = body.error;
         } catch (_) { }
-        throw new Error(errMsg || 'Failed to create account.');
+        // Navigate to error page BEFORE any signInWithPassword call — otherwise the
+        // auth state change silently redirects the user away without showing the error.
+        navigate('/invite-error', {
+          replace: true,
+          state: { errorMessage: errMsg || 'Failed to create account.' }
+        });
+        return;
       }
 
-      // 2. Sign in client-side to establish session
+      // 2. Sign in client-side to establish session (only reached on success)
       const { error: signInErr } = await supabase.auth.signInWithPassword({
         email: inviteDetails.email,
         password
@@ -197,7 +227,7 @@ export function AcceptInvite() {
 
       setSuccess(true);
       addToast('Account created and invite accepted!', 'success');
-      setTimeout(() => navigate('/events', { replace: true }), 1500);
+      setTimeout(() => navigate('/dashboard', { replace: true }), 1500);
     } catch (err) {
       console.error('Create account error:', err);
       setFormError(err.message);
@@ -306,50 +336,140 @@ export function AcceptInvite() {
             </form>
           </div>
         ) : (
-          /* State 5: New user -> Create password form */
+          /* State 5: New user -> Create account form */
           <div>
             <p style={{ fontSize: '0.95rem', color: 'var(--foreground)', marginBottom: '0.5rem' }}>
               Welcome! You've been invited to join <strong>{inviteDetails?.troopName}</strong>.
             </p>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-              Set a password for <strong>{inviteDetails?.email}</strong> to create your account.
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
+              Please enter your details and set a password to create your account.
             </p>
 
             <form onSubmit={handleCreateAccountAndAccept} noValidate style={{ textAlign: 'left' }}>
+              {/* Email (Static Text Display) */}
+              <div className="login-field" style={{ marginBottom: '1.25rem' }}>
+                <span style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', color: 'var(--text-secondary)' }}>
+                  Email Address
+                </span>
+                <div
+                  style={{
+                    color: 'var(--color-primary, #3b82f6)',
+                    fontWeight: 600,
+                    fontSize: '0.95rem',
+                    wordBreak: 'break-all',
+                    paddingLeft: '1rem',
+                    paddingTop: '0.15rem',
+                    paddingBottom: '0.15rem'
+                  }}
+                >
+                  {inviteDetails?.email || ''}
+                </div>
+              </div>
+
+              {/* First Name & Last Initial (2-column grid) */}
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.75rem' }}>
+                <div className="login-field">
+                  <label htmlFor="first-name" style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.35rem', color: 'var(--text-secondary)' }}>
+                    First Name <span style={{ color: 'var(--color-error)' }}>*</span>
+                  </label>
+                  <input
+                    id="first-name"
+                    type="text"
+                    placeholder="First Name"
+                    value={firstName}
+                    onChange={e => { setFirstName(e.target.value); setFormError(''); }}
+                    required
+                    disabled={submitting}
+                    autoFocus
+                  />
+                </div>
+
+                <div className="login-field">
+                  <label htmlFor="last-initial" style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.35rem', color: 'var(--text-secondary)' }}>
+                    Last Initial <span style={{ color: 'var(--color-error)' }}>*</span>
+                  </label>
+                  <input
+                    id="last-initial"
+                    type="text"
+                    maxLength={1}
+                    placeholder="L"
+                    value={lastInitial}
+                    onChange={e => { setLastInitial(e.target.value.toUpperCase()); setFormError(''); }}
+                    required
+                    disabled={submitting}
+                    style={{ textAlign: 'left', textTransform: 'uppercase' }}
+                  />
+                </div>
+              </div>
+
+              {/* Password */}
               <div className="login-field">
                 <label htmlFor="create-password" style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.35rem', color: 'var(--text-secondary)' }}>
-                  Password
+                  Password <span style={{ color: 'var(--color-error)' }}>*</span>
                 </label>
                 <input
                   id="create-password"
                   type="password"
-                  placeholder="Create a password (min 6 chars)"
+                  placeholder="Create a password"
                   value={password}
                   onChange={e => { setPassword(e.target.value); setFormError(''); }}
                   required
                   disabled={submitting}
-                  autoFocus
                 />
+                <PasswordStrengthMeter password={password} />
               </div>
 
-              <div className="login-field">
+              {/* Confirm Password */}
+              <div className="login-field" style={{ marginTop: '0.75rem' }}>
                 <label htmlFor="confirm-password" style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.35rem', color: 'var(--text-secondary)' }}>
-                  Confirm Password
+                  Confirm Password <span style={{ color: 'var(--color-error)' }}>*</span>
                 </label>
                 <input
                   id="confirm-password"
                   type="password"
-                  placeholder="Confirm your password"
+                  placeholder="Confirm password"
                   value={confirmPassword}
                   onChange={e => { setConfirmPassword(e.target.value); setFormError(''); }}
                   required
                   disabled={submitting}
                 />
+                {confirmPassword.length > 0 && (
+                  <div
+                    style={{
+                      marginTop: '6px',
+                      fontSize: '0.8rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      color: confirmPassword === password ? 'var(--color-success, #22c55e)' : 'var(--color-error, #ef4444)',
+                      fontWeight: 500,
+                      transition: 'color 0.2s ease'
+                    }}
+                  >
+                    <span style={{ fontWeight: 'bold', width: '14px', textAlign: 'center' }}>
+                      {confirmPassword === password ? '✓' : '✗'}
+                    </span>
+                    <span>
+                      {confirmPassword === password ? 'Passwords match' : 'Passwords do not match'}
+                    </span>
+                  </div>
+                )}
               </div>
 
-              {formError && <div className="login-error" role="alert">{formError}</div>}
+              {formError && <div className="login-error" role="alert" style={{ marginTop: '0.75rem' }}>{formError}</div>}
 
-              <button type="submit" className="btn btn-primary login-submit" disabled={submitting || !password || !confirmPassword}>
+              <button
+                type="submit"
+                className="btn btn-primary login-submit"
+                style={{ marginTop: '1rem' }}
+                disabled={
+                  submitting ||
+                  !firstName.trim() ||
+                  !lastInitial.trim() ||
+                  !passwordMeetsMinimum(password) ||
+                  password !== confirmPassword
+                }
+              >
                 {submitting ? <><span className="spinner" /> Creating Account...</> : 'Create Account & Join Troop'}
               </button>
             </form>

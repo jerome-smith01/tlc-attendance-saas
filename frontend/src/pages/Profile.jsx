@@ -175,7 +175,7 @@ export function Profile() {
         if (updateError) throw updateError;
 
         addToast('Profile completed successfully!', 'success');
-        window.location.hash = '#/events';
+        window.location.hash = '#/dashboard';
         window.location.reload();
         return;
       }
