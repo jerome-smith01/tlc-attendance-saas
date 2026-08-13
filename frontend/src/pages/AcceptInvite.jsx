@@ -387,9 +387,11 @@ export function AcceptInvite() {
               You've been invited to join <strong>{inviteDetails.troopName}</strong>!
             </p>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-              Please sign in with Google or enter your password for <strong>{inviteDetails.email}</strong> to accept.
+              Please enter your password for <strong>{inviteDetails.email}</strong> to accept.
             </p>
 
+            {/* Google OAuth - Temporarily hidden until Google Cloud Console app is published */}
+            {/*
             <button
               type="button"
               className="btn btn-secondary"
@@ -411,6 +413,7 @@ export function AcceptInvite() {
               <span style={{ padding: '0 0.75rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>or</span>
               <hr style={{ flex: 1, borderColor: 'var(--border-color)', margin: 0 }} />
             </div>
+            */}
 
             <form onSubmit={handleSignInAndAccept} noValidate style={{ textAlign: 'left' }}>
               <div className="login-field">

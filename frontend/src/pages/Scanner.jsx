@@ -1010,6 +1010,7 @@ export function Scanner() {
 
   const membersWithoutIds = roster.filter(m => !m.member_id);
   const isAdminOrLeader = isGlobalAdmin || currentUserRole === 'roster_manager' || currentUserRole === 'troop_admin';
+  const canManageScans = isGlobalAdmin || currentUserRole === 'badge_scanner' || currentUserRole === 'roster_manager' || currentUserRole === 'troop_admin';
 
   // Grid Table Resizing Handle Drag Handler
   const handleStartResize = (e, leftCol, rightCol) => {
@@ -1025,7 +1026,7 @@ export function Scanner() {
 
     const activeCols = ['name', 'status', 'in_date', 'in_time', 'in_by', 'out_date', 'out_time', 'out_by', 'actions'];
     const totalFr = activeCols.reduce((sum, col) => sum + (columnWidths[col] ?? defaultColumnWidths[col]), 0);
-    const availWidth = isAdminOrLeader ? Math.max(100, containerRect.width - 48) : containerRect.width;
+    const availWidth = canManageScans ? Math.max(100, containerRect.width - 48) : containerRect.width;
 
     const handleMouseMove = (moveEv) => {
       const deltaX = moveEv.clientX - startX;
@@ -1064,7 +1065,7 @@ export function Scanner() {
   };
 
   const gridTemplateStyle = useMemo(() => {
-    if (isAdminOrLeader) {
+    if (canManageScans) {
       return {
         gridTemplateColumns: `48px minmax(0, ${columnWidths.name || 2.0}fr) minmax(0, ${columnWidths.status || 1.0}fr) minmax(0, ${columnWidths.in_date || 1.0}fr) minmax(0, ${columnWidths.in_time || 1.0}fr) minmax(0, ${columnWidths.in_by || 1.0}fr) minmax(0, ${columnWidths.out_date || 1.0}fr) minmax(0, ${columnWidths.out_time || 1.0}fr) minmax(0, ${columnWidths.out_by || 1.0}fr) minmax(0, ${columnWidths.actions || 0.8}fr)`
       };
@@ -1072,7 +1073,7 @@ export function Scanner() {
     return {
       gridTemplateColumns: `minmax(0, ${columnWidths.name || 2.0}fr) minmax(0, ${columnWidths.status || 1.0}fr) minmax(0, ${columnWidths.in_date || 1.0}fr) minmax(0, ${columnWidths.in_time || 1.0}fr) minmax(0, ${columnWidths.in_by || 1.0}fr) minmax(0, ${columnWidths.out_date || 1.0}fr) minmax(0, ${columnWidths.out_time || 1.0}fr) minmax(0, ${columnWidths.out_by || 1.0}fr) minmax(0, ${columnWidths.actions || 0.8}fr)`
     };
-  }, [isAdminOrLeader, columnWidths]);
+  }, [canManageScans, columnWidths]);
 
   const getLeaderName = (userId) => {
     if (!userId) return '-';
@@ -1704,11 +1705,11 @@ export function Scanner() {
                   {/* Table Header */}
                   <div
                     ref={headerRef}
-                    className={`grid-table-header ${!isAdminOrLeader ? 'no-manage' : ''}`}
+                    className={`grid-table-header ${!canManageScans ? 'no-manage' : ''}`}
                     style={gridTemplateStyle}
                     role="row"
                   >
-                    {isAdminOrLeader && (
+                    {canManageScans && (
                       <div role="columnheader" className="grid-table-cell-select" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', paddingLeft: '1rem', width: '48px' }}>
                         <input
                           type="checkbox"
@@ -2000,12 +2001,12 @@ export function Scanner() {
                       <div
                         key={scan.id}
                         id={`scan-row-${scan.id}`}
-                        className={`grid-table-row ${!isAdminOrLeader ? 'no-manage' : ''} ${isNew ? 'newly-scanned' : ''}`}
+                        className={`grid-table-row ${!canManageScans ? 'no-manage' : ''} ${isNew ? 'newly-scanned' : ''}`}
                         style={gridTemplateStyle}
                         role="row"
                       >
                         <div className="grid-table-card-header">
-                          {isAdminOrLeader && (
+                          {canManageScans && (
                             <div className="grid-table-cell grid-table-cell-select" role="cell" style={{ gridColumn: 1 }}>
                               {scan.id && !String(scan.id).startsWith('temp-') && (
                                 <input
@@ -2018,17 +2019,17 @@ export function Scanner() {
                             </div>
                           )}
 
-                          <div className="grid-table-cell grid-table-cell-name" role="cell" style={{ gridColumn: isAdminOrLeader ? 2 : 1 }}>
+                          <div className="grid-table-cell grid-table-cell-name" role="cell" style={{ gridColumn: canManageScans ? 2 : 1 }}>
                             <strong style={{ color: 'var(--text-primary)' }}>{memberName}</strong>
                           </div>
 
-                          <div className="grid-table-cell grid-table-cell-actions" role="cell" style={{ gridColumn: isAdminOrLeader ? 10 : 9 }}>
+                          <div className="grid-table-cell grid-table-cell-actions" role="cell" style={{ gridColumn: canManageScans ? 10 : 9 }}>
                             <button
                               type="button"
                               className="btn-icon-action btn-icon-destructive"
                               onClick={() => handleDeleteSingleScan(scan.id)}
-                              title={!isAdminOrLeader ? "Delete unavailable: requires admin role" : (!scan.id || String(scan.id).startsWith('temp-') ? "Delete unavailable: scan not saved yet" : "Remove scan")}
-                              disabled={!isAdminOrLeader || !scan.id || String(scan.id).startsWith('temp-')}
+                              title={!canManageScans ? "Delete unavailable: requires admin role" : (!scan.id || String(scan.id).startsWith('temp-') ? "Delete unavailable: scan not saved yet" : "Remove scan")}
+                              disabled={!canManageScans || !scan.id || String(scan.id).startsWith('temp-')}
                             >
                               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <polyline points="3 6 5 6 21 6"></polyline>
@@ -2038,51 +2039,51 @@ export function Scanner() {
                           </div>
                         </div>
 
-                        <div className="grid-table-cell" role="cell" style={{ gridColumn: isAdminOrLeader ? 3 : 2 }}>
+                        <div className="grid-table-cell" role="cell" style={{ gridColumn: canManageScans ? 3 : 2 }}>
                           <span className="grid-table-label">Status</span>
                           <button
                             type="button"
                             onClick={() => handleToggleScanStatus(scan)}
                             className="badge"
                             style={{ 
-                              cursor: isAdminOrLeader ? 'pointer' : 'default', 
+                              cursor: canManageScans ? 'pointer' : 'default', 
                               border: 'none', 
                               fontWeight: '600',
                               padding: '0.25rem 0.65rem',
                               ...getStatusBadgeStyle(scan)
                             }}
-                            title={isAdminOrLeader ? "Click to toggle between Signed In and Signed Out" : undefined}
+                            title={canManageScans ? "Click to toggle between Signed In and Signed Out" : undefined}
                           >
                             {getDisplayStatus(scan)}
                           </button>
                         </div>
 
-                        <div className="grid-table-cell" role="cell" style={{ gridColumn: isAdminOrLeader ? 4 : 3 }}>
+                        <div className="grid-table-cell" role="cell" style={{ gridColumn: canManageScans ? 4 : 3 }}>
                           <span className="grid-table-label">Scanned in date</span>
                           <span>{scan.in_date}</span>
                         </div>
 
-                        <div className="grid-table-cell" role="cell" style={{ gridColumn: isAdminOrLeader ? 5 : 4 }}>
+                        <div className="grid-table-cell" role="cell" style={{ gridColumn: canManageScans ? 5 : 4 }}>
                           <span className="grid-table-label">Scanned in time</span>
                           <span>{scan.in_time}</span>
                         </div>
 
-                        <div className="grid-table-cell" role="cell" style={{ gridColumn: isAdminOrLeader ? 6 : 5 }}>
+                        <div className="grid-table-cell" role="cell" style={{ gridColumn: canManageScans ? 6 : 5 }}>
                           <span className="grid-table-label">Scanned in by</span>
                           <span>{scan.in_by}</span>
                         </div>
 
-                        <div className="grid-table-cell" role="cell" style={{ gridColumn: isAdminOrLeader ? 7 : 6 }}>
+                        <div className="grid-table-cell" role="cell" style={{ gridColumn: canManageScans ? 7 : 6 }}>
                           <span className="grid-table-label">Scanned out date</span>
                           <span>{scan.out_date}</span>
                         </div>
 
-                        <div className="grid-table-cell" role="cell" style={{ gridColumn: isAdminOrLeader ? 8 : 7 }}>
+                        <div className="grid-table-cell" role="cell" style={{ gridColumn: canManageScans ? 8 : 7 }}>
                           <span className="grid-table-label">Scanned out time</span>
                           <span>{scan.out_time}</span>
                         </div>
 
-                        <div className="grid-table-cell" role="cell" style={{ gridColumn: isAdminOrLeader ? 9 : 8 }}>
+                        <div className="grid-table-cell" role="cell" style={{ gridColumn: canManageScans ? 9 : 8 }}>
                           <span className="grid-table-label">Scanned out by</span>
                           <span>{scan.out_by}</span>
                         </div>
@@ -2097,7 +2098,7 @@ export function Scanner() {
         </div>
 
         {/* Selected items actions bar */}
-        {isAdminOrLeader && selectedScans.size > 0 && (
+        {canManageScans && selectedScans.size > 0 && (
           <div style={{ padding: '0.5rem var(--spacing-md)', background: 'color-mix(in srgb, var(--color-error) 15%, transparent)', borderTop: '1px solid color-mix(in srgb, var(--color-error) 30%, transparent)', color: 'var(--color-error)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
             <span>{selectedScans.size} scan(s) selected</span>
             <button onClick={handleBulkRemove} className="btn btn-destructive" style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem' }}>

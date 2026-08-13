@@ -6,7 +6,7 @@ This document outlines the plain-English role definitions, permission matrix, an
 
 - **Troop Admin (`troop_admin`)**: The primary account owner for a troop. Has full control over the troop's subscription, billing, and roster, including managing other leaders. (Limit: One per troop in current scope).
 - **Roster Manager (`roster_manager`)**: A leader with full operational control over the troop's roster, events, and attendance. Cannot manage billing.
-- **Badge Scanner (`badge_scanner`)**: A restricted role designed for leaders or volunteers taking attendance at the door. Can only scan badges, view events, and record attendance. Cannot manage the roster or edit events.
+- **Badge Scanner (`badge_scanner`)**: A focused role designed for leaders or volunteers taking attendance at the door. Can scan badges, view events, record attendance, and remove/delete scans from the attendance log in Scanner view. Cannot manage the troop roster, edit leaders, or close/delete events.
 - **Global Admin (`global_admin`)**: System administrator (us). Has full access to all troops, billing, and settings.
 
 ## Role-Permission Matrix
@@ -19,8 +19,10 @@ This document outlines the plain-English role definitions, permission matrix, an
 | **Edit Leaders** | ✅ | ✅ | ✅ | ❌ |
 | **Add/Edit Members (Youth)** | ✅ | ✅ | ✅ | ❌ |
 | **Scan Badges & Record Attendance** | ✅ | ✅ | ✅ | ✅ |
+| **Remove/Delete Scans from Attendance Log** | ✅ | ✅ | ✅ | ✅ |
 | **View/Manage Billing** | ✅ | ✅ | ❌ | ❌ |
 | **Close / End Events (Approves for Sync)** | ✅ | ✅ | ✅ | ❌ |
+| **Delete Events** | ✅ | ✅ | ✅ | ❌ |
 | **View TLC Extension tab** | ✅ | ✅ | ✅ | ❌ |
 | **Sync attendance** | ✅ | ✅ | ✅ | ❌ |
 | **Edit Troop Metadata** | ✅ | ✅ | ❌ | ❌ |

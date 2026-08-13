@@ -114,6 +114,8 @@ export function Login() {
         <h1 className="app-title login-title">TLC Attendance</h1>
         <p className="login-subtitle">Sign in to your troop account</p>
 
+        {/* Google OAuth - Temporarily hidden until Google Cloud Console app is published */}
+        {/*
         <button
           type="button"
           className="btn btn-secondary"
@@ -135,6 +137,7 @@ export function Login() {
           <span style={{ padding: '0 0.75rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>or</span>
           <hr style={{ flex: 1, borderColor: 'var(--border-color)', margin: 0 }} />
         </div>
+        */}
 
         <form onSubmit={handleSubmit} noValidate>
           <div className="login-field">

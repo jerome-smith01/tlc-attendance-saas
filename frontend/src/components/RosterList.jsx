@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
-import { parseTlcRosterCsv } from '../utils/csvParser';
+import { parseTlcRosterFile } from '../utils/fileParser';
 import { Modal } from './common/Modal';
 import { FilterPopover } from './common/FilterPopover';
 import { InviteUser } from './InviteUser';
@@ -445,23 +445,23 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
     }
   }
 
-  async function handleCsvUpload(e) {
+  async function handleFileUpload(e) {
     const file = e.target.files[0];
     if (!file) return;
     setSelectedFileName(file.name);
     try {
       setLoading(true);
-      const parsedMembers = await parseTlcRosterCsv(file);
+      const parsedMembers = await parseTlcRosterFile(file);
       if (parsedMembers.length === 0) {
-        throw new Error('No valid members found in CSV. Make sure it contains First Name, Last Name, and Member Number.');
+        throw new Error('No valid members found in file. Make sure it contains First Name, Last Name, and Member Number.');
       }
       const membersToInsert = parsedMembers.map(m => ({ ...m, troop_id: troopId }));
       const { error } = await supabase.from('roster').upsert(membersToInsert, { onConflict: 'troop_id, member_id', ignoreDuplicates: true });
       if (error) throw error;
       fetchRoster();
-      toast(`Successfully processed ${parsedMembers.length} members from CSV.`, 'success');
+      toast(`Successfully processed ${parsedMembers.length} members from file.`, 'success');
     } catch (err) {
-      console.error('Error uploading CSV:', err);
+      console.error('Error uploading file:', err);
       toast(err.message, 'error');
     } finally {
       setLoading(false);
@@ -558,7 +558,7 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
                 <polyline points="6 9 12 15 18 9" />
               </svg>
               <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: 'var(--foreground)' }}>
-                Import from TLC CSV
+                Import from TLC (CSV / Excel)
               </h3>
             </div>
           </div>
@@ -567,7 +567,7 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
             <div className="glass-card" style={{ padding: '1.25rem', marginBottom: '1.5rem' }}>
               <ul style={{ margin: '0px 0px 0.75rem 0px', paddingLeft: '1.2rem', fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
                 <li>
-                  To export the roster from TLC, go to <a href="https://www.traillifeconnect.com" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)', textDecoration: 'underline' }}>Trail Life Connect</a> → My Troop → <a href="https://www.traillifeconnect.com/user" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)', textDecoration: 'underline' }}>Troop Members</a> → Export filtered to csv.
+                  To export the roster from TLC, go to <a href="https://www.traillifeconnect.com" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)', textDecoration: 'underline' }}>Trail Life Connect</a> → My Troop → <a href="https://www.traillifeconnect.com/user" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)', textDecoration: 'underline' }}>Troop Members</a> → Export filtered to CSV or Excel.
                 </li>
                 <li>
                   The app only uses First Name, Last Name, Member Number, and Nickname (if present).
@@ -576,8 +576,8 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".csv"
-                onChange={handleCsvUpload}
+                accept=".csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, text/csv"
+                onChange={handleFileUpload}
                 disabled={!troopId || loading}
                 style={{ display: 'none' }}
               />
@@ -594,7 +594,7 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
                     <polyline points="17 8 12 3 7 8" />
                     <line x1="12" y1="3" x2="12" y2="15" />
                   </svg>
-                  {loading ? 'Processing...' : 'Choose CSV File'}
+                  {loading ? 'Processing...' : 'Choose CSV/Excel File'}
                 </button>
                 <span style={{ fontSize: '0.875rem', color: selectedFileName ? 'var(--foreground)' : 'var(--text-secondary)', fontStyle: selectedFileName ? 'normal' : 'italic' }}>
                   {selectedFileName || 'No file chosen'}
