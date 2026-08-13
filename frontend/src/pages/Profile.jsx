@@ -498,10 +498,7 @@ export function Profile() {
             <path d="M2 12H22"></path>
           </svg>
         </button>
-        <div>
-          <h1 style={{ color: 'var(--foreground)', margin: 0, fontSize: '1.5rem', fontFamily: 'var(--font-display)' }}>My Profile</h1>
-          <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.9rem' }}>{userDisplayName}</p>
-        </div>
+        <h1 style={{ color: 'var(--foreground)', margin: 0, fontSize: '1.5rem', fontFamily: 'var(--font-display)' }}>My Profile</h1>
       </div>
 
       {/* Card 1: Personal Information */}
@@ -696,24 +693,28 @@ export function Profile() {
                   onChange={e => setConfirmPassword(e.target.value)}
                   required
                 />
+                {confirmPassword.length > 0 && (
+                  <div
+                    style={{
+                      marginTop: '6px',
+                      fontSize: '0.8rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      color: confirmPassword === newPassword ? 'var(--color-success, #22c55e)' : 'var(--color-error, #ef4444)',
+                      fontWeight: 500,
+                      transition: 'color 0.2s ease'
+                    }}
+                  >
+                    <span style={{ fontWeight: 'bold', width: '14px', textAlign: 'center' }}>
+                      {confirmPassword === newPassword ? '✓' : '✗'}
+                    </span>
+                    <span>
+                      {confirmPassword === newPassword ? 'Passwords match' : 'Passwords do not match'}
+                    </span>
+                  </div>
+                )}
               </div>
-            </div>
-
-            <div className="password-requirements-box">
-              <div style={{ fontWeight: 600, color: 'var(--foreground)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <line x1="12" y1="16" x2="12" y2="12"></line>
-                  <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                </svg>
-                Password Requirements:
-              </div>
-              <ul>
-                <li>Must be at least 8 characters in length</li>
-                <li>At least 1 uppercase letter</li>
-                <li>At least 1 number or special character</li>
-                <li>New password and confirmation password must match</li>
-              </ul>
             </div>
           </div>
 
