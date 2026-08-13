@@ -66,6 +66,7 @@
   --border-color:      rgba(0, 0, 0, 0.12);
   --bg-primary:        var(--background);
   --bg-secondary:      #ffffff;
+  --bg-tertiary:       #f8fafc;
   --bg-elevated:       #f8fafc;
   --text-primary:      var(--foreground);
   --text-secondary:    var(--muted-foreground);
@@ -93,6 +94,7 @@
   /* Custom variables for theme UI elements in dark mode */
   --border-color:      rgba(255, 255, 255, 0.18);
   --bg-secondary:      #243347;
+  --bg-tertiary:       #1a2638;
   --bg-elevated:       #2d3f55;
   --glass-bg:          rgba(36, 51, 71, 0.75);
   --glass-border:      rgba(255, 255, 255, 0.14);
@@ -1185,6 +1187,9 @@ button:active, .btn-primary:active, .btn-action:active {
 }
 .scanner-action-item:hover {
   background-color: rgba(0, 0, 0, 0.03);
+}
+.dark .scanner-action-item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
 }
 
 .scanner-action-icon-box {
