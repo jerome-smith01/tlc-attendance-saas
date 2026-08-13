@@ -378,3 +378,8 @@ The component evaluates the password against a 4-level scoring scale and renders
   - `Strong` (Green: `var(--color-success)`): All 3 rules met.
   - `Very Strong` (Emerald `#10b981`): All 3 rules met + extra length (≥ 12 chars) or both number and special character.
 - **Inline Checklist (`✓`/`✗`)**: Displays status indicator icons and labels for each rule, updating dynamically in green (`var(--color-success)`) when met and muted gray (`var(--muted-foreground)`) when unfulfilled.
+
+## 15. Google OAuth Flow
+Google OAuth is integrated via `supabase.auth.signInWithOAuth()`.
+For new user invitations, a `sessionStorage` invite token bridge (`pending_invite_token`) temporarily stores the invite token, allowing it to survive the OAuth redirect sequence. 
+A dual-provider pattern is implemented on the Profile page, allowing OAuth-only users to seamlessly set an email password and use both authentication methods.

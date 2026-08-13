@@ -8,7 +8,7 @@ import { ThemeToggle } from './ThemeToggle';
 
 export function SidebarLayout() {
   const { signOut, user } = useAuth();
-  const { troops, selectedTroopId, setSelectedTroopId, loadingTroops, selectedTroop, selectedTroopIdentifier, isGlobalAdmin } = useTroop();
+  const { troops, selectedTroopId, setSelectedTroopId, loadingTroops, selectedTroop, selectedTroopIdentifier, isGlobalAdmin, userDisplayName } = useTroop();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);

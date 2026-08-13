@@ -9,7 +9,7 @@ TLC Attendance is a SaaS attendance tracker for Trail Life USA troops. MVP-1 is 
 |:---|:---|:---|
 | Frontend | React (Vite) SPA | Deployed to Cloudflare Pages |
 | Database | Supabase PostgreSQL | Dedicated project (`tlc-attendance`) |
-| Auth | Supabase Email/Password | JWT-based, `supabase-js` client |
+| Auth | Supabase Auth (Email/Password + Google OAuth) | JWT-based, `supabase-js` client |
 | Hosting | Cloudflare Pages | `tlc.goodplusfast.com` |
 | QR Scanning | `html5-qrcode` | Live continuous feed, no tap-to-capture |
 | Chrome Extension | Manifest V3 (Vite + @crxjs) | Syncs approved scans to `traillifeconnect.com` |

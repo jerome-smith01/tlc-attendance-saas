@@ -6,13 +6,15 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/common/ToastContext';
 import { useConfirm } from '../components/common/ConfirmContext';
 import { SingleBadgeScannerModal } from '../components/SingleBadgeScannerModal';
+import { PasswordStrengthMeter, passwordMeetsMinimum } from '../components/PasswordStrengthMeter';
 
 export function Profile() {
   const navigate = useNavigate();
   const { session, user, loading: authLoading } = useAuth();
-  const { selectedTroop, selectedTroopId } = useTroop();
+  const { selectedTroop, selectedTroopId, needsOnboarding, refreshDisplayName } = useTroop();
   const { addToast } = useToast();
   const confirm = useConfirm();
+  const hasEmailProvider = user?.app_metadata?.providers?.includes('email');
 
   const [member, setMember] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -169,17 +171,23 @@ export function Profile() {
         }
       }
 
-      const needsOnboarding = troopUsers?.some(tu => !tu.onboarding_completed);
-      if (needsOnboarding) {
+      const needsOnboardingLocal = troopUsers?.some(tu => !tu.onboarding_completed);
+      if (needsOnboardingLocal || needsOnboarding) {
         const { error: updateError } = await supabase.rpc('complete_user_onboarding');
         if (updateError) throw updateError;
 
+        if (refreshDisplayName) {
+          await refreshDisplayName();
+        }
+
         addToast('Profile completed successfully!', 'success');
-        window.location.hash = '#/dashboard';
-        window.location.reload();
+        navigate('/events', { replace: true });
         return;
       }
 
+      if (refreshDisplayName) {
+        await refreshDisplayName();
+      }
       addToast('Personal information updated successfully!', 'success');
       setMember(prev => ({
         ...prev,
@@ -199,7 +207,7 @@ export function Profile() {
   const handleUpdatePassword = async (e) => {
     e.preventDefault();
 
-    if (!currentPassword) {
+    if (hasEmailProvider && !currentPassword) {
       addToast('Please enter your current password.', 'error');
       return;
     }
@@ -209,8 +217,8 @@ export function Profile() {
       return;
     }
 
-    if (newPassword.length < 6) {
-      addToast('New password must be at least 6 characters long.', 'error');
+    if (!passwordMeetsMinimum(newPassword)) {
+      addToast('Password does not meet minimum security requirements.', 'error');
       return;
     }
 
@@ -222,16 +230,18 @@ export function Profile() {
     try {
       setSavingPassword(true);
 
-      // Verify current password first
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: user.email,
-        password: currentPassword,
-      });
+      if (hasEmailProvider) {
+        // Verify current password first
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: user.email,
+          password: currentPassword,
+        });
 
-      if (signInError) {
-        addToast('Current password is incorrect.', 'error');
-        setSavingPassword(false);
-        return;
+        if (signInError) {
+          addToast('Current password is incorrect.', 'error');
+          setSavingPassword(false);
+          return;
+        }
       }
 
       // Update to new password
@@ -344,6 +354,61 @@ export function Profile() {
         return r.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
     }
   };
+
+  if (needsOnboarding) {
+    return (
+      <div className="profile-page-wrapper">
+        <div className="profile-header">
+          <div>
+            <h1 style={{ color: 'var(--foreground)', margin: 0, fontSize: '1.5rem', fontFamily: 'var(--font-display)' }}>Complete Your Profile</h1>
+            <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.9rem' }}>Please set up your profile before you can continue.</p>
+          </div>
+        </div>
+
+        <div className="glass-card form-card">
+          <form onSubmit={handleSavePersonalInfo}>
+            <div className="form-row-responsive">
+              <div className="form-group form-group-flex-2">
+                <label className="form-label">
+                  First Name (or Nickname) <span className="required-asterisk">*</span>
+                </label>
+                <input
+                  type="text"
+                  className="form-control-input"
+                  value={firstName}
+                  onChange={e => setFirstName(e.target.value)}
+                  required
+                  maxLength={100}
+                  placeholder="e.g. John"
+                />
+              </div>
+
+              <div className="form-group form-group-flex-initial">
+                <label className="form-label">
+                  Last Initial <span className="required-asterisk">*</span>
+                </label>
+                <input
+                  type="text"
+                  className="form-control-input"
+                  value={lastInitial}
+                  onChange={e => setLastInitial(e.target.value)}
+                  required
+                  maxLength={1}
+                  placeholder="D"
+                />
+              </div>
+            </div>
+
+            <div className="form-card-footer">
+              <button type="submit" className="btn btn-primary" disabled={savingPersonalInfo}>
+                {savingPersonalInfo ? 'Saving...' : 'Save & Continue'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="profile-page-wrapper">
@@ -509,26 +574,28 @@ export function Profile() {
               </svg>
               Security
             </h3>
-            <p className="form-card-subtitle">Update your account password</p>
+            <p className="form-card-subtitle">{hasEmailProvider ? 'Update your account password' : 'Add a password to your account'}</p>
           </div>
         </div>
 
         <form onSubmit={handleUpdatePassword}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
-            <div className="form-group" style={{ maxWidth: '400px' }}>
-              <label className="form-label">
-                Current Password <span className="required-asterisk">*</span>
-              </label>
-              <input
-                type="password"
-                className="form-control-input"
-                placeholder="Enter current password"
-                value={currentPassword}
-                onChange={e => setCurrentPassword(e.target.value)}
-                required
-              />
-            </div>
+            {hasEmailProvider && (
+              <div className="form-group" style={{ maxWidth: '400px' }}>
+                <label className="form-label">
+                  Current Password <span className="required-asterisk">*</span>
+                </label>
+                <input
+                  type="password"
+                  className="form-control-input"
+                  placeholder="Enter current password"
+                  value={currentPassword}
+                  onChange={e => setCurrentPassword(e.target.value)}
+                  required
+                />
+              </div>
+            )}
 
             <div className="form-row-responsive">
               <div className="form-group form-group-flex-1">
@@ -543,6 +610,7 @@ export function Profile() {
                   onChange={e => setNewPassword(e.target.value)}
                   required
                 />
+                <PasswordStrengthMeter password={newPassword} />
               </div>
 
               <div className="form-group form-group-flex-1">
@@ -570,7 +638,9 @@ export function Profile() {
                 Password Requirements:
               </div>
               <ul>
-                <li>Must be at least 6 characters in length</li>
+                <li>Must be at least 8 characters in length</li>
+                <li>At least 1 uppercase letter</li>
+                <li>At least 1 number or special character</li>
                 <li>New password and confirmation password must match</li>
               </ul>
             </div>

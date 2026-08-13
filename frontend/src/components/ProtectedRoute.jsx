@@ -1,11 +1,12 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTroop } from '../context/TroopContext';
 import { AppSpinner } from './AppSpinner';
 
 export function ProtectedRoute({ children, allowedRoles = null }) {
   const { session, loading: authLoading } = useAuth();
-  const { selectedTroop, isGlobalAdmin, loadingTroops } = useTroop();
+  const { selectedTroop, isGlobalAdmin, loadingTroops, needsOnboarding } = useTroop();
+  const location = useLocation();
 
   // Hold rendering until initial session & troops resolve.
   if (authLoading || (session && loadingTroops)) return <AppSpinner />;
@@ -28,6 +29,10 @@ export function ProtectedRoute({ children, allowedRoles = null }) {
       
       return <Navigate to={fallbackPath} replace />;
     }
+  }
+
+  if (needsOnboarding && location.pathname !== '/profile') {
+    return <Navigate to="/profile" replace />;
   }
 
   return children;

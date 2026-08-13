@@ -132,3 +132,8 @@ The `scans_insert_own_troop` RLS policy checks `AND ended_at IS NULL`. This ensu
 
 ## Cross-Troop Isolation
 The schema includes a `DEMO-001` troop. Because all queries are implicitly filtered by RLS, a user logged into `SC-0110` will never see `DEMO-001` data. This troop exists solely to verify multi-tenancy isolation.
+
+## Onboarding Gate
+
+The system enforces a hard onboarding gate using the `needsOnboarding` flag in `TroopContext` and route protection in `ProtectedRoute`. 
+Users with incomplete profiles (e.g. missing names after signing up via OAuth or accepting an invite without providing a name) are automatically redirected to the `/profile` page, preventing access to the main application until their profile is complete.
