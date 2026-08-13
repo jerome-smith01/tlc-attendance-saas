@@ -106,4 +106,22 @@ While full dialogs use `.app-modal-overlay` with backdrop blur (`z-index: 9999`)
 
 For detailed table filter popover implementation standards, see [07_table_patterns.md Section 4](07_table_patterns.md#4-popover-ui-layer--status-badge-synchronization).
 
+---
+
+## 5. Contextual Action Menus & Status Popovers (`.status-popover-menu`)
+
+Compact contextual popovers (such as the event status popover in the Scanner header card) display action items anchored directly to trigger badges or icons.
+
+### 5.1 Structure & Styling
+- **Container (`.status-popover-menu`)**: Positioned absolute relative to the trigger cell, featuring a card background (`var(--bg-card)` / dark mode `var(--bg-secondary)`), subtle border, and elevated drop shadow (`box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2)`).
+- **Items (`.status-popover-item`)**: Full-width button elements displaying an inline SVG icon and descriptive text.
+- **Dismiss Mechanics**: Auto-dismisses when clicking outside the menu container or tapping an action item.
+
+### 5.2 Permission Gating & Disabled Shading Standard
+Contextual action popovers MUST NEVER conditionally omit items in a way that renders an empty white container.
+- **Visible to All Roles**: All contextual action options remain rendered in the DOM for all user roles.
+- **Disabled State**: When a user role (e.g., `badge_scanner`) lacks authorization for an action, the button is rendered with `disabled={true}`, `.status-popover-item:disabled` (`opacity: 0.4; cursor: not-allowed`), and hover effects disabled (`:hover:not(:disabled)`).
+- **Descriptive Tooltips**: Provide an informative `title` attribute explaining why the action is disabled (e.g., `"Close unavailable: requires admin role"`, `"Delete unavailable: requires admin role"`).
+
+
 

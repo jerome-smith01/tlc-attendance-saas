@@ -33,6 +33,11 @@ This document outlines the plain-English role definitions, permission matrix, an
 2. **Roster Manager & Badge Scanner**: Invited by a Troop Admin or another Roster Manager via the "Invite Leader" flow. Receives an email invitation.
 3. **Members (Trailmen)**: Added manually or imported via CSV. They do not have login access to the platform (attendance is tracked by leaders).
 
+### UI Permission Enforcement & Disabled States
+When a restricted role (e.g., `badge_scanner`) views screens or actions that require higher permissions (such as event closing, reopening, deleting, or manual attendance editing):
+- Actions and context menus remain rendered in the interface to prevent layout shifts or empty popover glitches.
+- Unauthorized controls render in a disabled / greyed out state (`opacity: 0.4; cursor: not-allowed`) with a descriptive `title` tooltip explaining the required permission (e.g., *"Close unavailable: requires admin role"*).
+
 ### Future: QR Join Flow and Approval Gating
 *(Placeholder for future implementation)*
 A planned feature where parents/members can scan a QR code at meetings to request to join a troop, requiring approval from a Roster Manager or Troop Admin.

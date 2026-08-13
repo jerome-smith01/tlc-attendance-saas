@@ -12,8 +12,8 @@ TLC Attendance is a SaaS attendance tracker for Trail Life USA troops. MVP-1 is 
 | Auth | Supabase Auth (Email/Password + Google OAuth) | JWT-based, `supabase-js` client |
 | Hosting | Cloudflare Pages | `tlc.goodplusfast.com` |
 | QR Scanning | `html5-qrcode` | Live continuous feed, no tap-to-capture |
-| Chrome Extension | Manifest V3 (Vite + @crxjs) | Syncs approved scans to `traillifeconnect.com` |
-
+| Chrome Extension | Manifest V3 (Vite + @crxjs) | Syncs closed event attendance to `traillifeconnect.com` |
+ 
 ## System Diagram
 
 ```mermaid
@@ -58,7 +58,7 @@ graph LR
 | `pages/Profile.jsx` | Post-invite onboarding & ongoing user profile page. Handles display name (first name + last initial), password updates, member ID, and physical badge links. |
 | `pages/Dashboard.jsx` | Troop overview: active user count, total sessions, unsynced session warnings. |
 | `pages/Roster.jsx` | Full roster management page (wraps `RosterList`). |
-| `pages/Scanner.jsx` | Live camera feed scanner for a specific event (`/events/:eventId`). Includes scan log, unknown member resolution modal, and admin-only approval actions. |
+| `pages/Scanner.jsx` | Live camera feed scanner for a specific event (`/events/:eventId`). Includes scan log, unknown member resolution modal, and event status actions (Close Event / Re-open). |
 | `pages/Events.jsx` | Event history and management table. Clicking an event navigates to its dedicated Scanner page. |
 | `pages/Billing.jsx` | Billing placeholder page (deferred). |
 
@@ -90,13 +90,14 @@ Uses `HashRouter` for Cloudflare Pages static SPA compatibility (`/#/login`, `/#
 - [01_database_schema.md](./01_database_schema.md) — Schema design, ERD, and migration history
 - [02_rls_and_auth.md](./02_rls_and_auth.md) — Roles, RLS policies, and UI/UX access rules
 - [03_qr_payload.md](./03_qr_payload.md) — QR parsing, lookup logic, and Chrome Extension DOM integration
-- [04_scan_lifecycle.md](./04_scan_lifecycle.md) — Scan status flow, session lifecycle, purge logic, and sync
+- [04_scan_lifecycle.md](./04_scan_lifecycle.md) — Scan status flow, event lifecycle, purge logic, and sync
 - [05_frontend_patterns.md](./05_frontend_patterns.md) — Key frontend patterns: auth, troop context, scan logic
 - [06_chrome_extension.md](./06_chrome_extension.md) — Chrome Extension architecture, auth, and sync mechanics
 - [07_table_patterns.md](./07_table_patterns.md) — Responsive Grid Morph Table architecture and column width controls
 - [08_icon_and_color_scheme.md](./08_icon_and_color_scheme.md) — Icon set and standard visual color coding for actions
 - [09_popup_modals.md](./09_popup_modals.md) — Popup modal patterns, animations, and height handling
 - [10_forms_and_inputs.md](./10_forms_and_inputs.md) — Forms, DateInput component, and m/d/yy date formatting
+- [11_database_backups.md](./11_database_backups.md) — Database backup automation, retention, and restore SOP
 - [13_roles_and_permissions.md](./13_roles_and_permissions.md) — Role definitions, permission matrix, and onboarding flows
 - [../auth_flow.md](../auth_flow.md) — Supabase JWT lifecycle, AuthContext, PWA behavior
 - [../hosting.md](../hosting.md) — Cloudflare Pages deployment and environment config

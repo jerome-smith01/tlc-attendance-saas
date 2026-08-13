@@ -122,7 +122,7 @@ Individual attendance records (Sign In / Sign Out).
 - `signed_in_by` (UUID): References `auth.users(id)` — leader who signed the member in.
 - `sign_out_time` (TIMESTAMPTZ): Timestamp when member was signed out (nullable).
 - `signed_out_by` (UUID): References `auth.users(id)` — leader who signed the member out (nullable).
-- `status` (`scan_status` ENUM): `pending` → `approved` → `complete`.
+- `status` (`scan_status` ENUM): Legacy/workflow field (`pending`, `approved`, `complete`). Sync gating is controlled at the event level via `events.ended_at`.
 - **Constraint**: `UNIQUE(event_id, roster_id)` — one attendance record per member per event.
 
 ## Enum Types
@@ -131,7 +131,7 @@ Individual attendance records (Sign In / Sign Out).
 |:---|:---|:---|
 | `subscription_status` | `active`, `past_due`, `canceled`, `unpaid` | Used on `troops` table |
 | `troop_role` | `troop_admin`, `roster_manager`, `badge_scanner` | Used on `troop_users` table. **Note: renamed in migrations 003 and 017.** |
-| `scan_status` | `pending`, `approved`, `complete` | Scan workflow status |
+| `scan_status` | `pending`, `approved`, `complete` | Scan status (sync gating is controlled by event `ended_at`) |
 
 > **Important naming note**: The roles in `troop_users` are `roster_manager` and `badge_scanner`. The `roster.role` column uses a separate TEXT check constraint with values `trailman`, `troop_admin`, `roster_manager`, `badge_scanner`. These are parallel systems.
 

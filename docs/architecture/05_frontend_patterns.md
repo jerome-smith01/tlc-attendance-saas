@@ -133,7 +133,9 @@ To provide a consistent and premium experience across major screens (e.g., Scann
 - **Field Layout**: Formatted as individual full-width rows (`display: flex; justify-content: space-between; align-items: center;`).
 - **Alignment**: Labels (`.grid-table-label`) are left-aligned; values and status badges are right-aligned on the same row.
 - **Metrics Hierarchy**:
-  - **STATUS**: Session status pill badge (`OPEN`, `CLOSED`, or `SYNCED`).
+  - **STATUS**: Session status pill badge (`OPEN`, `CLOSED`, or `SYNCED`). Clicking the badge opens the Status Popover Menu (`.status-popover-menu`).
+  - **Status Popover Menu Actions**: Lists contextual event lifecycle actions (`Close Event`, `Reopen Event`, `Delete Event`).
+  - **Permission Gating & Disabled Shading**: All relevant actions remain visible in the popover for every role (including `badge_scanner`). If the user lacks management permissions, the options render disabled (`.status-popover-item:disabled` with `opacity: 0.4` and `cursor: not-allowed`) and include a descriptive `title` tooltip explaining permission requirements (e.g., *"Close unavailable: requires admin role"*), preventing blank popover containers.
   - **EVENT DATE**: Formatted event date string.
   - **SCANNED IN**: Real-time count of members currently active / signed in (`attendance.filter(s => !s.raw_sign_out_time).length`).
   - **SCANNED OUT**: Count of members signed out (`attendance.filter(s => !!s.raw_sign_out_time).length`).
