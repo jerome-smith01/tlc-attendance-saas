@@ -152,14 +152,27 @@ export function Profile() {
     try {
       setSavingPersonalInfo(true);
 
+      const trimmedFirst = firstName.trim();
+      const formattedLastInitial = lastInitial.trim().charAt(0).toUpperCase();
+
+      // Always update Supabase Auth user metadata so user profile changes persist globally
+      const { error: authUpdateError } = await supabase.auth.updateUser({
+        data: {
+          first_name: trimmedFirst,
+          last_initial: formattedLastInitial,
+          full_name: `${trimmedFirst} ${formattedLastInitial}.`
+        }
+      });
+      if (authUpdateError) {
+        console.error('[Profile] Auth metadata update error:', authUpdateError);
+      }
+
       const { data: troopUsers, error: tuError } = await supabase
         .from('troop_users')
         .select('troop_id, role, onboarding_completed')
         .eq('user_id', user.id);
 
       if (tuError) throw tuError;
-
-      const formattedLastInitial = lastInitial.trim().charAt(0).toUpperCase();
 
       if (troopUsers && troopUsers.length > 0) {
         for (const tu of troopUsers) {
@@ -171,7 +184,7 @@ export function Profile() {
             .maybeSingle();
 
           const updateObj = {
-            first_name: firstName.trim(),
+            first_name: trimmedFirst,
             last_initial: formattedLastInitial,
           };
 
@@ -191,13 +204,32 @@ export function Profile() {
               .insert({
                 troop_id: tu.troop_id,
                 user_id: user.id,
-                first_name: firstName.trim(),
+                first_name: trimmedFirst,
                 last_initial: formattedLastInitial,
                 member_id: tu.troop_id === selectedTroopId ? (memberCode.trim() || null) : null,
                 role: tu.role,
                 email: user.email
               });
             if (insertError) throw insertError;
+          }
+        }
+      } else {
+        // Also check if any roster entries exist for this user_id or email across all troops
+        const { data: existingRosterEntries } = await supabase
+          .from('roster')
+          .select('id')
+          .or(`user_id.eq.${user.id},email.eq.${user.email}`);
+
+        if (existingRosterEntries && existingRosterEntries.length > 0) {
+          for (const r of existingRosterEntries) {
+            await supabase
+              .from('roster')
+              .update({
+                first_name: trimmedFirst,
+                last_initial: formattedLastInitial,
+                user_id: user.id
+              })
+              .eq('id', r.id);
           }
         }
       }
@@ -222,7 +254,7 @@ export function Profile() {
       addToast('Personal information updated successfully!', 'success');
       setMember(prev => ({
         ...prev,
-        first_name: firstName.trim(),
+        first_name: trimmedFirst,
         last_initial: formattedLastInitial,
         member_id: memberCode.trim() || null
       }));

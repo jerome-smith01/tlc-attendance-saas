@@ -31,24 +31,59 @@ export function TroopProvider({ children }) {
 
   async function refreshDisplayName() {
     const activeUser = user || (await supabase.auth.getUser())?.data?.user;
-    if (!activeUser?.id || !selectedTroopId) {
+    if (!activeUser?.id) {
       setUserDisplayName('');
       return;
     }
     try {
-      const { data, error } = await supabase
-        .from('roster')
-        .select('first_name, last_initial')
-        .eq('user_id', activeUser.id)
-        .eq('troop_id', selectedTroopId)
-        .maybeSingle();
+      let data = null;
+      if (selectedTroopId) {
+        const { data: rosterData, error } = await supabase
+          .from('roster')
+          .select('first_name, last_initial')
+          .eq('user_id', activeUser.id)
+          .eq('troop_id', selectedTroopId)
+          .maybeSingle();
 
-      if (error) throw error;
+        if (error && error.code !== 'PGRST116') throw error;
+        data = rosterData;
+      }
+
+      if (!data) {
+        const { data: anyRoster, error } = await supabase
+          .from('roster')
+          .select('first_name, last_initial')
+          .or(`user_id.eq.${activeUser.id},email.eq.${activeUser.email}`)
+          .not('first_name', 'is', null)
+          .limit(1)
+          .maybeSingle();
+
+        if (error && error.code !== 'PGRST116') throw error;
+        data = anyRoster;
+      }
+
       if (data && data.first_name) {
         const initial = data.last_initial ? ` ${data.last_initial.charAt(0).toUpperCase()}.` : '';
         setUserDisplayName(`${data.first_name.trim()}${initial}`);
       } else {
-        setUserDisplayName('');
+        const metaFirst = activeUser?.user_metadata?.first_name || activeUser?.user_metadata?.given_name;
+        const metaLast = activeUser?.user_metadata?.last_initial || activeUser?.user_metadata?.last_name || activeUser?.user_metadata?.family_name;
+        if (metaFirst) {
+          const initial = metaLast ? ` ${metaLast.trim().charAt(0).toUpperCase()}.` : '';
+          setUserDisplayName(`${metaFirst.trim()}${initial}`);
+        } else if (activeUser?.user_metadata?.full_name || activeUser?.user_metadata?.name) {
+          const fullName = (activeUser.user_metadata.full_name || activeUser.user_metadata.name).trim();
+          const parts = fullName.split(/\s+/);
+          if (parts.length > 1) {
+            setUserDisplayName(`${parts[0]} ${parts[parts.length - 1].charAt(0).toUpperCase()}.`);
+          } else {
+            setUserDisplayName(parts[0]);
+          }
+        } else if (activeUser?.email) {
+          setUserDisplayName(activeUser.email.split('@')[0]);
+        } else {
+          setUserDisplayName('');
+        }
       }
     } catch (err) {
       console.error('Error fetching user display name:', err);
@@ -57,7 +92,7 @@ export function TroopProvider({ children }) {
   }
 
   useEffect(() => {
-    if (user && selectedTroopId) {
+    if (user) {
       refreshDisplayName();
     } else {
       setUserDisplayName('');

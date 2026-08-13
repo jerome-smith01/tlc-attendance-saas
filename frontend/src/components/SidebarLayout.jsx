@@ -82,38 +82,19 @@ export function SidebarLayout() {
     return link.allowedRoles.includes(currentUserRole);
   });
 
-  const [userName, setUserName] = useState('');
-
-  useEffect(() => {
-    async function loadUserName() {
-      if (!user) return;
-      try {
-        let query = supabase
-          .from('roster')
-          .select('first_name, last_initial')
-          .eq('user_id', user.id);
-
-        if (selectedTroopId) {
-          query = query.eq('troop_id', selectedTroopId);
-        }
-
-        const { data } = await query.limit(1).maybeSingle();
-        if (data && data.first_name && data.last_initial) {
-          setUserName(`${data.first_name} ${data.last_initial}.`);
-        }
-      } catch (err) {
-        console.error('Error fetching sidebar user name:', err);
-      }
-    }
-    loadUserName();
-  }, [user, selectedTroopId, location.pathname]);
-
   const getDisplayName = () => {
-    if (userName) return userName;
-    if (user?.user_metadata?.full_name) {
-      const parts = user.user_metadata.full_name.split(' ');
+    if (userDisplayName) return userDisplayName;
+    const metaFirst = user?.user_metadata?.first_name || user?.user_metadata?.given_name;
+    const metaLast = user?.user_metadata?.last_initial || user?.user_metadata?.last_name || user?.user_metadata?.family_name;
+    if (metaFirst) {
+      const initial = metaLast ? ` ${metaLast.trim().charAt(0).toUpperCase()}.` : '';
+      return `${metaFirst.trim()}${initial}`;
+    }
+    if (user?.user_metadata?.full_name || user?.user_metadata?.name) {
+      const fullName = (user.user_metadata.full_name || user.user_metadata.name).trim();
+      const parts = fullName.split(/\s+/);
       if (parts.length > 1) {
-        return `${parts[0]} ${parts[parts.length - 1][0]}.`;
+        return `${parts[0]} ${parts[parts.length - 1].charAt(0).toUpperCase()}.`;
       }
       return parts[0];
     }
