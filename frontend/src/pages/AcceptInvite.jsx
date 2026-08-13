@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
@@ -32,6 +32,10 @@ export function AcceptInvite() {
   const [mismatchData, setMismatchData] = useState(null); // { loggedInEmail, invitedEmail }
   const [success, setSuccess] = useState(false);
 
+  // Prevents the auto-accept useEffect from double-firing after
+  // handleCreateAccountAndAccept signs the user in and changes session.
+  const acceptHandled = useRef(false);
+
   // 1. Initial validation on mount
   useEffect(() => {
     if (!token) {
@@ -46,6 +50,9 @@ export function AcceptInvite() {
   // 2. Auto-accept if logged in and email matches
   useEffect(() => {
     if (validating || authLoading || !inviteDetails || !session || success) return;
+    // Guard: if another handler already initiated acceptance (e.g. handleCreateAccountAndAccept
+    // signed the user in itself), don't fire a second accept call with the same token.
+    if (acceptHandled.current) return;
 
     const loggedInEmail = (user?.email || '').trim().toLowerCase();
     const invitedEmail = (inviteDetails.email || '').trim().toLowerCase();
@@ -88,6 +95,8 @@ export function AcceptInvite() {
   };
 
   const handleAcceptInvite = async () => {
+    if (acceptHandled.current) return;
+    acceptHandled.current = true;
     setSubmitting(true);
     setFormError('');
 
@@ -211,7 +220,10 @@ export function AcceptInvite() {
         return;
       }
 
-      // 2. Sign in client-side to establish session (only reached on success)
+      // 2. Sign in client-side to establish session (only reached on success).
+      // Set the flag BEFORE signInWithPassword — the session change it triggers
+      // re-runs the auto-accept useEffect, which must not call accept-invite again.
+      acceptHandled.current = true;
       const { error: signInErr } = await supabase.auth.signInWithPassword({
         email: inviteDetails.email,
         password
