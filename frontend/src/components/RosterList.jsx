@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { parseTlcRosterFile } from '../utils/fileParser';
 import { Modal } from './common/Modal';
+import { Tooltip } from './common/Tooltip';
 import { FilterPopover } from './common/FilterPopover';
 import { InviteUser } from './InviteUser';
 import { InviteStatusList } from './InviteStatusList';
@@ -623,9 +624,9 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
           </h3>
         </div>
 
-        {/* Right side: Add Member button (Members tab) + master checkbox */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginRight: '4px' }}>
-          {activeTab === 'members' && canManageRoster && (
+        {/* Right side: Add Member button (Members tab) */}
+        {activeTab === 'members' && canManageRoster && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginRight: '4px' }}>
             <button
               type="button"
               className="btn btn-start btn-compact"
@@ -634,18 +635,8 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
             >
               + Add Member
             </button>
-          )}
-          {canManageRoster && (
-            <input
-              type="checkbox"
-              checked={isAllSelected}
-              ref={input => { if (input) input.indeterminate = isSomeSelected; }}
-              onChange={handleToggleSelectAll}
-              style={{ margin: 0, cursor: 'pointer', width: '18px', height: '18px' }}
-              title="Select all visible members"
-            />
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {isTableVisible && (
@@ -1104,15 +1095,34 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
             maxLength={100}
             style={{ width: '100%', maxWidth: '320px', padding: '0.75rem', background: 'var(--bg-secondary)', color: 'var(--foreground)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', boxSizing: 'border-box' }}
           />
-          <input
-            type="text"
-            placeholder="Last Initial"
-            maxLength={1}
-            value={newLastInitial}
-            onChange={e => setNewLastInitial(e.target.value)}
-            required
-            style={{ width: '100px', padding: '0.75rem', background: 'var(--bg-secondary)', color: 'var(--foreground)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', boxSizing: 'border-box' }}
-          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <input
+              type="text"
+              placeholder="Last Initial"
+              maxLength={1}
+              value={newLastInitial}
+              onChange={e => setNewLastInitial(e.target.value)}
+              required
+              style={{ width: '100px', padding: '0.75rem', background: 'var(--bg-secondary)', color: 'var(--foreground)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', boxSizing: 'border-box' }}
+            />
+            <Tooltip
+              ariaLabel="Why only last initial?"
+              position="right"
+              content={
+                <span>
+                  To protect youth privacy and comply with{' '}
+                  <a
+                    href="https://www.ftc.gov/business-guidance/resources/complying-coppa-frequently-asked-questions"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    COPPA guidelines
+                  </a>
+                  , we only collect and store first names and last initials.
+                </span>
+              }
+            />
+          </div>
           <input
             type="text"
             placeholder="Member ID (Optional)"

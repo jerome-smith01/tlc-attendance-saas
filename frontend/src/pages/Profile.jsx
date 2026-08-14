@@ -798,46 +798,7 @@ export function Profile() {
         </div>
       </div>
 
-      {/* Card 5: Privacy & Legal */}
-      <div className="glass-card form-card">
-        <div className="form-card-header">
-          <div className="form-card-header-main">
-            <h3 className="form-card-title">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-              </svg>
-              Privacy & Data Protection
-            </h3>
-            <p className="form-card-subtitle">Review our data minimization practices, COPPA compliance, and user rights</p>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
-          <div>
-            <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--foreground)' }}>
-              TLC Attendance Privacy Policy
-            </div>
-            <div className="form-helper-text">
-              Learn how we protect youth member data, handle camera feeds, and secure your troop records.
-            </div>
-          </div>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => navigate('/privacy')}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-              <polyline points="15 3 21 3 21 9" />
-              <line x1="10" y1="14" x2="21" y2="3" />
-            </svg>
-            View Privacy Policy
-          </button>
-        </div>
-      </div>
-
-      {/* Card 6: Danger Zone */}
+      {/* Card 5: Danger Zone */}
       <div className="glass-card form-card" style={{ border: '1px solid color-mix(in srgb, var(--color-danger, #ef4444) 30%, transparent)' }}>
         <div className="form-card-header" style={{ borderBottomColor: 'color-mix(in srgb, var(--color-danger, #ef4444) 20%, transparent)' }}>
           <div className="form-card-header-main">

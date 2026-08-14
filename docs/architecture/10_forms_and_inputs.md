@@ -85,4 +85,18 @@ To prevent users from missing the **Last Initial** input during rapid data entry
 - **Required Fields**: Explicitly marked with an asterisk (`<span className="required-asterisk">*</span>`).
 - **Password & Security Requirements**: Password forms MUST render an inline requirement callout box (`.password-requirements-box`) near the input fields stating explicit constraints (e.g. minimum character count, password match verification).
 
+### 5.5 Privacy Help Tooltip Standard for Last Initial Fields
+To explain our data minimization rationale to users and parents, every **Last Initial** input field across the application MUST include an accessible question mark help tooltip (`<Tooltip />` from `components/common/Tooltip.jsx`) positioned immediately to the right of the compact input:
+- **Visual Position**: Positioned inline with the `100px` Last Initial input via flex layout (`alignItems: 'center'`, `gap: '0.5rem'`).
+- **Trigger**: `HelpCircle` icon from `lucide-react` wrapped in `.help-tooltip-trigger`.
+- **Interaction**:
+  - **Click & Tap**: Explicit click-to-open interaction (hover triggers omitted to avoid accidental popups). Toggles open/close on click. Closes on outside click or `Escape` key.
+- **Visual Styling**:
+  - Light theme popover background uses light grey (`var(--bg-primary, #f4f4f5)`) with border (`var(--border-color)`) and drop shadow.
+- **Content Standard**:
+  - *"To protect youth privacy and comply with [COPPA guidelines](https://www.ftc.gov/business-guidance/resources/complying-coppa-frequently-asked-questions), we only collect and store first names and last initials."*
+  - The "COPPA guidelines" anchor must open in a new tab (`target="_blank"`, `rel="noopener noreferrer"`).
+- **Scope & Rollout**: Prototype established in `RosterList.jsx` (Add Member modal), followed by `EditMember.jsx`, `AcceptInvite.jsx`, `Profile.jsx`, and `Scanner.jsx`.
+
+
 

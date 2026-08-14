@@ -2638,6 +2638,111 @@ input[type="date"].filter-input::-webkit-calendar-picker-indicator:hover {
   margin-bottom: 0.25rem;
 }
 
+/* ==========================================================================
+   Help Tooltips
+   ========================================================================== */
+
+.help-tooltip-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+}
+
+.help-tooltip-trigger {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  margin: 0;
+  cursor: pointer;
+  color: var(--muted-foreground, #64748b);
+  border-radius: var(--radius-pill, 9999px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease, background-color 0.15s ease, transform 0.15s ease;
+  line-height: 1;
+}
+
+.help-tooltip-trigger:hover,
+.help-tooltip-trigger:focus-visible,
+.help-tooltip-trigger.active {
+  color: var(--color-primary, #0284c7);
+  background: color-mix(in srgb, var(--color-primary, #0284c7) 12%, transparent);
+  outline: none;
+}
+
+.help-tooltip-trigger:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary, #0284c7) 40%, transparent);
+}
+
+.help-tooltip-popover {
+  position: absolute;
+  z-index: 1050;
+  background: var(--bg-primary, #f4f4f5);
+  color: var(--foreground, #0f172a);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.18), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  padding: 0.75rem 0.875rem;
+  font-size: 0.825rem;
+  line-height: 1.45;
+  width: max-content;
+  max-width: 280px;
+  pointer-events: auto;
+  animation: tooltipFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.help-tooltip-popover a {
+  color: var(--color-primary, #0284c7);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-weight: 500;
+  transition: opacity 0.15s ease;
+}
+
+.help-tooltip-popover a:hover {
+  opacity: 0.85;
+}
+
+/* Tooltip placements */
+.help-tooltip-popover.position-top {
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.help-tooltip-popover.position-bottom {
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.help-tooltip-popover.position-right {
+  left: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.help-tooltip-popover.position-left {
+  right: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 4px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+
 
 
 

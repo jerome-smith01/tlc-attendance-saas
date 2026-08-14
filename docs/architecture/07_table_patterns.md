@@ -75,7 +75,7 @@ For list sections below the primary Header Card (e.g., the Attendance list), the
 4. **Animated Chevron**: The SVG chevron rotates dynamically:
    - Expanded: `transform: rotate(0deg)`
    - Collapsed: `transform: rotate(-90deg)`
-5. **Right-Aligned Controls**: The right edge of the header accommodates bulk controls (e.g., the "All" checkbox), shifted slightly left (`margin-right: 4px`) to align pixel-perfect with the right edge of the white floating cards below it.
+5. **Right-Aligned Controls**: The right edge of the header accommodates contextual section actions (e.g., the `+ Add Member` button), shifted slightly left (`margin-right: 4px`) to align pixel-perfect with the right edge of the white floating cards below it. **Master selection checkboxes MUST NOT be placed in the section header**; select-all functionality is strictly delegated to the master checkbox in the table's header row (`.grid-table-header-select`).
 6. **State Persistence**: Expandable section visibility states (e.g., `isTableVisible`, `isCsvVisible`) MUST be persisted to `localStorage` per user (e.g., `tlc_section_<name>_<userId>`) so section expand/collapse states survive page reloads.
 
 ---
@@ -246,7 +246,7 @@ When new scans arrive real-time (`processPayload`, `handleResolveUnknown`, `hand
 Screens supporting bulk operations include a multi-select checkbox column to the left of the primary data column:
 
 ### Selection Behavior & Alignment
-- **Master Checkbox (Header)**: Toggles selection on all currently visible (filtered) rows. Uses `input.indeterminate = isSomeSelected` for partial selection.
+- **Master Checkbox (Header Row Only)**: Toggles selection on all currently visible (filtered) rows. Uses `input.indeterminate = isSomeSelected` for partial selection. The master select-all checkbox is strictly placed in the table header row (`.grid-table-header-select` / Cell 1), NEVER outside in the upper-right section header or card controls.
 - **Row Checkbox**: Toggles selection for individual row IDs.
 - **Pixel-Perfect Alignment**: Both the header selection cell (`.grid-table-header-select`) and row selection cell (`.grid-table-cell-select`) MUST use identical padding and flex alignment (`display: flex; align-items: flex-start; justify-content: flex-start; padding-left: 1rem; width: 48px;`) on desktop.
 - **Top Vertical Row Alignment**: On desktop (`@media (min-width: 768px)`), `.grid-table-row` MUST specify `align-items: flex-start;` and consistent `line-height: 1.4;` so all cells in the row align to the top. Record title buttons (`.event-name-link`) use `display: block; margin: 0; padding: 0; line-height: 1.4;` to ensure their text baseline matches adjacent cells perfectly without UA button padding or line box offsets.
@@ -395,7 +395,7 @@ When building or upgrading another page (e.g. `Roster.jsx`) to use this pattern:
 - [ ] Include high-contrast `.bulk-action-pill` with `?` help button (`.btn-icon-help`) and interactive Action Guide popover card.
 - [ ] Add active filter chips bar under toolbar area.
 - [ ] Add mobile Filter/Sort trigger button and bottom sheet drawer.
-- [ ] For nested list sections, use `.attendance-section-header` pattern with left-aligned chevron toggle and right-aligned controls aligned pixel-perfectly (`marginRight: 4px`) to the cards.
+- [ ] For nested list sections, use `.attendance-section-header` pattern with left-aligned chevron toggle and right-aligned action buttons (e.g. `+ Add Member`). Never place a master select-all checkbox in the section header; keep master selection strictly inside the table header row (`.grid-table-header-select`).
 - [ ] Implement temporary green row highlight animation (`.newly-scanned` / `scanRowHighlight`) when scanning or updating table records.
 
 

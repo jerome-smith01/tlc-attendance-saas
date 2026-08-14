@@ -278,6 +278,21 @@ export function SidebarLayout() {
             >
               Sign Out
             </button>
+            <div style={{ textAlign: 'center', marginTop: '0.75rem' }}>
+              <Link 
+                to="/privacy" 
+                onClick={() => setMobileNavOpen(false)}
+                style={{ 
+                  color: 'var(--muted-foreground)', 
+                  fontSize: '0.75rem', 
+                  textDecoration: 'underline',
+                  textUnderlineOffset: '2px',
+                  display: 'inline-block'
+                }}
+              >
+                Privacy Policy
+              </Link>
+            </div>
           </div>
         </nav>
 
