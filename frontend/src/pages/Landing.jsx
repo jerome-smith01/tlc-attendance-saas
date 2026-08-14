@@ -160,6 +160,14 @@ export function Landing() {
             <span>TLC Attendance Platform</span>
           </div>
           <div className="landing-footer-links">
+            <button 
+              className="landing-footer-link"
+              onClick={() => navigate('/privacy')}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            >
+              Privacy Policy
+            </button>
+            <span style={{ color: 'var(--border-color)', margin: '0 0.25rem' }}>•</span>
             <a 
               href="https://goodplusfast.com" 
               target="_blank" 

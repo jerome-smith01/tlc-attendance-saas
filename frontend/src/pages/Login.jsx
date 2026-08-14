@@ -189,7 +189,7 @@ export function Login() {
               : 'Sign In'}
           </button>
 
-          <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+          <div style={{ textAlign: 'center', marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', alignItems: 'center' }}>
             <button 
               type="button" 
               onClick={handleResetPassword}
@@ -197,6 +197,14 @@ export function Login() {
               style={{ background: 'none', border: 'none', color: 'var(--color-primary)', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.875rem' }}
             >
               Forgot Password?
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate('/privacy')}
+              style={{ background: 'none', border: 'none', color: 'var(--muted-foreground)', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.8rem' }}
+            >
+              Privacy Policy
             </button>
           </div>
         </form>

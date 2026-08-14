@@ -43,3 +43,7 @@ When a restricted role (e.g., `badge_scanner`) views screens or actions that req
 ### Future: QR Join Flow and Approval Gating
 *(Placeholder for future implementation)*
 A planned feature where parents/members can scan a QR code at meetings to request to join a troop, requiring approval from a Roster Manager or Troop Admin.
+
+### Consent & Onboarding Compliance (Sign-Up / Invite Acceptance)
+- **Affirmative Consent Checkbox Requirement**: When self-serve sign-up, parent join flows, or leader invite acceptance flows (`AcceptInvite.jsx`) are implemented or modified, they must include an explicit, required checkbox: *"I have read and agree to the [Privacy Policy](/privacy)"* with a direct link to the policy. This must be affirmatively checked by the user before creating an account or accepting an invitation.
+

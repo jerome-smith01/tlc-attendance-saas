@@ -17,6 +17,7 @@ import { EditMember } from './pages/EditMember';
 import { Events } from './pages/Events';
 import { Billing } from './pages/Billing';
 import { Extension } from './pages/Extension';
+import { PrivacyPolicy } from './pages/PrivacyPolicy';
 
 export default function App() {
   return (
@@ -29,6 +30,7 @@ export default function App() {
                 {/* Public */}
                 <Route path="/" element={<Landing />} />
                 <Route path="/login" element={<Login />} />
+                <Route path="/privacy" element={<PrivacyPolicy />} />
                 <Route path="/accept-invite" element={<AcceptInvite />} />
                 <Route path="/invite-error" element={<InviteError />} />
 
