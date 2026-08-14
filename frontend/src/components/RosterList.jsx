@@ -85,8 +85,8 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
 
   const handleScanSingleBadge = async (scanData) => {
     if (!scanningMember) return;
-    const { tlcId, memberId } = typeof scanData === 'string' 
-      ? { tlcId: scanData, memberId: null } 
+    const { tlcId, memberId } = typeof scanData === 'string'
+      ? { tlcId: scanData, memberId: null }
       : scanData;
 
     const memberDisplayName = scanningMember.name || `${scanningMember.first_name || ''} ${scanningMember.last_initial || ''}`.trim();
@@ -109,7 +109,7 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
       if (error) {
         if (error.code === '23505') {
           const existingMember = roster.find(m => m.tlc_id === tlcId && m.id !== scanningMember.id);
-          const existingName = existingMember 
+          const existingName = existingMember
             ? (existingMember.name || `${existingMember.first_name || ''} ${existingMember.last_initial || ''}`.trim())
             : null;
 
@@ -911,7 +911,7 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
                     <div className="grid-table-cell" role="cell">
                       <span className="grid-table-label">Profile</span>
                       {member.tlc_id ? (
-                        <a 
+                        <a
                           href={`https://www.traillifeconnect.com/profile/${member.tlc_id}/overview`}
                           target="_blank"
                           rel="noopener noreferrer"
@@ -1110,15 +1110,15 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
               position="right"
               content={
                 <span>
-                  To protect youth privacy and comply with{' '}
+                  To protect youth privacy and comply with the{' '}
                   <a
                     href="https://www.ftc.gov/business-guidance/resources/complying-coppa-frequently-asked-questions"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    COPPA guidelines
+                    Children's Online Privacy Protection Act (COPPA)
                   </a>
-                  , we only collect and store first names and last initials.
+                  , we only collect first names and last initials.
                 </span>
               }
             />
