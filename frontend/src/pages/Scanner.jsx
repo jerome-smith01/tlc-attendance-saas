@@ -9,6 +9,7 @@ import { useConfirm } from '../components/common/ConfirmContext';
 import { useToast } from '../components/common/ToastContext';
 import { Modal } from '../components/common/Modal';
 import { FilterPopover } from '../components/common/FilterPopover';
+import { LastInitialTooltip } from '../components/common/Tooltip';
 import { formatAppDate } from '../utils/date';
 
 export function Scanner() {
@@ -2221,14 +2222,17 @@ export function Scanner() {
                         onChange={e => { setManualFirstName(e.target.value); setSelectedRosterId(''); }}
                         style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box', background: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '4px' }}
                       />
-                      <input
-                        type="text"
-                        placeholder="Last Initial"
-                        maxLength={1}
-                        value={manualLastInitial}
-                        onChange={e => { setManualLastInitial(e.target.value); setSelectedRosterId(''); }}
-                        style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box', background: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '4px' }}
-                      />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <input
+                          type="text"
+                          placeholder="Last Initial"
+                          maxLength={1}
+                          value={manualLastInitial}
+                          onChange={e => { setManualLastInitial(e.target.value); setSelectedRosterId(''); }}
+                          style={{ width: '100px', padding: '0.5rem', boxSizing: 'border-box', background: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '4px' }}
+                        />
+                        <LastInitialTooltip />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -2346,14 +2350,17 @@ export function Scanner() {
                   onChange={e => { setManualEntryFirstName(e.target.value); setManualEntryRosterId(''); }}
                   style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box', background: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '4px' }}
                 />
-                <input
-                  type="text"
-                  placeholder="Last Initial"
-                  maxLength={1}
-                  value={manualEntryLastInitial}
-                  onChange={e => { setManualEntryLastInitial(e.target.value); setManualEntryRosterId(''); }}
-                  style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box', background: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '4px' }}
-                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <input
+                    type="text"
+                    placeholder="Last Initial"
+                    maxLength={1}
+                    value={manualEntryLastInitial}
+                    onChange={e => { setManualEntryLastInitial(e.target.value); setManualEntryRosterId(''); }}
+                    style={{ width: '100px', padding: '0.5rem', boxSizing: 'border-box', background: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '4px' }}
+                  />
+                  <LastInitialTooltip />
+                </div>
               </div>
             </div>
           </div>

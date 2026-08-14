@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/common/ToastContext';
 import { useConfirm } from '../components/common/ConfirmContext';
 import { SingleBadgeScannerModal } from '../components/SingleBadgeScannerModal';
+import { LastInitialTooltip } from '../components/common/Tooltip';
 
 export function EditMember() {
   const { memberId, troopNumber } = useParams();
@@ -324,25 +325,28 @@ export function EditMember() {
               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
                 Last Initial *
               </label>
-              <input
-                type="text"
-                value={lastInitial}
-                onChange={e => setLastInitial(e.target.value)}
-                required
-                maxLength={1}
-                disabled={isNameDisabled}
-                style={{
-                  width: '100px',
-                  padding: '0.65rem 0.75rem',
-                  background: 'var(--bg-secondary)',
-                  color: isNameDisabled ? 'var(--text-secondary)' : 'var(--foreground)',
-                  border: '1px solid var(--border-color)',
-                  borderRadius: 'var(--radius-sm)',
-                  boxSizing: 'border-box',
-                  opacity: isNameDisabled ? 0.8 : 1,
-                  cursor: isNameDisabled ? 'not-allowed' : 'text'
-                }}
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <input
+                  type="text"
+                  value={lastInitial}
+                  onChange={e => setLastInitial(e.target.value)}
+                  required
+                  maxLength={1}
+                  disabled={isNameDisabled}
+                  style={{
+                    width: '100px',
+                    padding: '0.65rem 0.75rem',
+                    background: 'var(--bg-secondary)',
+                    color: isNameDisabled ? 'var(--text-secondary)' : 'var(--foreground)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: 'var(--radius-sm)',
+                    boxSizing: 'border-box',
+                    opacity: isNameDisabled ? 0.8 : 1,
+                    cursor: isNameDisabled ? 'not-allowed' : 'text'
+                  }}
+                />
+                <LastInitialTooltip />
+              </div>
             </div>
 
             {isNameDisabled && (

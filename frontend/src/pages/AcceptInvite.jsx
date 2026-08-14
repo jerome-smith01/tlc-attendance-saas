@@ -6,6 +6,7 @@ import { useTroop } from '../context/TroopContext';
 import { useToast } from '../components/common/ToastContext';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { PasswordStrengthMeter, passwordMeetsMinimum } from '../components/PasswordStrengthMeter';
+import { LastInitialTooltip } from '../components/common/Tooltip';
 import './Login.css';
 
 export function AcceptInvite() {
@@ -492,17 +493,20 @@ export function AcceptInvite() {
                   <label htmlFor="last-initial" style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.35rem', color: 'var(--text-secondary)' }}>
                     Last Initial <span style={{ color: 'var(--color-error)' }}>*</span>
                   </label>
-                  <input
-                    id="last-initial"
-                    type="text"
-                    maxLength={1}
-                    placeholder="L"
-                    value={lastInitial}
-                    onChange={e => { setLastInitial(e.target.value.toUpperCase()); setFormError(''); }}
-                    required
-                    disabled={submitting}
-                    style={{ textAlign: 'left', textTransform: 'uppercase' }}
-                  />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <input
+                      id="last-initial"
+                      type="text"
+                      maxLength={1}
+                      placeholder="L"
+                      value={lastInitial}
+                      onChange={e => { setLastInitial(e.target.value.toUpperCase()); setFormError(''); }}
+                      required
+                      disabled={submitting}
+                      style={{ textAlign: 'left', textTransform: 'uppercase' }}
+                    />
+                    <LastInitialTooltip />
+                  </div>
                 </div>
               </div>
 

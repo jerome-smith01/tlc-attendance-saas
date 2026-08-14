@@ -86,16 +86,31 @@ To prevent users from missing the **Last Initial** input during rapid data entry
 - **Password & Security Requirements**: Password forms MUST render an inline requirement callout box (`.password-requirements-box`) near the input fields stating explicit constraints (e.g. minimum character count, password match verification).
 
 ### 5.5 Privacy Help Tooltip Standard for Last Initial Fields
-To explain our data minimization rationale to users and parents, every **Last Initial** input field across the application MUST include an accessible question mark help tooltip (`<Tooltip />` from `components/common/Tooltip.jsx`) positioned immediately to the right of the compact input:
+To explain our data minimization rationale to users and parents, every **Last Initial** input field across the application MUST include an accessible question mark help tooltip (`<LastInitialTooltip />` or `<Tooltip />` from `components/common/Tooltip.jsx`) positioned immediately to the right of the compact input:
 - **Visual Position**: Positioned inline with the `100px` Last Initial input via flex layout (`alignItems: 'center'`, `gap: '0.5rem'`).
 - **Trigger**: `HelpCircle` icon from `lucide-react` wrapped in `.help-tooltip-trigger`.
 - **Interaction**:
   - **Click & Tap**: Explicit click-to-toggle opens and closes the popover (preventing hover flicker and ensuring consistent behavior across desktop and mobile/touch). Closes on outside click or `Escape` key.
-- **Styling**: Light-grey background (`#f1f5f9` with `--border-color`) in light mode and elevated dark blue-grey (`--bg-elevated`) in dark mode with smooth opacity fade-in.
+  - **Smart Viewport Clamping**: Built-in boundary detection shifts the popup left when near the right screen edge so it never overflows off-screen on mobile devices.
+- **Global CSS Configuration**: Controlled entirely via dedicated `--tooltip-*` CSS custom properties in `styles/global.css`:
+  - `--tooltip-bg`: Surface background (`#f1f5f9` in light mode, `--bg-elevated` in dark mode).
+  - `--tooltip-foreground`: Text color (`var(--foreground)`).
+  - `--tooltip-border`: Border color (`#cbd5e1` in light mode, `--border-color` in dark mode).
+  - `--tooltip-shadow`: Elevation shadow.
+  - `--tooltip-radius`: Border radius (`var(--radius-md)`).
+  - `--tooltip-font-size`: Text size (`0.825rem`).
+  - `--tooltip-max-width`: Max popover width (`280px`).
+  - `--tooltip-trigger-color` & `--tooltip-trigger-hover`: Icon button states.
 - **Content Standard**:
-  - *"To protect youth privacy and comply with [COPPA guidelines](https://www.ftc.gov/business-guidance/resources/complying-coppa-frequently-asked-questions), we only collect and store first names and last initials."*
-  - The "COPPA guidelines" anchor must open in a new tab (`target="_blank"`, `rel="noopener noreferrer"`).
-- **Scope & Rollout**: Prototype established in `RosterList.jsx` (Add Member modal), followed by `EditMember.jsx`, `AcceptInvite.jsx`, `Profile.jsx`, and `Scanner.jsx`.
+  - *"To protect youth privacy and comply with the [Children's Online Privacy Protection Act (COPPA)](https://www.ftc.gov/business-guidance/resources/complying-coppa-frequently-asked-questions), we only collect first names and last initials."*
+  - The anchor opens in a new tab (`target="_blank"`, `rel="noopener noreferrer"`).
+- **Scope**: Uniformly integrated across all input forms in the application:
+  - `RosterList.jsx` (Add Member modal)
+  - `EditMember.jsx` (Edit Member form)
+  - `AcceptInvite.jsx` (Account creation form)
+  - `Profile.jsx` (Onboarding and Personal Information forms)
+  - `Scanner.jsx` (Unknown badge linking and Manual Entry dialogs)
+
 
 
 

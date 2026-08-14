@@ -133,4 +133,31 @@ export function Tooltip({
   );
 }
 
+/**
+ * Standardized privacy explanation tooltip specifically for Last Initial fields across the app.
+ */
+export function LastInitialTooltip({ className = '', position = 'right' }) {
+  return (
+    <Tooltip
+      ariaLabel="Why only last initial?"
+      position={position}
+      className={className}
+      content={
+        <span>
+          To protect youth privacy and comply with the{' '}
+          <a
+            href="https://www.ftc.gov/business-guidance/resources/complying-coppa-frequently-asked-questions"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Children's Online Privacy Protection Act (COPPA)
+          </a>
+          , we only collect first names and last initials.
+        </span>
+      }
+    />
+  );
+}
+
 export default Tooltip;
+

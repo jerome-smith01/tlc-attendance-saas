@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { parseTlcRosterFile } from '../utils/fileParser';
 import { Modal } from './common/Modal';
-import { Tooltip } from './common/Tooltip';
+import { LastInitialTooltip } from './common/Tooltip';
 import { FilterPopover } from './common/FilterPopover';
 import { InviteUser } from './InviteUser';
 import { InviteStatusList } from './InviteStatusList';
@@ -1105,23 +1105,7 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
               required
               style={{ width: '100px', padding: '0.75rem', background: 'var(--bg-secondary)', color: 'var(--foreground)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', boxSizing: 'border-box' }}
             />
-            <Tooltip
-              ariaLabel="Why only last initial?"
-              position="right"
-              content={
-                <span>
-                  To protect youth privacy and comply with the{' '}
-                  <a
-                    href="https://www.ftc.gov/business-guidance/resources/complying-coppa-frequently-asked-questions"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Children's Online Privacy Protection Act (COPPA)
-                  </a>
-                  , we only collect first names and last initials.
-                </span>
-              }
-            />
+            <LastInitialTooltip />
           </div>
           <input
             type="text"

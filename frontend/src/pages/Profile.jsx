@@ -7,6 +7,7 @@ import { useToast } from '../components/common/ToastContext';
 import { useConfirm } from '../components/common/ConfirmContext';
 import { SingleBadgeScannerModal } from '../components/SingleBadgeScannerModal';
 import { PasswordStrengthMeter, passwordMeetsMinimum } from '../components/PasswordStrengthMeter';
+import { LastInitialTooltip } from '../components/common/Tooltip';
 
 export function Profile() {
   const navigate = useNavigate();
@@ -458,15 +459,18 @@ export function Profile() {
                 <label className="form-label">
                   Last Initial <span className="required-asterisk">*</span>
                 </label>
-                <input
-                  type="text"
-                  className="form-control-input"
-                  value={lastInitial}
-                  onChange={e => setLastInitial(e.target.value)}
-                  required
-                  maxLength={1}
-                  placeholder="D"
-                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <input
+                    type="text"
+                    className="form-control-input"
+                    value={lastInitial}
+                    onChange={e => setLastInitial(e.target.value)}
+                    required
+                    maxLength={1}
+                    placeholder="D"
+                  />
+                  <LastInitialTooltip />
+                </div>
               </div>
             </div>
 
@@ -537,15 +541,18 @@ export function Profile() {
               <label className="form-label">
                 Last Initial <span className="required-asterisk">*</span>
               </label>
-              <input
-                type="text"
-                className="form-control-input"
-                value={lastInitial}
-                onChange={e => setLastInitial(e.target.value)}
-                required
-                maxLength={1}
-                placeholder="D"
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <input
+                  type="text"
+                  className="form-control-input"
+                  value={lastInitial}
+                  onChange={e => setLastInitial(e.target.value)}
+                  required
+                  maxLength={1}
+                  placeholder="D"
+                />
+                <LastInitialTooltip />
+              </div>
             </div>
 
             <div className="form-group form-group-flex-2">
