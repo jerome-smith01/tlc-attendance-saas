@@ -18,6 +18,7 @@ import { Events } from './pages/Events';
 import { Billing } from './pages/Billing';
 import { Extension } from './pages/Extension';
 import { PrivacyPolicy } from './pages/PrivacyPolicy';
+import { TermsOfService } from './pages/TermsOfService';
 
 export default function App() {
   return (
@@ -31,6 +32,7 @@ export default function App() {
                 <Route path="/" element={<Landing />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/privacy" element={<PrivacyPolicy />} />
+                <Route path="/terms" element={<TermsOfService />} />
                 <Route path="/accept-invite" element={<AcceptInvite />} />
                 <Route path="/invite-error" element={<InviteError />} />
 

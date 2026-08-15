@@ -278,7 +278,7 @@ export function SidebarLayout() {
             >
               Sign Out
             </button>
-            <div style={{ textAlign: 'center', marginTop: '0.75rem' }}>
+            <div style={{ textAlign: 'center', marginTop: '0.75rem', display: 'flex', justifyContent: 'center', gap: '0.5rem', alignItems: 'center' }}>
               <Link 
                 to="/privacy" 
                 onClick={() => setMobileNavOpen(false)}
@@ -291,6 +291,20 @@ export function SidebarLayout() {
                 }}
               >
                 Privacy Policy
+              </Link>
+              <span style={{ color: 'var(--border-color)', fontSize: '0.75rem' }}>•</span>
+              <Link 
+                to="/terms" 
+                onClick={() => setMobileNavOpen(false)}
+                style={{ 
+                  color: 'var(--muted-foreground)', 
+                  fontSize: '0.75rem', 
+                  textDecoration: 'underline',
+                  textUnderlineOffset: '2px',
+                  display: 'inline-block'
+                }}
+              >
+                Terms of Service
               </Link>
             </div>
           </div>

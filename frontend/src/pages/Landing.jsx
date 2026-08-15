@@ -168,6 +168,14 @@ export function Landing() {
               Privacy Policy
             </button>
             <span style={{ color: 'var(--border-color)', margin: '0 0.25rem' }}>•</span>
+            <button 
+              className="landing-footer-link"
+              onClick={() => navigate('/terms')}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            >
+              Terms of Service
+            </button>
+            <span style={{ color: 'var(--border-color)', margin: '0 0.25rem' }}>•</span>
             <a 
               href="https://goodplusfast.com" 
               target="_blank" 

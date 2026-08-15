@@ -199,13 +199,23 @@ export function Login() {
               Forgot Password?
             </button>
 
-            <button
-              type="button"
-              onClick={() => navigate('/privacy')}
-              style={{ background: 'none', border: 'none', color: 'var(--muted-foreground)', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.8rem' }}
-            >
-              Privacy Policy
-            </button>
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+              <button
+                type="button"
+                onClick={() => navigate('/privacy')}
+                style={{ background: 'none', border: 'none', color: 'var(--muted-foreground)', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.8rem' }}
+              >
+                Privacy Policy
+              </button>
+              <span style={{ color: 'var(--border-color)', fontSize: '0.8rem' }}>•</span>
+              <button
+                type="button"
+                onClick={() => navigate('/terms')}
+                style={{ background: 'none', border: 'none', color: 'var(--muted-foreground)', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.8rem' }}
+              >
+                Terms of Service
+              </button>
+            </div>
           </div>
         </form>
       </div>

@@ -1,0 +1,181 @@
+/* Terms of Service Page Styling */
+.terms-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-gradient, var(--background));
+  color: var(--foreground);
+}
+
+.terms-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: var(--glass-blur, blur(12px));
+  -webkit-backdrop-filter: var(--glass-blur, blur(12px));
+  background: var(--glass-bg, rgba(255, 255, 255, 0.75));
+  border-bottom: 1px solid var(--border-color);
+  padding: 0.75rem 0;
+}
+
+.terms-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.terms-header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.terms-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: var(--foreground);
+}
+
+.terms-logo {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.terms-brand-name {
+  font-family: var(--font-display, inherit);
+  letter-spacing: -0.02em;
+}
+
+.terms-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.terms-main {
+  flex: 1;
+  padding: 2.5rem 0 4rem;
+}
+
+.terms-card {
+  padding: 2.5rem;
+  border-radius: var(--radius-lg, 16px);
+  box-shadow: var(--glass-shadow, 0 8px 32px 0 rgba(31, 38, 135, 0.07));
+}
+
+.terms-title {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--foreground);
+  margin: 0 0 0.5rem;
+  line-height: 1.25;
+}
+
+.terms-meta {
+  color: var(--muted-foreground);
+  font-size: 0.95rem;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.terms-section {
+  margin-bottom: 2.25rem;
+}
+
+.terms-section h2 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--foreground);
+  margin-top: 1.75rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.3;
+}
+
+.terms-section h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--foreground);
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.terms-section p {
+  color: var(--foreground);
+  line-height: 1.65;
+  margin-bottom: 0.85rem;
+  font-size: 0.975rem;
+}
+
+.terms-section ul,
+.terms-section ol {
+  padding-left: 1.5rem;
+  margin-bottom: 1rem;
+  color: var(--foreground);
+  line-height: 1.65;
+  font-size: 0.975rem;
+}
+
+.terms-section li {
+  margin-bottom: 0.4rem;
+}
+
+.terms-section a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.terms-section a:hover {
+  color: var(--color-primary-hover);
+}
+
+.terms-footer {
+  border-top: 1px solid var(--border-color);
+  padding: 1.5rem 0;
+  background: var(--bg-secondary, rgba(255, 255, 255, 0.5));
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+}
+
+.terms-footer-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.terms-footer-links {
+  display: flex;
+  gap: 1.25rem;
+}
+
+.terms-footer-link-btn {
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  cursor: pointer;
+  font-size: 0.875rem;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.terms-footer-link-btn:hover {
+  color: var(--color-primary-hover);
+}
+
+@media (max-width: 640px) {
+  .terms-card {
+    padding: 1.5rem;
+  }
+
+  .terms-title {
+    font-size: 1.6rem;
+  }
+}
