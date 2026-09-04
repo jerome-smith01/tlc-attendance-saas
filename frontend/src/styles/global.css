@@ -2835,6 +2835,260 @@ input[type="date"].filter-input::-webkit-calendar-picker-indicator:hover {
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   Bulk Badge Import Modal
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.bulk-badge-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  padding-bottom: 1.25rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border-color);
+  user-select: none;
+}
+
+.bulk-badge-step {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  opacity: 0.45;
+  transition: opacity 0.2s ease;
+}
+
+.bulk-badge-step.active {
+  opacity: 1;
+}
+
+.bulk-badge-step.done {
+  opacity: 0.85;
+}
+
+.bulk-badge-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--muted);
+  color: var(--foreground);
+  font-size: 0.75rem;
+  font-weight: 700;
+  transition: background 0.2s, color 0.2s;
+}
+
+.bulk-badge-step.active .bulk-badge-step-num {
+  background: var(--color-primary);
+  color: #ffffff;
+}
+
+.bulk-badge-step.done .bulk-badge-step-num {
+  background: var(--color-success);
+  color: #ffffff;
+}
+
+.bulk-badge-step-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+/* Step 1: Dropzone */
+.bulk-badge-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 1.5rem;
+  border: 2px dashed var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, transform 0.1s;
+  text-align: center;
+}
+
+.bulk-badge-dropzone:hover,
+.bulk-badge-dropzone:focus-visible {
+  border-color: var(--color-primary);
+  background: var(--glass-bg);
+  outline: none;
+}
+
+.bulk-badge-dropzone.dragging {
+  border-color: var(--color-primary);
+  background: rgba(2, 132, 199, 0.08);
+  transform: scale(1.01);
+}
+
+.bulk-badge-dropzone.compact {
+  padding: 1.25rem 1rem;
+}
+
+.bulk-badge-file-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+}
+
+.bulk-badge-file-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: var(--radius-sm);
+  background: var(--glass-bg);
+  border: 1px solid var(--border-color);
+}
+
+/* Step 2: Progress */
+.bulk-badge-progress-track {
+  width: 100%;
+  max-width: 360px;
+  height: 10px;
+  background: var(--muted);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.bulk-badge-progress-fill {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: var(--radius-pill);
+  transition: width 0.25s ease;
+}
+
+/* Step 3: Chips & Buckets */
+.bulk-badge-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.65rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.bulk-badge-chip--ready {
+  background: rgba(34, 197, 94, 0.15);
+  color: #15803d;
+}
+
+.bulk-badge-chip--same {
+  background: rgba(245, 158, 11, 0.15);
+  color: #b45309;
+}
+
+.bulk-badge-chip--no_match {
+  background: rgba(239, 68, 68, 0.15);
+  color: #b91c1c;
+}
+
+.bulk-badge-chip--unreadable {
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+
+.bulk-badge-bucket {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.bulk-badge-bucket-title {
+  margin: 0 0 0.3rem 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted-foreground);
+}
+
+.bulk-badge-result-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius-sm);
+  background: var(--glass-bg);
+  border: 1px solid var(--border-color);
+  font-size: 0.85rem;
+}
+
+.bulk-badge-result-row--muted {
+  opacity: 0.7;
+}
+
+.bulk-badge-result-icon {
+  flex-shrink: 0;
+  font-size: 1rem;
+}
+
+.bulk-badge-result-file {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: var(--foreground);
+}
+
+.bulk-badge-result-arrow {
+  flex-shrink: 0;
+  color: var(--muted-foreground);
+  font-weight: bold;
+}
+
+.bulk-badge-result-member {
+  flex-shrink: 0;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.bulk-badge-result-tag {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--muted);
+  color: var(--muted-foreground);
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.bulk-badge-result-tag--warn {
+  background: rgba(245, 158, 11, 0.2);
+  color: #b45309;
+}
+
+.bulk-badge-assign-select {
+  flex-shrink: 0;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--foreground);
+  font-size: 0.82rem;
+  max-width: 220px;
+}
+
 
 
 

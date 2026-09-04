@@ -39,6 +39,23 @@ Leaders can also link a physical badge directly to a specific roster member from
 
 > See [01_database_schema.md](./01_database_schema.md) for the full dual-ID strategy rationale and constraints.
 
+## Bulk Badge Import (PDF Badges)
+Leaders can bulk-link multiple badges at once from exported Trail Life Connect PDF badge files using `BulkBadgeImportModal.jsx`:
+
+1. User clicks **Import Badges** on the Members tab toolbar.
+2. User drops one or more badge `.pdf` files (or a full folder of badges).
+3. The browser renders each PDF page 1 to an off-screen HTML `<canvas>` via **PDF.js** (CDN).
+4. `html5-qrcode` decodes the QR code from the canvas blob image and parses the payload (`memberId | tlcId`).
+5. Matching logic:
+   - Matches against existing troop roster by `member_id` first, then `tlc_id`.
+   - **Exact match with same `tlc_id`**: marked as `same` (skipped automatically to avoid redundant writes).
+   - **Match with missing or different `tlc_id`**: marked as `ready` (overwrites with latest badge's `tlc_id`).
+   - **No match**: marked as `no_match` and presented in a manual assignment dropdown.
+   - **Decode failure**: marked as `unreadable` (leader advised to use single-badge scanner).
+6. User reviews the categorized results and clicks **Link X Badges**.
+7. Updates Supabase `roster` records with `tlc_id` (and backfills `member_id` if missing).
+
+
 ## Chrome Extension DOM Integration
 The 12-character `tlc_id` is critical for the sync step. The Chrome Extension uses it to construct DOM selectors on the `traillifeconnect.com` attendance page:
 

@@ -10,6 +10,7 @@ import { InviteStatusList } from './InviteStatusList';
 import { useToast } from './common/ToastContext';
 import { useConfirm } from './common/ConfirmContext';
 import { SingleBadgeScannerModal } from './SingleBadgeScannerModal';
+import { BulkBadgeImportModal } from './BulkBadgeImportModal';
 import { useTroop } from '../context/TroopContext';
 
 export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAdmin, activeTab, userId }) {
@@ -68,9 +69,12 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
   const [newLastInitial, setNewLastInitial] = useState('');
   const [newMemberId, setNewMemberId] = useState('');
 
-  // ── Single Badge Scanner modal state ──────────────────────────────────────
+  // ── Single Badge Scanner modal state ──────────────────────────────────────────
   const [scanningMember, setScanningMember] = useState(null);
   const [recentlyScannedIds, setRecentlyScannedIds] = useState(new Set());
+
+  // ── Bulk Badge Import modal state ─────────────────────────────────────────────
+  const [isBulkBadgeModalOpen, setIsBulkBadgeModalOpen] = useState(false);
 
   const triggerRowHighlight = (id) => {
     setRecentlyScannedIds(prev => new Set(prev).add(id));
@@ -624,9 +628,22 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
           </h3>
         </div>
 
-        {/* Right side: Add Member button (Members tab) */}
+        {/* Right side: Import Badges + Add Member buttons (Members tab) */}
         {activeTab === 'members' && canManageRoster && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginRight: '4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginRight: '4px' }}>
+            <button
+              type="button"
+              className="btn btn-secondary btn-compact"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+              onClick={() => setIsBulkBadgeModalOpen(true)}
+              title="Bulk import badge PDFs and link them to roster members"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
+                <rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
+              </svg>
+              Import Badges
+            </button>
             <button
               type="button"
               className="btn btn-start btn-compact"
@@ -1127,6 +1144,23 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
         onClose={() => setScanningMember(null)}
         onScan={handleScanSingleBadge}
         memberName={scanningMember?.name}
+      />
+
+      {/* ── Bulk Badge Import Modal ────────────────────────────────────────── */}
+      <BulkBadgeImportModal
+        isOpen={isBulkBadgeModalOpen}
+        onClose={() => setIsBulkBadgeModalOpen(false)}
+        roster={roster}
+        troopId={troopId}
+        onDone={({ linked, errors }) => {
+          fetchRoster();
+          if (linked > 0) {
+            addToast(`Successfully linked ${linked} badge${linked !== 1 ? 's' : ''}!`, 'success');
+          }
+          if (errors > 0) {
+            addToast(`Failed to link ${errors} badge${errors !== 1 ? 's' : ''}.`, 'error');
+          }
+        }}
       />
     </div>
   );
