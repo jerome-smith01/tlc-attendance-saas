@@ -617,6 +617,12 @@ html.dark .app-modal-overlay,
     scrollbar-color: #cbd5e1 transparent;
 }
 
+/* Tall variant — fills most of the viewport height */
+.app-modal-content.tall {
+    height: 92vh;
+    max-height: 92vh;
+}
+
 .app-modal-content.closing {
     animation: modalSlideOut 0.7s cubic-bezier(0.25, 1, 0.5, 1) forwards;
 }
@@ -1659,7 +1665,76 @@ button:active, .btn-primary:active, .btn-action:active {
   gap: 0.35rem;
 }
 
+/* Bulk action pill buttons: solid colors matching scanner actions with white text/icons */
+.bulk-action-pill-actions .btn-icon-action {
+  color: #ffffff !important;
+  border: none;
+  font-weight: 700;
+  border-radius: var(--radius-sm, 6px);
+  padding: 6px 8px;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
 
+.bulk-action-pill-actions .btn-icon-action:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.bulk-action-pill-actions .btn-icon-action:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Green (Sign in / Reopen) */
+.bulk-action-pill-actions .btn-icon-reopen {
+  background-color: #48bb78 !important;
+  color: #ffffff !important;
+}
+.bulk-action-pill-actions .btn-icon-reopen:hover:not(:disabled) {
+  background-color: #3fab6c !important;
+}
+
+/* Blue (Sign out / Close) */
+.bulk-action-pill-actions .btn-icon-close {
+  background-color: #4c7cf3 !important;
+  color: #ffffff !important;
+}
+.bulk-action-pill-actions .btn-icon-close:hover:not(:disabled) {
+  background-color: #3b6be2 !important;
+}
+
+/* Red (Remove / Delete) */
+.bulk-action-pill-actions .btn-icon-destructive {
+  background-color: #dc2626 !important;
+  color: #ffffff !important;
+}
+.bulk-action-pill-actions .btn-icon-destructive:hover:not(:disabled) {
+  background-color: #b91c1c !important;
+}
+
+/* Purple (Reset Sync) */
+.bulk-action-pill-actions .btn-icon-reset-sync {
+  background-color: #7c3aed !important;
+  color: #ffffff !important;
+}
+.bulk-action-pill-actions .btn-icon-reset-sync:hover:not(:disabled) {
+  background-color: #6d28d9 !important;
+}
+
+/* Blue / Primary (Copy in RosterList) */
+.bulk-action-pill-actions .btn-icon-action:not(.btn-icon-reopen):not(.btn-icon-close):not(.btn-icon-destructive):not(.btn-icon-reset-sync):not(.btn-icon-help) {
+  background-color: #4c7cf3 !important;
+  color: #ffffff !important;
+}
+.bulk-action-pill-actions .btn-icon-action:not(.btn-icon-reopen):not(.btn-icon-close):not(.btn-icon-destructive):not(.btn-icon-reset-sync):not(.btn-icon-help):hover:not(:disabled) {
+  background-color: #3b6be2 !important;
+}
+
+/* Keep help icon transparent */
+.bulk-action-pill-actions .btn-icon-help {
+  background: transparent !important;
+}
 
 .bulk-action-btn-text {
   display: none;

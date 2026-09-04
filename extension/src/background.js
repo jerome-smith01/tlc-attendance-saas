@@ -67,17 +67,6 @@ async function handleGetEndedSessions() {
       .is('synced_at', null)
       .order('event_date', { ascending: false });
 
-    if (error && (error.code === '42P01' || error.message?.includes('events'))) {
-      const res = await supabase
-        .from('sessions')
-        .select('id, event_name, event_date')
-        .not('ended_at', 'is', null)
-        .is('synced_at', null)
-        .order('event_date', { ascending: false });
-      sessions = res.data;
-      error = res.error;
-    }
-
     if (error) {
       console.error('[TLC Sync] Error fetching sessions:', error);
       return { error: error.message };
@@ -111,24 +100,6 @@ async function handleSyncRequest(sessionId) {
       `)
       .eq('event_id', sessionId);
       
-    if (error && (error.code === 'PGRST204' || error.message?.includes('event_id'))) {
-      const res = await supabase
-        .from('scans')
-        .select(`
-          id,
-          status,
-          roster (
-            member_id,
-            tlc_id,
-            first_name,
-            last_initial
-          )
-        `)
-        .eq('session_id', sessionId);
-      scans = res.data;
-      error = res.error;
-    }
-      
     if (error) {
       console.error('[TLC Sync] Supabase error:', error);
       return { error: error.message };
@@ -154,17 +125,6 @@ async function handleMarkSessionSynced(sessionId) {
         synced_by: session.user.id
       })
       .eq('id', sessionId);
-
-    if (error && (error.code === '42P01' || error.message?.includes('events'))) {
-      const res = await supabase
-        .from('sessions')
-        .update({ 
-          synced_at: new Date().toISOString(),
-          synced_by: session.user.id
-        })
-        .eq('id', sessionId);
-      error = res.error;
-    }
 
     if (error) {
       console.error('[TLC Sync] Error marking synced:', error);

@@ -163,17 +163,6 @@ export function Events() {
         .eq('troop_id', troopId)
         .order('event_date', { ascending: false });
 
-      // Fallback for pre-migration DB
-      if (eventsError && (eventsError.code === '42P01' || eventsError.message.includes('events'))) {
-        const res = await supabase
-          .from('sessions')
-          .select('*')
-          .eq('troop_id', troopId)
-          .order('event_date', { ascending: false });
-        eventsData = res.data;
-        eventsError = res.error;
-      }
-
       if (!eventsError && eventsData) {
         setEvents(eventsData);
 
@@ -234,22 +223,6 @@ export function Events() {
         ])
         .select()
         .single();
-
-      if (error && (error.code === '42P01' || error.message.includes('events'))) {
-        const res = await supabase
-          .from('sessions')
-          .insert([
-            {
-              troop_id: selectedTroopId,
-              event_name: newEventName.trim(),
-              event_date: newEventDate
-            }
-          ])
-          .select()
-          .single();
-        data = res.data;
-        error = res.error;
-      }
 
       if (error) {
         toast('Error creating event: ' + error.message, 'error');
@@ -571,14 +544,6 @@ export function Events() {
         .update({ ended_at: now })
         .in('id', ids);
 
-      if (eventError && (eventError.code === '42P01' || eventError.message.includes('events'))) {
-        const res = await supabase
-          .from('sessions')
-          .update({ ended_at: now })
-          .in('id', ids);
-        eventError = res.error;
-      }
-
       if (eventError) {
         toast("Error closing events: " + eventError.message, 'error');
         return;
@@ -589,15 +554,6 @@ export function Events() {
         .update({ status: 'approved' })
         .in('event_id', ids)
         .eq('status', 'pending');
-
-      if (scansError && scansError.message.includes('event_id')) {
-        const res = await supabase
-          .from('scans')
-          .update({ status: 'approved' })
-          .in('session_id', ids)
-          .eq('status', 'pending');
-        scansError = res.error;
-      }
 
       if (scansError) {
         toast("Error approving scans: " + scansError.message, 'error');
@@ -619,14 +575,6 @@ export function Events() {
         .update({ ended_at: null })
         .in('id', ids);
 
-      if (error && (error.code === '42P01' || error.message.includes('events'))) {
-        const res = await supabase
-          .from('sessions')
-          .update({ ended_at: null })
-          .in('id', ids);
-        error = res.error;
-      }
-
       if (error) {
         toast("Error reopening events: " + error.message, 'error');
       } else {
@@ -646,14 +594,6 @@ export function Events() {
         .update({ synced_at: null, synced_by: null, purge_after: null })
         .in('id', ids);
 
-      if (error && (error.code === '42P01' || error.message.includes('events'))) {
-        const res = await supabase
-          .from('sessions')
-          .update({ synced_at: null, synced_by: null, purge_after: null })
-          .in('id', ids);
-        error = res.error;
-      }
-
       if (error) {
         toast("Error resetting sync status: " + error.message, 'error');
       } else {
@@ -669,11 +609,6 @@ export function Events() {
     if (await confirm(`Are you sure you want to delete ${count} selected event(s)? This will also delete all associated scans and cannot be undone.`)) {
       const ids = selectedEventsList.map(s => s.id);
       let { error } = await supabase.from('events').delete().in('id', ids);
-
-      if (error && (error.code === '42P01' || error.message.includes('events'))) {
-        const res = await supabase.from('sessions').delete().in('id', ids);
-        error = res.error;
-      }
 
       if (error) {
         toast("Error deleting events: " + error.message, 'error');
@@ -694,14 +629,6 @@ export function Events() {
         .update({ ended_at: now })
         .eq('id', eventObj.id);
 
-      if (eventError && (eventError.code === '42P01' || eventError.message.includes('events'))) {
-        const res = await supabase
-          .from('sessions')
-          .update({ ended_at: now })
-          .eq('id', eventObj.id);
-        eventError = res.error;
-      }
-
       if (eventError) {
         toast("Error closing event: " + eventError.message, 'error');
         return;
@@ -712,15 +639,6 @@ export function Events() {
         .update({ status: 'approved' })
         .eq('event_id', eventObj.id)
         .eq('status', 'pending');
-
-      if (scansError && scansError.message.includes('event_id')) {
-        const res = await supabase
-          .from('scans')
-          .update({ status: 'approved' })
-          .eq('session_id', eventObj.id)
-          .eq('status', 'pending');
-        scansError = res.error;
-      }
 
       if (scansError) {
         toast("Error approving scans: " + scansError.message, 'error');
@@ -740,14 +658,6 @@ export function Events() {
         .update({ ended_at: null })
         .eq('id', eventObj.id);
 
-      if (error && (error.code === '42P01' || error.message.includes('events'))) {
-        const res = await supabase
-          .from('sessions')
-          .update({ ended_at: null })
-          .eq('id', eventObj.id);
-        error = res.error;
-      }
-
       if (error) {
         toast("Error reopening event: " + error.message, 'error');
       } else {
@@ -765,14 +675,6 @@ export function Events() {
         .update({ synced_at: null, synced_by: null, purge_after: null })
         .eq('id', eventId);
 
-      if (error && (error.code === '42P01' || error.message.includes('events'))) {
-        const res = await supabase
-          .from('sessions')
-          .update({ synced_at: null, synced_by: null, purge_after: null })
-          .eq('id', eventId);
-        error = res.error;
-      }
-
       if (error) {
         toast('Error resetting sync: ' + error.message, 'error');
       } else {
@@ -786,10 +688,7 @@ export function Events() {
   const handleDeleteEvent = async (eventId) => {
     if (await confirm('Delete this event? This will also delete all associated scans and cannot be undone.')) {
       let { error } = await supabase.from('events').delete().eq('id', eventId);
-      if (error && (error.code === '42P01' || error.message.includes('events'))) {
-        const res = await supabase.from('sessions').delete().eq('id', eventId);
-        error = res.error;
-      }
+
       if (error) {
         toast('Error deleting event: ' + error.message, 'error');
       } else {

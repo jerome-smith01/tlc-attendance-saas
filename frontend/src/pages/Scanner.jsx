@@ -178,7 +178,8 @@ export function Scanner() {
   const [isManualEntryOpen, setIsManualEntryOpen] = useState(false);
   const [manualEntryFirstName, setManualEntryFirstName] = useState('');
   const [manualEntryLastInitial, setManualEntryLastInitial] = useState('');
-  const [manualEntryRosterId, setManualEntryRosterId] = useState('');
+  const [manualEntryRosterIds, setManualEntryRosterIds] = useState(new Set());
+  const [manualEntrySortBy, setManualEntrySortBy] = useState('first'); // 'first' | 'last'
 
   const { confirm } = useConfirm();
   const { addToast } = useToast();
@@ -200,16 +201,6 @@ export function Scanner() {
         .select('*')
         .eq('id', eventId)
         .maybeSingle();
-
-      if (error && (error.code === '42P01' || error.message?.includes('events'))) {
-        const res = await supabase
-          .from('sessions')
-          .select('*')
-          .eq('id', eventId)
-          .maybeSingle();
-        data = res.data;
-        error = res.error;
-      }
 
       if (!error && data) {
         setSession(data);
@@ -272,14 +263,6 @@ export function Scanner() {
       .select(`*, roster (id, first_name, last_initial, member_id, tlc_id)`)
       .eq('event_id', session.id);
 
-    if (error && (error.code === 'PGRST204' || error.message?.includes('event_id'))) {
-      const res = await supabase
-        .from('scans')
-        .select(`*, roster (id, first_name, last_initial, member_id, tlc_id)`)
-        .eq('session_id', session.id);
-      data = res.data;
-      error = res.error;
-    }
     if (error) {
       console.error('[fetchAttendance] Supabase error:', error);
       return;
@@ -390,10 +373,6 @@ export function Scanner() {
     if (await confirm({ title: 'End Event', message: 'Are you sure you want to end this event? All members currently signed in will be automatically signed out at this time.', isDestructive: true })) {
       const now = new Date().toISOString();
       let { error } = await supabase.from('events').update({ ended_at: now }).eq('id', session.id);
-      if (error && (error.code === '42P01' || error.message?.includes('events'))) {
-        const res = await supabase.from('sessions').update({ ended_at: now }).eq('id', session.id);
-        error = res.error;
-      }
       if (error) {
         addToast({ type: 'error', message: "Failed to end event: " + error.message });
         return;
@@ -410,18 +389,6 @@ export function Scanner() {
         .eq('event_id', session.id)
         .is('sign_out_time', null);
 
-      if (scansError && (scansError.code === 'PGRST204' || scansError.message?.includes('event_id'))) {
-        const res = await supabase
-          .from('scans')
-          .update({ 
-            status: 'complete',
-            sign_out_time: now,
-            signed_out_by: user?.id
-          })
-          .eq('session_id', session.id)
-          .is('sign_out_time', null);
-        scansError = res.error;
-      }
       if (scansError) {
         addToast({ type: 'warning', message: "Event ended, but failed to auto sign-out members: " + scansError.message });
       } else {
@@ -484,10 +451,6 @@ export function Scanner() {
   const handleReenableSession = async () => {
     if (await confirm({ title: 'Reenable Event', message: "Are you sure you want to reenable this event?" })) {
       let { error } = await supabase.from('events').update({ ended_at: null }).eq('id', session.id);
-      if (error && (error.code === '42P01' || error.message?.includes('events'))) {
-        const res = await supabase.from('sessions').update({ ended_at: null }).eq('id', session.id);
-        error = res.error;
-      }
       if (error) {
         addToast({ type: 'error', message: "Failed to reenable event: " + error.message });
       } else {
@@ -503,13 +466,7 @@ export function Scanner() {
         .from('events')
         .update({ synced_at: null, synced_by: null, purge_after: null })
         .eq('id', session.id);
-      if (error && (error.code === '42P01' || error.message?.includes('events'))) {
-        const res = await supabase
-          .from('sessions')
-          .update({ synced_at: null, synced_by: null, purge_after: null })
-          .eq('id', session.id);
-        error = res.error;
-      }
+
       if (error) {
         addToast({ type: 'error', message: "Error resetting sync status: " + error.message });
       } else {
@@ -522,10 +479,6 @@ export function Scanner() {
   const handleDeleteSession = async () => {
     if (await confirm({ title: 'Delete Event', message: 'Are you sure you want to delete this event? This will also delete all associated scans and cannot be undone.', isDestructive: true })) {
       let { error } = await supabase.from('events').delete().eq('id', session.id);
-      if (error && (error.code === '42P01' || error.message?.includes('events'))) {
-        const res = await supabase.from('sessions').delete().eq('id', session.id);
-        error = res.error;
-      }
       if (error) {
         addToast({ type: 'error', message: 'Error deleting event: ' + error.message });
       } else {
@@ -553,6 +506,142 @@ export function Scanner() {
       setAttendance(prev => prev.filter(s => !selectedScans.has(s.id)));
       setSelectedScans(new Set());
     }
+  };
+
+  const handleBulkScanIn = async () => {
+    if (selectedScans.size === 0) return;
+
+    // Collect the roster IDs for each selected scan
+    const selectedScanIds = Array.from(selectedScans);
+    const targets = selectedScanIds
+      .map(scanId => attendance.find(s => s.id === scanId))
+      .filter(Boolean);
+
+    let successCount = 0;
+    let skippedCount = 0;
+
+    for (const scan of targets) {
+      const targetRosterId = scan.roster_id;
+      const targetMember = scan.member;
+
+      // Skip if already signed in (no sign-out time means currently signed in)
+      if (!scan.raw_sign_out_time) {
+        skippedCount++;
+        continue;
+      }
+
+      // Member was signed out — re-scan them in by clearing sign_out_time
+      const nowIso = new Date().toISOString();
+      const { data, error } = await supabase
+        .from('scans')
+        .update({
+          sign_in_time: nowIso,
+          signed_in_by: user?.id,
+          sign_out_time: null,
+          signed_out_by: null,
+          status: 'pending'
+        })
+        .eq('id', scan.id)
+        .select();
+
+      if (error) {
+        addToast({ type: 'error', message: `Failed to scan in ${targetMember ? `${targetMember.first_name} ${targetMember.last_initial}` : 'member'}: ${error.message}` });
+      } else {
+        triggerRowHighlight(scan.id);
+        setAttendance(prev => prev.map(s => {
+          if (s.id !== scan.id) return s;
+          return {
+            ...s,
+            raw_sign_in_time: nowIso,
+            raw_sign_out_time: null,
+            in_date: formatAppDate(nowIso),
+            in_time: new Date(nowIso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+            signed_in_by: user?.id,
+            out_date: '-',
+            out_time: '-',
+            signed_out_by: null,
+            status: 'pending',
+            message: 'Signed In'
+          };
+        }));
+        successCount++;
+      }
+    }
+
+    if (skippedCount > 0 && successCount === 0) {
+      addToast({ type: 'warning', message: skippedCount === 1 ? 'Selected person is already signed in.' : `All ${skippedCount} selected are already signed in.` });
+    } else if (successCount > 0) {
+      playSuccessSound();
+      const msg = skippedCount > 0
+        ? `${successCount} scanned in. ${skippedCount} already signed in.`
+        : `${successCount} member(s) scanned in.`;
+      addToast({ type: 'success', message: msg });
+    }
+
+    setSelectedScans(new Set());
+  };
+
+  const handleBulkSignOut = async () => {
+    if (selectedScans.size === 0) return;
+
+    const selectedScanIds = Array.from(selectedScans);
+    const targets = selectedScanIds
+      .map(scanId => attendance.find(s => s.id === scanId))
+      .filter(Boolean);
+
+    let successCount = 0;
+    let skippedCount = 0;
+
+    const nowIso = new Date().toISOString();
+
+    for (const scan of targets) {
+      const targetMember = scan.member;
+
+      // Skip if already signed out
+      if (scan.raw_sign_out_time) {
+        skippedCount++;
+        continue;
+      }
+
+      const { error } = await supabase
+        .from('scans')
+        .update({
+          sign_out_time: nowIso,
+          signed_out_by: user?.id,
+          status: 'complete'
+        })
+        .eq('id', scan.id);
+
+      if (error) {
+        addToast({ type: 'error', message: `Failed to sign out ${targetMember ? `${targetMember.first_name} ${targetMember.last_initial}` : 'member'}: ${error.message}` });
+      } else {
+        triggerRowHighlight(scan.id);
+        setAttendance(prev => prev.map(s => {
+          if (s.id !== scan.id) return s;
+          return {
+            ...s,
+            raw_sign_out_time: nowIso,
+            out_date: formatAppDate(nowIso),
+            out_time: new Date(nowIso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+            signed_out_by: user?.id,
+            status: 'complete',
+            message: 'Signed Out'
+          };
+        }));
+        successCount++;
+      }
+    }
+
+    if (skippedCount > 0 && successCount === 0) {
+      addToast({ type: 'warning', message: skippedCount === 1 ? 'Selected person is already signed out.' : `All ${skippedCount} selected are already signed out.` });
+    } else if (successCount > 0) {
+      const msg = skippedCount > 0
+        ? `${successCount} signed out. ${skippedCount} already signed out.`
+        : `${successCount} member(s) signed out.`;
+      addToast({ type: 'success', message: msg });
+    }
+
+    setSelectedScans(new Set());
   };
 
   const handleDeleteSingleScan = async (scanId) => {
@@ -835,11 +924,7 @@ export function Scanner() {
     }
 
     if (targetRosterId) {
-      let { data, error } = await supabase.from('scans').insert([{ event_id: session.id, roster_id: targetRosterId, status: 'pending', scanned_by: user.id }]).select();
-      if (error && (error.code === 'PGRST204' || error.message?.includes('event_id') || error.message?.includes('session_id'))) {
-        const res = await supabase.from('scans').insert([{ session_id: session.id, roster_id: targetRosterId, status: 'pending', scanned_by: user.id }]).select();
-        data = res.data;
-      }
+      let { data, error } = await supabase.from('scans').insert([{ event_id: session.id, roster_id: targetRosterId, status: 'pending', signed_in_by: user.id }]).select();
       if (data) {
         triggerRowHighlight(data[0].id);
         setAttendance(prev => {
@@ -931,12 +1016,19 @@ export function Scanner() {
 
   const handleManualEntry = async (e) => {
     e.preventDefault();
-    if (!manualEntryRosterId && (!manualEntryFirstName.trim() && !manualEntryLastInitial.trim())) return;
+    if (manualEntryRosterIds.size === 0 && (!manualEntryFirstName.trim() && !manualEntryLastInitial.trim())) return;
 
-    let targetRosterId = manualEntryRosterId;
-    let targetMember = roster.find(m => m.id === manualEntryRosterId);
+    // Build list of roster IDs to scan in
+    const targetIds = [];
 
-    if ((manualEntryFirstName.trim() || manualEntryLastInitial.trim()) && !manualEntryRosterId) {
+    // Always add all selected roster members
+    for (const id of manualEntryRosterIds) {
+      const member = roster.find(m => m.id === id);
+      targetIds.push({ id, member });
+    }
+
+    // Also add guest/new member if a name was typed (works alongside roster selection)
+    if (manualEntryFirstName.trim() || manualEntryLastInitial.trim()) {
       let fName = manualEntryFirstName.trim();
       let lInitial = manualEntryLastInitial.trim();
 
@@ -960,53 +1052,58 @@ export function Scanner() {
         .single();
 
       if (!error && data) {
-        targetRosterId = data.id;
-        targetMember = data;
+        targetIds.push({ id: data.id, member: data });
         setRoster(prev => [...prev, data]);
       }
     }
 
-    if (targetRosterId) {
+    let successCount = 0;
+    let skippedCount = 0;
+
+    for (const { id: targetRosterId, member: targetMember } of targetIds) {
       if (attendance.some(item => item.roster_id === targetRosterId || item.member?.id === targetRosterId)) {
-        addToast({ type: 'warning', message: 'This person is already marked as scanned in.' });
-        return;
+        skippedCount++;
+        continue;
       }
-      let { data, error } = await supabase.from('scans').insert([{ event_id: session.id, roster_id: targetRosterId, status: 'pending', scanned_by: user.id }]).select();
-      if (error && (error.code === 'PGRST204' || error.message?.includes('event_id') || error.message?.includes('session_id'))) {
-        const res = await supabase.from('scans').insert([{ session_id: session.id, roster_id: targetRosterId, status: 'pending', scanned_by: user.id }]).select();
-        data = res.data;
-      }
+      let { data, error } = await supabase.from('scans').insert([{ event_id: session.id, roster_id: targetRosterId, status: 'pending', signed_in_by: user.id }]).select();
       if (data) {
         triggerRowHighlight(data[0].id);
         const nowIso = new Date().toISOString();
-        setAttendance(prev => {
-          return [
-            {
-              id: data[0].id,
-              roster_id: targetRosterId,
-              raw_sign_in_time: nowIso,
-              raw_sign_out_time: null,
-              in_date: formatAppDate(nowIso),
-              in_time: new Date(nowIso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
-              signed_in_by: user?.id,
-              out_date: '-',
-              out_time: '-',
-              signed_out_by: null,
-              status: 'success',
-              message: 'Scanned In',
-              member: targetMember
-            },
-            ...prev
-          ];
-        });
-        playSuccessSound();
+        setAttendance(prev => [
+          {
+            id: data[0].id,
+            roster_id: targetRosterId,
+            raw_sign_in_time: nowIso,
+            raw_sign_out_time: null,
+            in_date: formatAppDate(nowIso),
+            in_time: new Date(nowIso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+            signed_in_by: user?.id,
+            out_date: '-',
+            out_time: '-',
+            signed_out_by: null,
+            status: 'success',
+            message: 'Scanned In',
+            member: targetMember
+          },
+          ...prev
+        ]);
+        successCount++;
+      }
+    }
+
+    if (skippedCount > 0 && successCount === 0) {
+      addToast({ type: 'warning', message: skippedCount === 1 ? 'This person is already scanned in.' : `${skippedCount} members are already scanned in.` });
+    } else if (successCount > 0) {
+      playSuccessSound();
+      if (skippedCount > 0) {
+        addToast({ type: 'info', message: `${successCount} scanned in. ${skippedCount} already scanned in.` });
       }
     }
 
     setIsManualEntryOpen(false);
     setManualEntryFirstName('');
     setManualEntryLastInitial('');
-    setManualEntryRosterId('');
+    setManualEntryRosterIds(new Set());
   };
 
   const membersWithoutIds = roster.filter(m => !m.member_id);
@@ -2098,13 +2195,71 @@ export function Scanner() {
           </div>
         </div>
 
-        {/* Selected items actions bar */}
+        {/* Bulk Action Floating Pill */}
         {canManageScans && selectedScans.size > 0 && (
-          <div style={{ padding: '0.5rem var(--spacing-md)', background: 'color-mix(in srgb, var(--color-error) 15%, transparent)', borderTop: '1px solid color-mix(in srgb, var(--color-error) 30%, transparent)', color: 'var(--color-error)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-            <span>{selectedScans.size} scan(s) selected</span>
-            <button onClick={handleBulkRemove} className="btn btn-destructive" style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem' }}>
-              Remove
-            </button>
+          <div className="bulk-action-pill">
+            {/* Left Side: Count, Label & Clear */}
+            <div className="bulk-action-pill-info">
+              <span className="bulk-action-pill-count">{selectedScans.size}</span>
+              <span className="bulk-action-pill-label">Selected</span>
+              <button
+                type="button"
+                className="btn-icon-action btn-icon-clear"
+                onClick={() => setSelectedScans(new Set())}
+                title="Clear selection"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Vertical Divider */}
+            <div className="bulk-action-pill-divider" />
+
+            {/* Right Side: Action Buttons */}
+            <div className="bulk-action-pill-actions">
+              {/* Sign in: Green */}
+              <button
+                type="button"
+                className="btn-icon-action btn-icon-reopen"
+                onClick={handleBulkScanIn}
+                title="Sign in selected members"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 21h7a3 3 0 003-3V7a3 3 0 00-3-3h-7M3 12h14m-4-4l4 4-4 4" />
+                </svg>
+                <span className="bulk-action-btn-text">Sign in</span>
+              </button>
+
+              {/* Sign out: Blue */}
+              <button
+                type="button"
+                className="btn-icon-action btn-icon-close"
+                onClick={handleBulkSignOut}
+                title="Sign out selected members"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <span className="bulk-action-btn-text">Sign out</span>
+              </button>
+
+              {/* Remove: Red */}
+              <button
+                type="button"
+                className="btn-icon-action btn-icon-destructive"
+                onClick={handleBulkRemove}
+                title="Remove selected scans"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+                <span className="bulk-action-btn-text">Remove</span>
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -2264,26 +2419,56 @@ export function Scanner() {
           setIsManualEntryOpen(false);
           setManualEntryFirstName('');
           setManualEntryLastInitial('');
-          setManualEntryRosterId('');
+          setManualEntryRosterIds(new Set());
         }}
         title="Manual Entry"
+        tall
       >
-        <form onSubmit={handleManualEntry}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
-                Select Member:
-              </label>
+        <form onSubmit={handleManualEntry} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', flex: 1, minHeight: 0 }}>
+            {/* Left column: roster list */}
+            <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+              {/* Header row: label + sort toggles */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem', flexShrink: 0 }}>
+                <label style={{ fontWeight: 600 }}>
+                  Select Member{manualEntryRosterIds.size > 1 ? `s (${manualEntryRosterIds.size} selected)` : manualEntryRosterIds.size === 1 ? ' (1 selected)' : ':'}
+                </label>
+                <div style={{ display: 'flex', gap: '0.25rem' }}>
+                  {[
+                    { key: 'first', label: 'First' },
+                    { key: 'last',  label: 'Last'  },
+                  ].map(({ key, label }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setManualEntrySortBy(key)}
+                      style={{
+                        padding: '0.2rem 0.55rem',
+                        fontSize: '0.78rem',
+                        borderRadius: '4px',
+                        border: '1px solid var(--border-color)',
+                        cursor: 'pointer',
+                        fontWeight: manualEntrySortBy === key ? 700 : 400,
+                        backgroundColor: manualEntrySortBy === key ? 'var(--color-primary)' : 'var(--bg-primary)',
+                        color: manualEntrySortBy === key ? 'var(--bg-primary)' : 'var(--text-secondary)',
+                        transition: 'background-color 0.15s ease',
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div
                 style={{
                   border: '1px solid var(--border-color)',
                   borderRadius: '6px',
-                  maxHeight: '240px',
-                  minHeight: '120px',
+                  flex: 1,
                   overflowY: 'auto',
                   backgroundColor: 'var(--bg-secondary)',
                   display: 'flex',
-                  flexDirection: 'column'
+                  flexDirection: 'column',
+                  minHeight: 0
                 }}
               >
                 {roster.length === 0 ? (
@@ -2293,24 +2478,34 @@ export function Scanner() {
                 ) : (
                   [...roster]
                     .sort((a, b) => {
-                      const nameA = `${a.first_name || ''} ${a.last_initial || ''}`.toLowerCase();
-                      const nameB = `${b.first_name || ''} ${b.last_initial || ''}`.toLowerCase();
-                      return nameA.localeCompare(nameB);
+                      if (manualEntrySortBy === 'last') {
+                        const liA = (a.last_initial || '').toLowerCase();
+                        const liB = (b.last_initial || '').toLowerCase();
+                        if (liA !== liB) return liA.localeCompare(liB);
+                        return (a.first_name || '').toLowerCase().localeCompare((b.first_name || '').toLowerCase());
+                      }
+                      // default: sort by first name then last initial
+                      const fnA = (a.first_name || '').toLowerCase();
+                      const fnB = (b.first_name || '').toLowerCase();
+                      if (fnA !== fnB) return fnA.localeCompare(fnB);
+                      return (a.last_initial || '').toLowerCase().localeCompare((b.last_initial || '').toLowerCase());
                     })
                     .map(m => {
-                      const isSelected = manualEntryRosterId === m.id;
+                      const isSelected = manualEntryRosterIds.has(m.id);
                       return (
                         <button
                           key={m.id}
                           type="button"
                           onClick={() => {
-                            if (isSelected) {
-                              setManualEntryRosterId('');
-                            } else {
-                              setManualEntryRosterId(m.id);
-                              setManualEntryFirstName('');
-                              setManualEntryLastInitial('');
-                            }
+                            setManualEntryRosterIds(prev => {
+                              const next = new Set(prev);
+                              if (next.has(m.id)) {
+                                next.delete(m.id);
+                              } else {
+                                next.add(m.id);
+                              }
+                              return next;
+                            });
                           }}
                           style={{
                             padding: '0.6rem 0.8rem',
@@ -2329,25 +2524,41 @@ export function Scanner() {
                             flexShrink: 0
                           }}
                         >
-                          <span>{m.first_name} {m.last_initial}</span>
+                          {manualEntrySortBy === 'last'
+                            ? <span>{m.last_initial} — {m.first_name}</span>
+                            : <span>{m.first_name} {m.last_initial}</span>
+                          }
                           {isSelected && <span style={{ marginLeft: 'auto', fontSize: '0.85rem' }}>✓</span>}
                         </button>
                       );
                     })
                 )}
               </div>
+              {manualEntryRosterIds.size > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setManualEntryRosterIds(new Set())}
+                  style={{ marginTop: '0.4rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: '0.8rem', textAlign: 'left', padding: 0, flexShrink: 0 }}
+                >
+                  Clear selection
+                </button>
+              )}
             </div>
 
+            {/* Right column: guest/new entry */}
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
-                Or Add Guest/New:
+                Also Add Guest/New:
               </label>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '0.75rem', marginTop: 0 }}>
+                Roster selections stay active while you fill in a guest name.
+              </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 <input
                   type="text"
                   placeholder="First Name"
                   value={manualEntryFirstName}
-                  onChange={e => { setManualEntryFirstName(e.target.value); setManualEntryRosterId(''); }}
+                  onChange={e => setManualEntryFirstName(e.target.value)}
                   style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box', background: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '4px' }}
                 />
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -2356,7 +2567,7 @@ export function Scanner() {
                     placeholder="Last Initial"
                     maxLength={1}
                     value={manualEntryLastInitial}
-                    onChange={e => { setManualEntryLastInitial(e.target.value); setManualEntryRosterId(''); }}
+                    onChange={e => setManualEntryLastInitial(e.target.value)}
                     style={{ width: '100px', padding: '0.5rem', boxSizing: 'border-box', background: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '4px' }}
                   />
                   <LastInitialTooltip />
@@ -2364,12 +2575,25 @@ export function Scanner() {
               </div>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-            <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={!manualEntryRosterId && (!manualEntryFirstName.trim() && !manualEntryLastInitial.trim())}>Save Scan</button>
+
+          {/* Footer buttons */}
+          <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', flexShrink: 0 }}>
+            {(() => {
+              const totalCount = manualEntryRosterIds.size + (manualEntryFirstName.trim() || manualEntryLastInitial.trim() ? 1 : 0);
+              const disabled = totalCount === 0;
+              const label = totalCount > 1 ? `Save ${totalCount} Scans` : 'Save Scan';
+              return (
+                <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={disabled}>
+                  {label}
+                </button>
+              );
+            })()}
             <button type="button" onClick={() => setIsManualEntryOpen(false)} className="btn btn-secondary">Cancel</button>
           </div>
         </form>
       </Modal>
+
+
 
     </div>
   );

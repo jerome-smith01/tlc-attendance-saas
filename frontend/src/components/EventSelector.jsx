@@ -29,17 +29,6 @@ export function EventSelector({ troopId, onEventSelect }) {
         .eq('troop_id', troopId)
         .order('event_date', { ascending: false });
 
-      // Fallback for pre-migration table name
-      if (error && (error.code === '42P01' || error.message.includes('events'))) {
-        const res = await supabase
-          .from('sessions')
-          .select('*')
-          .eq('troop_id', troopId)
-          .order('event_date', { ascending: false });
-        data = res.data;
-        error = res.error;
-      }
-
       if (error) throw error;
       setEvents(data || []);
     } catch (err) {
@@ -68,23 +57,6 @@ export function EventSelector({ troopId, onEventSelect }) {
         ])
         .select()
         .single();
-
-      // Fallback for pre-migration table name
-      if (error && (error.code === '42P01' || error.message.includes('events'))) {
-        const res = await supabase
-          .from('sessions')
-          .insert([
-            {
-              troop_id: troopId,
-              event_name: newEventName.trim(),
-              event_date: newEventDate
-            }
-          ])
-          .select()
-          .single();
-        data = res.data;
-        error = res.error;
-      }
 
       if (error) throw error;
 

@@ -1,6 +1,6 @@
 # Database Schema
 
-> **Status**: Current as of Migration 009. See the [Migration History](#migration-history) section for a full changelog.
+> **Status**: Current as of Migration 019. See the [Migration History](#migration-history) section for a full changelog.
 
 ## Schema Diagram
 
@@ -8,11 +8,11 @@
 erDiagram
     troops ||--o{ troop_users : "has members"
     troops ||--o{ roster : "has youth/leaders"
-    troops ||--o{ sessions : "has events"
+    troops ||--o{ events : "has events"
     auth_users ||--o{ troop_users : "belongs to"
     auth_users ||--o{ global_admins : "may be"
     auth_users ||--o| roster : "may be linked to"
-    sessions ||--o{ scans : "records"
+    events ||--o{ scans : "records"
     roster ||--o{ scans : "is scanned"
 
     troops {
@@ -52,12 +52,12 @@ erDiagram
         timestamptz created_at
         timestamptz updated_at
     }
-    sessions {
+    events {
         uuid id PK
         uuid troop_id FK
         text event_name
         date event_date
-        timestamptz ended_at "nullable — set when session is closed"
+        timestamptz ended_at "nullable — set when event is closed"
         timestamptz synced_at "nullable — set when extension syncs"
         uuid synced_by FK "nullable — which user synced"
         timestamptz purge_after "nullable — synced_at + 14 days"
@@ -65,7 +65,7 @@ erDiagram
     }
     scans {
         uuid id PK
-        uuid session_id FK
+        uuid event_id FK
         uuid roster_id FK
         timestamptz scan_time
         scan_status status
@@ -105,11 +105,11 @@ Unified roster for both youth (Trailmen) and adult leaders.
 - `email` (TEXT): Nullable. Used for leaders to allow displaying their name on session history.
 - **Constraints**: `UNIQUE(troop_id, member_id)`, `UNIQUE(troop_id, tlc_id)`, `UNIQUE(troop_id, user_id)` (partial, where `user_id IS NOT NULL`).
 
-### 5. `sessions`
-An attendance session = one event on one date for one troop.
+### 5. `events`
+An attendance event = one event on one date for one troop (renamed from `sessions` in Migration 010).
 - `event_name` (TEXT): e.g., "Regular Meeting".
 - `event_date` (DATE).
-- `ended_at` (TIMESTAMPTZ): Set by an admin when closing the session. **Once set, no further scans can be inserted** (enforced at DB level via RLS on the `scans` table).
+- `ended_at` (TIMESTAMPTZ): Set by an admin when closing the event. **Once set, no further scans can be inserted** (enforced at DB level via RLS on the `scans` table).
 - `synced_at` (TIMESTAMPTZ): Set by the Chrome Extension when it successfully completes syncing to `traillifeconnect.com`.
 - `synced_by` (UUID): References `auth.users` — records which user ran the sync.
 - `purge_after` (TIMESTAMPTZ): Automatically set to `synced_at + 14 days` by a database trigger. A nightly `pg_cron` job deletes all child `scans` rows after this timestamp.
@@ -117,7 +117,7 @@ An attendance session = one event on one date for one troop.
 
 ### 6. `scans`
 Individual attendance records (Sign In / Sign Out).
-- `event_id` / `session_id` (UUID), `roster_id` (UUID).
+- `event_id` (UUID): References `events(id)` (renamed from `session_id` in Migration 010), `roster_id` (UUID).
 - `sign_in_time` (TIMESTAMPTZ): Timestamp when member was signed in (replaces `scan_time`).
 - `signed_in_by` (UUID): References `auth.users(id)` — leader who signed the member in.
 - `sign_out_time` (TIMESTAMPTZ): Timestamp when member was signed out (nullable).
@@ -152,7 +152,6 @@ Individual attendance records (Sign In / Sign Out).
 |:---|:---|:---|
 | 001 | `001_initial_schema.sql` | Create all 5 tables, enums, triggers, seed SC-0110 and DEMO-001 |
 | 002 | `002_rls_policies.sql` | Initial RLS policies with helper functions |
-| 016 | `016_add_sign_out_fields.sql` | Add sign_in_time, signed_in_by, sign_out_time, signed_out_by columns to scans |
 | 003a | `003_add_scanned_by.sql` | Add `scanned_by` to `scans` (experimental, may be superseded) |
 | 003b | `003_roles_and_sync.sql` | **Rename roles** (`admin`→`troop_admin`, `member`→`badge_scanner`), add `global_admins` table, add `synced_at`/`synced_by` to `sessions`, add immediate purge trigger (later replaced) |
 | 004 | `004_unified_roster_and_profiles.sql` | Add `role` and `user_id` columns to `roster` for unified youth+leader model; add self-update RLS |
@@ -161,4 +160,6 @@ Individual attendance records (Sign In / Sign Out).
 | 007 | `007_add_session_ended_at.sql` | Add `ended_at` to `sessions`; restrict scan inserts to open sessions |
 | 008 | `008_scan_purge_14_day_expiry.sql` | Replace immediate purge trigger with 14-day delayed expiry; add `purge_after` column; schedule `pg_cron` nightly job |
 | 009 | `009_reset_purge_after_on_unsync.sql` | Update trigger so clearing `synced_at` also resets `purge_after` to NULL (enables un-sync) |
+| 010 | `010_rename_sessions_to_events.sql` | Rename table `sessions` → `events` and column `scans.session_id` → `scans.event_id` |
+| 016 | `016_add_sign_out_fields.sql` | Add sign_in_time, signed_in_by, sign_out_time, signed_out_by columns to scans |
 | 017 | `017_rename_roles.sql` | Rename roles (`troop_admin`→`roster_manager`, `billing_admin`→`troop_admin`) |

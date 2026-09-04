@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 
-export function Modal({ isOpen, onClose, title, children, footer = null, maxWidth = '42rem', minHeight, style = {} }) {
+export function Modal({ isOpen, onClose, title, children, footer = null, maxWidth = '42rem', minHeight, tall = false, style = {} }) {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape' && isOpen) {
@@ -23,7 +23,7 @@ export function Modal({ isOpen, onClose, title, children, footer = null, maxWidt
       aria-modal="true"
     >
       <div 
-        className="app-modal-content glass-card" 
+        className={`app-modal-content glass-card${tall ? ' tall' : ''}`}
         style={{ 
           maxWidth, 
           ...(minHeight ? { minHeight } : {}),
@@ -55,7 +55,7 @@ export function Modal({ isOpen, onClose, title, children, footer = null, maxWidt
             ✕
           </button>
         </div>
-        <div className="app-modal-body" style={{ padding: '1.5rem', flex: 1 }}>
+        <div className="app-modal-body" style={{ padding: '1.5rem', flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           {children}
         </div>
         {footer && (

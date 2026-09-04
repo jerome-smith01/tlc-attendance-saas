@@ -63,16 +63,6 @@ export function Dashboard() {
         .eq('troop_id', troopId)
         .order('event_date', { ascending: false });
 
-      if (eventsError && (eventsError.code === '42P01' || eventsError.message.includes('events'))) {
-        const res = await supabase
-          .from('sessions')
-          .select('*')
-          .eq('troop_id', troopId)
-          .order('event_date', { ascending: false });
-        eventsData = res.data;
-        eventsError = res.error;
-      }
-
       if (!eventsError) setEvents(eventsData || []);
 
     } catch (err) {

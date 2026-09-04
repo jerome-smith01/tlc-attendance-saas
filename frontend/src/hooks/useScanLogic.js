@@ -68,7 +68,7 @@ export function useScanLogic(troopId, sessionId, user, roster, setRoster) {
     try {
       const nowIso = new Date().toISOString();
 
-      // Helper to fetch existing scan safely (handling event_id vs session_id column name)
+      // Helper to fetch existing scan safely
       async function getExistingScan() {
         let { data, error } = await supabase
           .from('scans')
@@ -77,15 +77,6 @@ export function useScanLogic(troopId, sessionId, user, roster, setRoster) {
           .eq('roster_id', matchedMember.id)
           .maybeSingle();
 
-        if (error && (error.code === 'PGRST204' || error.message?.includes('event_id'))) {
-          const res = await supabase
-            .from('scans')
-            .select('*')
-            .eq('session_id', sessionId)
-            .eq('roster_id', matchedMember.id)
-            .maybeSingle();
-          data = res.data;
-        }
         return data;
       }
 
@@ -128,13 +119,6 @@ export function useScanLogic(troopId, sessionId, user, roster, setRoster) {
             signed_out_by: user.id
           };
           let { data, error } = await supabase.from('scans').insert([newRecord]).select();
-          if (error && (error.code === 'PGRST204' || error.message?.includes('event_id'))) {
-            delete newRecord.event_id;
-            newRecord.session_id = sessionId;
-            const res = await supabase.from('scans').insert([newRecord]).select();
-            data = res.data;
-            error = res.error;
-          }
           if (error) {
             if (onResult) onResult({ status: 'error', message: error.message, member: matchedMember });
           } else {
@@ -182,13 +166,6 @@ export function useScanLogic(troopId, sessionId, user, roster, setRoster) {
         };
 
         let { data, error } = await supabase.from('scans').insert([scanData]).select();
-        if (error && (error.code === 'PGRST204' || error.message?.includes('event_id'))) {
-          delete scanData.event_id;
-          scanData.session_id = sessionId;
-          const res = await supabase.from('scans').insert([scanData]).select();
-          data = res.data;
-          error = res.error;
-        }
 
         if (error) {
           console.error('[useScanLogic] Supabase insert error:', error);
@@ -207,7 +184,6 @@ export function useScanLogic(troopId, sessionId, user, roster, setRoster) {
     } catch (err) {
       queueOfflineScan({
         event_id: sessionId,
-        session_id: sessionId,
         roster_id: matchedMember.id,
         status: 'pending',
         signed_in_by: user.id,

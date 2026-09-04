@@ -37,15 +37,15 @@ graph LR
 - Instantiates the Supabase client configured to use `chrome.storage.local`.
 - Because it uses the official Supabase SDK, it inherits **automatic token refresh** — the session stays alive without user intervention.
 - Handles messages from `content.js` via `chrome.runtime.onMessage`:
-  - `"GET_SESSION"`: Returns the current session from storage.
-  - `"SYNC_ATTENDANCE"`: Queries Supabase for all recorded attendance scans for a given closed event ID.
+  - `"GET_ENDED_SESSIONS"`: Queries the `events` table for ended events that have not yet been synced (`synced_at IS NULL`).
+  - `"SYNC_ATTENDANCE"`: Queries Supabase `scans` table (`event_id`) for all recorded attendance scans for a given closed event ID.
   - `"MARK_SESSION_SYNCED"`: Sets `events.synced_at` and `events.synced_by`.
 
 ### `content.js` (Injected into `traillifeconnect.com`)
 - Injected by the manifest into pages matching `https://traillifeconnect.com/groups/*/attendance*`.
 - Listens to `chrome.storage.onChanged` to detect when `supabase_session` becomes active or null — enables or disables the "Sync" button dynamically without requiring a page reload.
 - Injects a "⚡ Sync TLC Attendance" button above the first attendance panel (`.panel.panel-theme`).
-- On click, shows a modal listing available TLC events and letting the admin select which Supabase session to sync.
+- On click, shows a modal listing available TLC events and letting the admin select which Supabase event to sync.
 - Performs DOM-based checkbox toggling using the selector: `#${tlcId}-${eventId}-attended`.
 - Reports results: counts of successfully toggled, already checked, and not-found members.
 
