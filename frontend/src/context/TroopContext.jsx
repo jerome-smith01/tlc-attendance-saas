@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from './AuthContext';
 
@@ -13,11 +13,12 @@ export function TroopProvider({ children }) {
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [userDisplayName, setUserDisplayName] = useState('');
   const [error, setError] = useState(null);
+  const initialTroopsLoadedRef = useRef(false);
 
   useEffect(() => {
     if (authLoading) return; // Wait for auth to settle
 
-    if (user) {
+    if (user?.id) {
       fetchTroops();
     } else {
       setTroops([]);
@@ -25,9 +26,10 @@ export function TroopProvider({ children }) {
       setIsGlobalAdmin(false);
       setNeedsOnboarding(false);
       setUserDisplayName('');
+      initialTroopsLoadedRef.current = false;
       setLoadingTroops(false);
     }
-  }, [user, authLoading]);
+  }, [user?.id, authLoading]);
 
   async function refreshDisplayName() {
     const { data: sessionData } = await supabase.auth.getSession();
@@ -93,16 +95,19 @@ export function TroopProvider({ children }) {
   }
 
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       refreshDisplayName();
     } else {
       setUserDisplayName('');
     }
-  }, [user, selectedTroopId]);
+  }, [user?.id, user?.user_metadata?.first_name, user?.user_metadata?.last_initial, selectedTroopId]);
 
   async function fetchTroops() {
     try {
-      setLoadingTroops(true);
+      // Only trigger full loading state on initial load, never during background refreshes
+      if (!initialTroopsLoadedRef.current) {
+        setLoadingTroops(true);
+      }
 
       const activeUser = user || (await supabase.auth.getUser())?.data?.user;
       if (!activeUser?.id) {
@@ -166,6 +171,7 @@ export function TroopProvider({ children }) {
       console.error('Error fetching troops:', err);
       setError(err.message);
     } finally {
+      initialTroopsLoadedRef.current = true;
       setLoadingTroops(false);
     }
   }
@@ -173,12 +179,17 @@ export function TroopProvider({ children }) {
   function setDefaultTroop(availableTroops) {
     if (availableTroops.length === 0) return;
     
-    const saved = localStorage.getItem('tlc_last_troop_id');
-    if (saved && availableTroops.find(t => t.id === saved)) {
-      setSelectedTroopId(saved);
-    } else {
-      setSelectedTroopId(availableTroops[0].id);
-    }
+    setSelectedTroopId(current => {
+      // If currently selected troop is already valid in available troops, preserve it!
+      if (current && availableTroops.some(t => t.id === current)) {
+        return current;
+      }
+      const saved = localStorage.getItem('tlc_last_troop_id');
+      if (saved && availableTroops.some(t => t.id === saved)) {
+        return saved;
+      }
+      return availableTroops[0].id;
+    });
   }
 
   // Update localStorage whenever selectedTroopId changes

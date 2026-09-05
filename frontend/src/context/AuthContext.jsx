@@ -78,7 +78,7 @@ export function AuthProvider({ children }) {
       (event, session) => {
         setSession(session);
         setLoading(false);
-        if (session?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION')) {
+        if (session?.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
           ensureOAuthProfileMetadata(session.user);
         }
       }

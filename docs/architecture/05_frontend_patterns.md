@@ -34,6 +34,8 @@ supabase.auth.onAuthStateChange((_event, session) => {
 
 **Exposed values**: `session`, `user` (shortcut for `session?.user`), `loading`, `signOut()`.
 
+**Token Refresh & Reference Stability**: Supabase emits a `TOKEN_REFRESHED` event whenever the browser window regains focus, is restored from minimize, or refreshes tokens in the background. Each refresh creates a *new session and user object reference* in memory with the same `user.id`. Downstream hooks and contexts (such as `TroopContext`) must depend on `user?.id` rather than `user` to prevent unnecessary re-fetching and full-tree remounts.
+
 ---
 
 ## 2. Troop Context & Multi-Troop Switching (`TroopContext`)
@@ -47,6 +49,11 @@ This context is critical for any multi-user or multi-troop scenario. It:
 - Maintains shared `userDisplayName` state (formatted as `"FirstName L."`) and provides `refreshDisplayName()` to refresh display name from the `roster` table for the user and active troop.
 - Exposes a `selectedTroopId` that drives all data queries on every page.
 - Persists the selected troop in `localStorage` under `tlc_last_troop_id` so the user's selection survives page refreshes.
+
+**Background Revalidation vs. Initial Load**:
+- `loadingTroops` is set to `true` **only** during initial boot (`initialTroopsLoadedRef.current = false`).
+- Background refreshes (e.g. triggered via `refreshTroops()`) revalidate in the background without flipping `loadingTroops` back to `true`. This guarantees that `ProtectedRoute` never replaces the active page with `<AppSpinner />` during routine background revalidation, which would unmount active forms, wizard progress, or user inputs.
+- `setDefaultTroop` preserves any currently active, valid `selectedTroopId` rather than blindly reverting to `tlc_last_troop_id` or the first troop in the array.
 
 **Key rule**: Every page component (Dashboard, Roster, Events, Scanner) should consume `selectedTroopId` from `TroopContext` rather than fetching it directly. This ensures the troop switcher in the sidebar header controls the entire app context.
 

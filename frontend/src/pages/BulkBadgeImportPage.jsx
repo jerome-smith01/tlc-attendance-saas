@@ -291,7 +291,10 @@ export function BulkBadgeImportPage() {
     .filter(m => m.role === null || m.role === 'trailman')
     .sort((a, b) => (a.first_name || '').localeCompare(b.first_name || ''));
 
-  if (loadingTroops || loadingRoster) {
+  // Only block on loading during step 1 (file selection). Once the user has
+  // progressed to processing or review, the results live in local state and
+  // must not be wiped by a background token-refresh re-triggering loadingTroops.
+  if (step === 1 && (loadingTroops || loadingRoster)) {
     return <div style={{ padding: '2rem', color: 'var(--foreground)' }}>Loading...</div>;
   }
 
