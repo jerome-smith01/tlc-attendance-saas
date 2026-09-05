@@ -490,6 +490,7 @@ input[type="file"] {
   border-radius: var(--radius-sm, 6px);
   border: 1px solid var(--border-color);
   background: transparent;
+  color: var(--foreground);
   cursor: pointer;
   transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), opacity var(--transition-fast);
 }
@@ -573,6 +574,35 @@ input[type="file"] {
 .btn-icon-destructive:disabled {
   color: var(--color-destructive);
   border-color: rgba(220, 38, 38, 0.25);
+  opacity: 0.35;
+}
+
+/* Edit Icon: Light grey in dark mode, dark slate in light mode */
+.btn-icon-edit {
+  color: var(--foreground);
+  border-color: var(--border-color);
+}
+.btn-icon-edit:hover:not(:disabled) {
+  color: var(--foreground);
+  border-color: var(--color-primary);
+  background-color: rgba(0, 0, 0, 0.05);
+}
+.dark .btn-icon-edit {
+  color: var(--color-secondary-hover, #cbd5e1);
+  border-color: var(--border-color);
+}
+.dark .btn-icon-edit:hover:not(:disabled) {
+  color: #ffffff;
+  border-color: var(--color-primary);
+  background-color: rgba(255, 255, 255, 0.1);
+}
+.btn-icon-edit:disabled {
+  color: var(--foreground);
+  border-color: var(--border-color);
+  opacity: 0.35;
+}
+.dark .btn-icon-edit:disabled {
+  color: var(--color-secondary-hover, #cbd5e1);
   opacity: 0.35;
 }
 
@@ -2017,6 +2047,31 @@ button:active, .btn-primary:active, .btn-action:active {
   padding: 0;
 }
 
+.member-name-link {
+  display: inline-block;
+  background: none;
+  border: none;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.4;
+  word-break: break-word;
+  white-space: normal;
+  margin: 0;
+  padding: 0;
+  color: var(--foreground);
+  text-decoration: none;
+  cursor: pointer;
+  text-align: left;
+  transition: color var(--transition-fast);
+}
+
+.member-name-link:hover,
+.member-name-link:focus-visible {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
 @media (min-width: 768px) {
   .grid-table-header {
     display: grid;
@@ -2095,8 +2150,9 @@ button:active, .btn-primary:active, .btn-action:active {
     justify-content: flex-start;
   }
 
-  .event-name-link {
-    display: block;
+  .event-name-link,
+  .member-name-link {
+    display: inline-block;
     font-size: inherit;
     width: auto;
     line-height: 1.4;

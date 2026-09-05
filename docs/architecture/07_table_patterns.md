@@ -42,8 +42,8 @@ To maximize vertical reading space and accommodate arbitrarily long record names
    - Combines Cell 1 (Selection Checkbox) and Cell 2 (Record Title Link / Member Name) into a single top flex container (`display: flex; align-items: center; gap: 0.6rem; width: 100%; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 0.25rem;`).
 3. **Top-Aligned Checkbox (`.grid-table-cell-select`)**:
    - Centered vertically on mobile with the title text (`display: flex; align-items: center;`).
-4. **Full-Width Title Link (`.event-name-link` / `.grid-table-cell-name`)**:
-   - Occupies remaining width (`flex: 1; min-width: 0;`), styled with `text-align: left !important; font-size: 0.95rem; font-weight: 600; line-height: 1.4; word-break: break-word;`.
+4. **Full-Width Title Link (`.event-name-link` / `.member-name-link` / `.grid-table-cell-name`)**:
+   - Occupies remaining width (`flex: 1; min-width: 0;`), styled with `text-align: left !important; font-size: 0.95rem; font-weight: 600; line-height: 1.4; word-break: break-word;`. When interactive (e.g. `.member-name-link` navigating to member edit or `.event-name-link` navigating to attendees), renders as an accessible `<button>` turning `var(--color-primary)` with underline on hover/focus.
 5. **Clean Field Values (`.grid-table-cell`)**:
    - Field rows (Status, Scan Time, Actions, etc.) render directly against the card's surface without nested grey background boxes or heavy dividers (`padding: 0.4rem 0; border-bottom: none;`).
 6. **Desktop Grid Unwrapping (`display: contents`)**:
@@ -325,6 +325,7 @@ For event attendance views (`/events/[event-id]`):
 Single-row action buttons MUST use global CSS utility classes rather than ad-hoc inline styles:
 - Base class: `.btn-icon-action` (flex centered, 6px padding, `var(--radius-sm)`, border, pointer cursor, smooth transitions).
 - Action-specific modifier classes:
+  - `.btn-icon-edit` (Theme-adaptive edit styling: white in dark mode, dark slate in light mode)
   - `.btn-icon-close` (Blue accent styling for closing an item)
   - `.btn-icon-reopen` (Green accent styling for reopening an item)
   - `.btn-icon-reset-sync` (Purple accent styling for resetting sync status)

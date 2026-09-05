@@ -919,14 +919,26 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
 
                       {/* Name */}
                       <div className="grid-table-cell grid-table-cell-name" role="cell">
-                        <span
-                          style={{ fontWeight: 600, fontSize: '0.95rem', lineHeight: 1.4, display: 'block', wordBreak: 'break-word' }}
-                        >
-                          {getMemberName(member)}
-                          {isOwnRow && (
-                            <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-secondary)', marginLeft: '0.4rem' }}>(you)</span>
-                          )}
-                        </span>
+                        {canEdit ? (
+                          <button
+                            type="button"
+                            className="btn-link member-name-link"
+                            onClick={() => handleEditMember(member)}
+                            title="Edit member"
+                            aria-label={`Edit ${getMemberName(member)}`}
+                          >
+                            {getMemberName(member)}
+                          </button>
+                        ) : (
+                          <span
+                            style={{ fontWeight: 600, fontSize: '0.95rem', lineHeight: 1.4, display: 'block', wordBreak: 'break-word' }}
+                          >
+                            {getMemberName(member)}
+                          </span>
+                        )}
+                        {isOwnRow && (
+                          <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-secondary)', marginLeft: '0.4rem', alignSelf: 'center' }}>(you)</span>
+                        )}
                       </div>
 
                     </div>
@@ -994,11 +1006,11 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
                           {/* Edit — placeholder */}
                           <button
                             type="button"
-                            className="btn-icon-action"
+                            className="btn-icon-action btn-icon-edit"
                             disabled={!canEdit}
                             onClick={() => handleEditMember(member)}
                             title={canEdit ? 'Edit member' : 'Edit unavailable'}
-                            style={{ opacity: canEdit ? 1 : 0.35, cursor: canEdit ? 'pointer' : 'not-allowed' }}
+                            aria-label={canEdit ? 'Edit member' : 'Edit unavailable'}
                           >
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />

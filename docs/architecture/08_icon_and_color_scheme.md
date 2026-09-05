@@ -72,6 +72,7 @@ Action icons rendered inside table rows use `.btn-icon-action` combined with the
 
 | Action Purpose | Icon | Active Color | CSS Class | Disabled Behavior |
 |:---|:---|:---|:---|:---|
+| **Edit** | Pencil Box | ⚪ Light Grey (`#cbd5e1`, dark mode) / Dark Slate (light mode) | `.btn-icon-action.btn-icon-edit` | Faded theme (`opacity: 0.35`) |
 | **Close** | Lock Closed | 🔵 Blue | `.btn-icon-action.btn-icon-close` | Faded blue theme (`opacity: 0.35`) |
 | **Reopen** | Lock Open | 🟢 Green | `.btn-icon-action.btn-icon-reopen` | Faded green theme (`opacity: 0.35`) |
 | **Reset Sync** | Rotate Arrow | 🟣 Purple | `.btn-icon-action.btn-icon-reset-sync` | Faded purple theme (`opacity: 0.35`) |
