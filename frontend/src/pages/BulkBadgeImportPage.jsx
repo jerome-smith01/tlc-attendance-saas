@@ -5,6 +5,8 @@ import { supabase } from '../lib/supabaseClient';
 import { useTroop } from '../context/TroopContext';
 import { useToast } from '../components/common/ToastContext';
 
+import { parseQrPayload, findRosterMatch, getCropRegions } from '../utils/badgeQrHelper';
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 const BUCKET = {
   READY:      'ready',      // QR decoded, member matched, will be written
@@ -44,6 +46,20 @@ async function renderPdfToCanvas(file) {
 }
 
 /**
+ * Crop a sub-region of a canvas into a new off-screen canvas.
+ */
+function cropCanvas(sourceCanvas, { sx, sy, sw, sh }) {
+  const target = document.createElement('canvas');
+  target.width = sw;
+  target.height = sh;
+  const ctx = target.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, sw, sh);
+  ctx.drawImage(sourceCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
+  return target;
+}
+
+/**
  * Decode a QR code from a canvas element via html5-qrcode's scanFile API.
  */
 async function decodeQrFromCanvas(canvas) {
@@ -72,26 +88,28 @@ async function decodeQrFromCanvas(canvas) {
 }
 
 /**
- * Parse TLC QR payload → { memberId, tlcId }.
- * Formats: "memberId | tlcId"  or a single token.
+ * Scan a badge canvas using multi-region fallbacks:
+ * 1. Bottom-right quadrant (where the standard TLUSA ID card FRONT panel & QR reside)
+ * 2. Bottom half (if margins or layout shift slightly)
+ * 3. Full canvas (for non-standard / certificate badge formats)
  */
-function parseQrPayload(raw) {
-  const parts = String(raw).split('|').map(p => p.trim());
-  if (parts.length >= 2) return { memberId: parts[0], tlcId: parts[1] };
-  return { memberId: null, tlcId: parts[0] };
-}
+async function scanBadgeWithFallbacks(canvas) {
+  const regions = getCropRegions(canvas.width, canvas.height);
 
-/** Match decoded QR to a roster entry: member_id first, then tlc_id. */
-function findRosterMatch(roster, memberId, tlcId) {
-  if (memberId) {
-    const m = roster.find(r => r.member_id && r.member_id === memberId);
-    if (m) return m;
+  // Attempt 1: Bottom-right quadrant
+  try {
+    const brCanvas = cropCanvas(canvas, regions.bottomRightQuadrant);
+    return await decodeQrFromCanvas(brCanvas);
+  } catch (errBR) {
+    // Attempt 2: Bottom half
+    try {
+      const bottomCanvas = cropCanvas(canvas, regions.bottomHalf);
+      return await decodeQrFromCanvas(bottomCanvas);
+    } catch (errBH) {
+      // Attempt 3: Full canvas fallback
+      return await decodeQrFromCanvas(canvas);
+    }
   }
-  if (tlcId) {
-    const m = roster.find(r => r.tlc_id && r.tlc_id === tlcId);
-    if (m) return m;
-  }
-  return null;
 }
 
 export function BulkBadgeImportPage() {
@@ -201,7 +219,7 @@ export function BulkBadgeImportPage() {
 
       try {
         const canvas = await renderPdfToCanvas(file);
-        const raw    = await decodeQrFromCanvas(canvas);
+        const raw    = await scanBadgeWithFallbacks(canvas);
         ({ memberId, tlcId } = parseQrPayload(raw));
         member = findRosterMatch(roster, memberId, tlcId);
 

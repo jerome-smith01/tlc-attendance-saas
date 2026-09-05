@@ -12,6 +12,7 @@ import { useConfirm } from './common/ConfirmContext';
 import { SingleBadgeScannerModal } from './SingleBadgeScannerModal';
 import { useTroop } from '../context/TroopContext';
 import { compareMemberName } from '../utils/nameSorter';
+import { compareExpirationDate } from '../utils/dateSorter';
 
 export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAdmin, activeTab, userId }) {
   const navigate = useNavigate();
@@ -148,6 +149,7 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
     role: [],
     email: [],
     member_id: [],
+    membership_exp: [],
     badge: [],
     actions: [],
   };
@@ -315,6 +317,12 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
   const getMemberName = (m) => `${m.first_name} ${m.last_initial}.`;
   const getMemberRole = (m) => m.role ? m.role.replace(/_/g, ' ') : 'trailman';
   const getBadgeLabel = (m) => m.tlc_id ? 'View' : 'Scan Badge';
+  const getMemberExpLabel = (m) => {
+    const exp = m.membership_exp;
+    if (!exp) return 'No Expiration';
+    const [y, mo, d] = exp.split('-').map(Number);
+    return new Date(y, mo - 1, d).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' });
+  };
 
   const getFilteredRoster = (excludeColumn = null) => {
     let result = [...displayRoster];
@@ -341,6 +349,9 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
     if (excludeColumn !== 'member_id' && columnFilters.member_id?.length > 0) {
       result = result.filter(m => columnFilters.member_id.includes(m.member_id || ''));
     }
+    if (excludeColumn !== 'membership_exp' && columnFilters.membership_exp?.length > 0) {
+      result = result.filter(m => columnFilters.membership_exp.includes(getMemberExpLabel(m)));
+    }
     if (excludeColumn !== 'badge' && columnFilters.badge?.length > 0) {
       result = result.filter(m => columnFilters.badge.includes(getBadgeLabel(m)));
     }
@@ -354,6 +365,9 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
       result.sort((a, b) => {
         if (sortConfig.key === 'name') {
           return compareMemberName(a, b, sortConfig.field || 'first', sortConfig.direction);
+        }
+        if (sortConfig.key === 'membership_exp') {
+          return compareExpirationDate(a, b, sortConfig.direction);
         }
         let valA = '', valB = '';
         if (sortConfig.key === 'role') { valA = getMemberRole(a); valB = getMemberRole(b); }
@@ -374,6 +388,7 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
   const availableRoles = useMemo(() => new Set(getFilteredRoster('role').map(m => getMemberRole(m))), [displayRoster, rosterSearch, columnFilters]);
   const availableEmails = useMemo(() => new Set(getFilteredRoster('email').map(m => m.email).filter(Boolean)), [displayRoster, rosterSearch, columnFilters]);
   const availableMemberIds = useMemo(() => new Set(getFilteredRoster('member_id').map(m => m.member_id).filter(Boolean)), [displayRoster, rosterSearch, columnFilters]);
+  const availableMembershipExps = useMemo(() => new Set(getFilteredRoster('membership_exp').map(m => getMemberExpLabel(m))), [displayRoster, rosterSearch, columnFilters]);
   const availableBadges = useMemo(() => new Set(getFilteredRoster('badge').map(m => getBadgeLabel(m))), [displayRoster, rosterSearch, columnFilters]);
 
   // Unique option lists
@@ -381,6 +396,11 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
   const uniqueRoles = useMemo(() => [...new Set(displayRoster.map(m => getMemberRole(m)))].sort(), [displayRoster]);
   const uniqueEmails = useMemo(() => [...new Set(displayRoster.map(m => m.email).filter(Boolean))].sort(), [displayRoster]);
   const uniqueMemberIds = useMemo(() => [...new Set(displayRoster.map(m => m.member_id).filter(Boolean))].sort(), [displayRoster]);
+  const uniqueMembershipExps = useMemo(() => [...new Set(displayRoster.map(m => getMemberExpLabel(m)))].sort((a, b) => {
+    if (a === 'No Expiration') return 1;
+    if (b === 'No Expiration') return -1;
+    return new Date(a) - new Date(b);
+  }), [displayRoster]);
 
   // Active filter chips
   const activeChips = useMemo(() => {
@@ -400,6 +420,10 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
     if (columnFilters.member_id?.length > 0) {
       const label = columnFilters.member_id.length > 2 ? `${columnFilters.member_id.length} selected` : columnFilters.member_id.join(', ');
       chips.push({ id: 'member_id', label: `Member ID: ${label}`, onRemove: () => setColumnFilters(p => ({ ...p, member_id: [] })) });
+    }
+    if (columnFilters.membership_exp?.length > 0) {
+      const label = columnFilters.membership_exp.length > 2 ? `${columnFilters.membership_exp.length} selected` : columnFilters.membership_exp.join(', ');
+      chips.push({ id: 'membership_exp', label: `Expiration Date: ${label}`, onRemove: () => setColumnFilters(p => ({ ...p, membership_exp: [] })) });
     }
     if (columnFilters.badge?.length > 0) {
       chips.push({ id: 'badge', label: `Badge: ${columnFilters.badge.join(', ')}`, onRemove: () => setColumnFilters(p => ({ ...p, badge: [] })) });
@@ -854,12 +878,31 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
               {/* Membership Exp. (members tab only) */}
               {activeTab === 'members' && (
                 <div role="columnheader" className="column-header-cell" style={{ position: 'relative' }}>
-                  <button type="button" className="column-header-btn" onClick={() => setActivePopover(null)}
-                    title="Membership expiration date imported from TLC roster CSV"
+                  <button
+                    type="button"
+                    className="column-header-btn"
+                    onClick={() => setActivePopover(activePopover === 'membership_exp' ? null : 'membership_exp')}
+                    aria-sort={sortConfig.key === 'membership_exp' ? (sortConfig.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    title={sortConfig.key === 'membership_exp'
+                      ? `Sorted by Expiration Date (${sortConfig.direction === 'asc' ? 'Earliest First' : 'Latest First'}). Click to filter or change sort.`
+                      : 'Click to filter or sort'}
                   >
-                    Mbr. Exp.
+                    Expiration Date
                     {sortConfig.key === 'membership_exp' && (sortConfig.direction === 'asc' ? ' ↑' : ' ↓')}
+                    {columnFilters.membership_exp?.length > 0 && ' 🌪️'}
                   </button>
+                  {activePopover === 'membership_exp' && (
+                    <FilterPopover
+                      isOpen={true} title="Expiration Date" type="multiselect"
+                      options={uniqueMembershipExps.map(exp => ({ label: exp, value: exp, disabled: !availableMembershipExps.has(exp) }))}
+                      value={columnFilters.membership_exp || []}
+                      onChange={val => setColumnFilters(p => ({ ...p, membership_exp: val }))}
+                      onClose={() => setActivePopover(null)}
+                      sortConfig={sortConfig} columnKey="membership_exp"
+                      onSort={dir => setSortConfig({ key: 'membership_exp', direction: dir })}
+                      sortAscLabel="Sort Earliest First" sortDescLabel="Sort Latest First"
+                    />
+                  )}
                   <div className="column-resizer" onMouseDown={e => handleStartResize(e, 'membership_exp', 'badge')} title="Drag to resize column" />
                 </div>
               )}
@@ -1017,7 +1060,7 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
                         : '—';
                       return (
                         <div className="grid-table-cell" role="cell">
-                          <span className="grid-table-label">Mbr. Exp.</span>
+                          <span className="grid-table-label">Expiration Date</span>
                           <span
                             style={{
                               fontSize: '0.875rem',

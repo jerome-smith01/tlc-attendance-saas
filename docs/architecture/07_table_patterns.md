@@ -241,11 +241,12 @@ The Scanner attendance table (`Scanner.jsx`) replaces the legacy single combined
 ### Real-Time Scanner State Synchronization
 When new scans arrive real-time (`processPayload`, `handleResolveUnknown`, `handleManualAddAttendee`), state updates MUST construct all 6 properties immediately (`raw_sign_in_time`, `raw_sign_out_time`, `in_date`, `in_time`, `in_by`, `out_date`, `out_time`, `out_by`) so new scan rows render live without requiring a page refresh.
 
-### Member Name Dual-Mode Sorting (First Name vs Last Initial)
-The `Member Name` column (`Scanner.jsx` and `RosterList.jsx`) supports dual-mode sorting using the shared `compareMemberName` utility (`frontend/src/utils/nameSorter.js`):
-1. **First Name Mode (`field === 'first'`)**: Primary sort by `first_name` (case-insensitive), secondary tie-break by `last_initial`.
-2. **Last Initial Mode (`field === 'last'`)**: Primary sort by `last_initial` (case-insensitive), secondary tie-break by `first_name`.
-3. **Display Contract**: The attendee/roster row display remains `First L.` format consistently regardless of sort field. The column header displays `Member Name ↑` or `Member Name ↓` with full mode details conveyed via the `title` tooltip and `aria-label`.
+### Expiration Date Sorting & Filtering (`membership_exp`)
+The `Expiration Date` column on the Roster table (`RosterList.jsx`) supports Excel-like sorting and multi-select filtering via `FilterPopover`:
+1. **Date Comparison**: Uses the `compareExpirationDate` utility (`frontend/src/utils/dateSorter.js`). Supports sorting by **Earliest First** (`asc`) and **Latest First** (`desc`).
+2. **Null / Missing Expiration Dates**: Members with no expiration date on file (`null` or empty) are grouped at the bottom of the table list in both ascending and descending sort directions.
+3. **Multi-Select Filter Options**: Dynamically presents unique formatted expiration dates (`m/d/yyyy` or `No Expiration`).
+4. **Header Status Indicators**: Displays active sort arrows (`↑` / `↓`) and filter funnel icons (`🌪️`) inside the header button label.
 
 ---
 

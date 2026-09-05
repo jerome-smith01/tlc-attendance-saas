@@ -40,20 +40,24 @@ Leaders can also link a physical badge directly to a specific roster member from
 > See [01_database_schema.md](./01_database_schema.md) for the full dual-ID strategy rationale and constraints.
 
 ## Bulk Badge Import (PDF Badges)
-Leaders can bulk-link multiple badges at once from exported Trail Life Connect PDF badge files using `BulkBadgeImportModal.jsx`:
+Leaders can bulk-link multiple badges at once from exported Trail Life Connect PDF badge files using `BulkBadgeImportPage.jsx`:
 
 1. User clicks **Import Badges** on the Members tab toolbar.
 2. User drops one or more badge `.pdf` files (or a full folder of badges).
 3. The browser renders each PDF page 1 to an off-screen HTML `<canvas>` via **PDF.js** (CDN).
-4. `html5-qrcode` decodes the QR code from the canvas blob image and parses the payload (`memberId | tlcId`).
-5. Matching logic:
-   - Matches against existing troop roster by `member_id` first, then `tlc_id`.
+4. `html5-qrcode` decodes the QR code from the canvas blob image using a 3-tier multi-region fallback strategy:
+   - **Tier 1 (Bottom-right quadrant)**: Crops to the lower-right quadrant corresponding to the standard TLUSA ID card "FRONT" panel where the QR code and member info reside. This eliminates surrounding noise (inverted text, graphics, contact forms) and elevates the QR code to occupy a large portion of the scanned image.
+   - **Tier 2 (Bottom half)**: If the bottom-right quadrant does not decode (e.g. slight layout shifts or custom margins), scans the lower half of the page.
+   - **Tier 3 (Full canvas fallback)**: If both regional crops fail, attempts scanning the full uncropped page (for non-standard / full-page certificate badge formats).
+5. The decoded string is parsed via `parseQrPayload` into `{ memberId, tlcId }`.
+6. Matching logic:
+   - Matches against existing troop roster by `member_id` first, then `tlc_id` via `findRosterMatch`.
    - **Exact match with same `tlc_id`**: marked as `same` (skipped automatically to avoid redundant writes).
    - **Match with missing or different `tlc_id`**: marked as `ready` (overwrites with latest badge's `tlc_id`).
    - **No match**: marked as `no_match` and presented in a manual assignment dropdown.
    - **Decode failure**: marked as `unreadable` (leader advised to use single-badge scanner).
-6. User reviews the categorized results and clicks **Link X Badges**.
-7. Updates Supabase `roster` records with `tlc_id` (and backfills `member_id` if missing).
+7. User reviews the categorized results and clicks **Link X Badges**.
+8. Updates Supabase `roster` records with `tlc_id` (and backfills `member_id` if missing).
 
 
 ## Chrome Extension DOM Integration

@@ -77,8 +77,8 @@ function processRows(rows) {
       first_name: finalFirstName,
       last_initial: lastInitial,
       member_id: memberId,
-      // tlc_id is populated later upon first scan
-      tlc_id: null,
+      // tlc_id is intentionally excluded — it is populated only via badge scanning
+      // and must never be overwritten by a CSV import.
       membership_exp: membershipExp
     });
   }
