@@ -12,6 +12,7 @@ import { FilterPopover } from '../components/common/FilterPopover';
 import { LastInitialTooltip } from '../components/common/Tooltip';
 import { formatAppDate } from '../utils/date';
 import { compareMemberName } from '../utils/nameSorter';
+import { getScannerDisplayData } from '../utils/scannerFeedback';
 
 export function Scanner() {
   const { eventId, troopNumber } = useParams();
@@ -57,6 +58,7 @@ export function Scanner() {
   const [progressText, setProgressText] = useState('');
   const [showCheckmark, setShowCheckmark] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
+  const [scanFeedback, setScanFeedback] = useState(() => getScannerDisplayData({ status: 'ready' }));
   const [currentUserRole, setCurrentUserRole] = useState(null);
   const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
   const [showStatusMenu, setShowStatusMenu] = useState(false);
@@ -717,6 +719,7 @@ export function Scanner() {
     }
     setIsScanning(false);
     setScannerStatus('Camera Stopped');
+    setScanFeedback(getScannerDisplayData({ status: 'ready' }));
   };
 
   const onScanSuccess = async (decodedText) => {
@@ -729,11 +732,23 @@ export function Scanner() {
   const processPayload = (payload) => {
     return new Promise((resolve) => {
       handleScan(payload, scanModeRef.current, (result) => {
+        const feedback = getScannerDisplayData({
+          status: result.status,
+          mode: result.mode || scanModeRef.current,
+          member: result.member
+        });
+        setScanFeedback(feedback);
+
         if (result.status === 'unknown') {
           if (qrEngineRef.current?.getState() === 2) qrEngineRef.current.pause(true);
           playErrorSound();
+          setShowWarning(true);
           setUnknownPayload(result.payload);
           resolveUnknownRef.current = resolve;
+          setTimeout(() => {
+            setShowWarning(false);
+            setScanFeedback(getScannerDisplayData({ status: 'ready' }));
+          }, 2000);
         } else {
           if (result.status === 'success' || result.status === 'offline_queued') {
             playSuccessSound();
@@ -745,6 +760,7 @@ export function Scanner() {
 
             setTimeout(() => {
               setShowCheckmark(false);
+              setScanFeedback(getScannerDisplayData({ status: 'ready' }));
               if (qrEngineRef.current?.getState() === 3 && result.status !== 'unknown' && !unknownPayload) {
                 qrEngineRef.current.resume();
               }
@@ -759,6 +775,7 @@ export function Scanner() {
 
             setTimeout(() => {
               setShowWarning(false);
+              setScanFeedback(getScannerDisplayData({ status: 'ready' }));
               if (qrEngineRef.current?.getState() === 3 && result.status !== 'unknown' && !unknownPayload) {
                 qrEngineRef.current.resume();
               }
@@ -1550,10 +1567,10 @@ export function Scanner() {
                     {/* STRICT SQUARE VIEWFINDER */}
                     <div className="scanner-strict-square">
                       {/* Corner brackets */}
-                      <div className={`scanner-corner scanner-corner-tl scanner-corner-${scanMode.toLowerCase()}`}></div>
-                      <div className={`scanner-corner scanner-corner-tr scanner-corner-${scanMode.toLowerCase()}`}></div>
-                      <div className={`scanner-corner scanner-corner-bl scanner-corner-${scanMode.toLowerCase()}`}></div>
-                      <div className={`scanner-corner scanner-corner-br scanner-corner-${scanMode.toLowerCase()}`}></div>
+                      <div className={`scanner-corner scanner-corner-tl scanner-corner-${scanFeedback.cornerStatus}`}></div>
+                      <div className={`scanner-corner scanner-corner-tr scanner-corner-${scanFeedback.cornerStatus}`}></div>
+                      <div className={`scanner-corner scanner-corner-bl scanner-corner-${scanFeedback.cornerStatus}`}></div>
+                      <div className={`scanner-corner scanner-corner-br scanner-corner-${scanFeedback.cornerStatus}`}></div>
 
                       {/* Single Pass Scan Line */}
                       <div key={isScanning ? 'scanning' : 'idle'} className={`scanner-scan-line ${isScanning ? 'scan-line-active' : ''}`}></div>
@@ -1561,19 +1578,37 @@ export function Scanner() {
                       {/* Success/Warning Overlays */}
                       {showCheckmark && (
                         <div className="scanner-feedback-overlay scanner-feedback-success">
-                          <img src="/logo.png" alt="Success" style={{ width: '36%', height: '36%', objectFit: 'contain' }} />
+                          <div className="scanner-feedback-badge">
+                            <div className="scanner-feedback-icon-wrapper">
+                              <img src="/logo.png" alt="Success" className="scanner-feedback-icon-img" />
+                            </div>
+                            <span className="scanner-feedback-name">
+                              {scanFeedback.displayText || 'Member'}
+                            </span>
+                          </div>
                         </div>
                       )}
                       {showWarning && (
                         <div className="scanner-feedback-overlay scanner-feedback-warning">
-                          <div style={{ backgroundColor: 'var(--bg-secondary)', borderRadius: '50%', padding: '1rem', display: 'flex', boxShadow: 'var(--glass-shadow)' }}>
-                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--color-warning)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-                              <line x1="12" y1="8" x2="12" y2="12"></line>
-                              <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                            </svg>
+                          <div className="scanner-feedback-badge">
+                            <div className="scanner-feedback-icon-wrapper">
+                              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--color-warning)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="10" stroke="var(--color-warning)" strokeWidth="2" fill="none" />
+                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                              </svg>
+                            </div>
+                            <span className="scanner-feedback-name">
+                              {scanFeedback.displayText || 'Warning'}
+                            </span>
                           </div>
                         </div>
                       )}
+                    </div>
+
+                    {/* Accessibility: Screen Reader Live Region */}
+                    <div aria-live="polite" aria-atomic="true" className="sr-only">
+                      {scanFeedback.ariaAnnouncement}
                     </div>
 
                     {isScanning && (

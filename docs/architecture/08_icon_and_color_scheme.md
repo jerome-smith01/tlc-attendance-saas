@@ -171,3 +171,39 @@ Any screen implementing bulk selection MUST use:
   </div>
 </div>
 ```
+
+---
+
+## 4. Scanner Viewfinder Status Colors & Feedback Overlay Standards
+
+To provide instant, unambiguous scan confirmation on mobile devices without cognitive strain, the QR code viewfinder and feedback overlay follow strict color and layout rules.
+
+### 4.1 Viewfinder Corner Brackets
+
+The four viewfinder corner brackets dynamically adapt their border color to reflect the state of the scanner:
+
+| State | Color Theme | Hex Code | CSS Class | Behavior |
+|:---|:---|:---|:---|:---|
+| **Ready to Scan** | ⚪ White | `#ffffff` | `.scanner-corner-ready` | Default idle and active searching state. |
+| **Scanned In** | 🟢 Green | `#10b981` | `.scanner-corner-in` | Active during 2-second success confirmation for Sign-In. |
+| **Scanned Out** | 🔵 Blue | `#3b82f6` | `.scanner-corner-out` | Active during 2-second success confirmation for Sign-Out. |
+| **Duplicate Scan** | 🟡 Yellow | `#eab308` | `.scanner-corner-duplicate` | Active during 2-second warning confirmation for duplicate scan. |
+
+After 2 seconds, corners automatically revert to `.scanner-corner-ready` (White).
+
+### 4.2 Feedback Overlay Layout & Typography
+
+Instead of showing an isolated icon, scan feedback renders a high-contrast pill container horizontally pairing the status icon with the member's identity:
+
+```
++-------------------------------------------------------------+
+|  [ Icon ]   <First Name> <Last Initial>.                    |
++-------------------------------------------------------------+
+```
+
+1. **Horizontal Arrangement**: The status icon (TLC logo for success, circular exclamation mark for warning/duplicate) is positioned strictly to the left of the text.
+2. **Typography**: Text renders in bold 1.5rem (`.scanner-feedback-name`) with high contrast white text over a dark translucent backdrop (`rgba(15, 23, 42, 0.9)`) and frosted glass blur. This guarantees readability on mobile devices in 2 seconds without squinting.
+3. **Format**: Scanned member identities are formatted as `[First Name] [Last Initial].` (e.g., `John D.`).
+4. **Unknown Scans**: If a QR badge does not match any registered roster record, the display shows `Member not found`.
+5. **Accessibility**: All status changes trigger polite ARIA live region announcements (`[Name] scanned in`, `[Name] scanned out`, `Duplicate scan: [Name]`, `Member not found`).
+

@@ -1093,11 +1093,17 @@ button:active, .btn-primary:active, .btn-action:active {
   opacity: 0.9;
   transition: border-color 0.3s ease;
 }
+.scanner-corner-ready {
+  border-color: #ffffff !important;
+}
 .scanner-corner-in {
   border-color: #10b981 !important;
 }
 .scanner-corner-out {
   border-color: #3b82f6 !important;
+}
+.scanner-corner-duplicate {
+  border-color: #eab308 !important;
 }
 
 .scanner-mode-overlay-tag {
@@ -1178,12 +1184,64 @@ button:active, .btn-primary:active, .btn-action:active {
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-md, 12px);
+  z-index: 25;
+  padding: 1rem;
 }
 .scanner-feedback-success {
   background-color: color-mix(in srgb, var(--color-success) 20%, transparent);
 }
 .scanner-feedback-warning {
   background-color: color-mix(in srgb, var(--color-warning) 20%, transparent);
+}
+
+.scanner-feedback-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.85rem;
+  background-color: rgba(15, 23, 42, 0.9);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  padding: 0.75rem 1.35rem;
+  border-radius: 9999px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  max-width: 95%;
+  animation: feedbackPopIn 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.scanner-feedback-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.scanner-feedback-icon-img {
+  width: 2.25rem;
+  height: 2.25rem;
+  object-fit: contain;
+}
+
+.scanner-feedback-name {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes feedbackPopIn {
+  from {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .scanner-live-badge {
