@@ -2275,6 +2275,56 @@ button:active, .btn-primary:active, .btn-action:active {
   border-bottom: 1px solid var(--border-color);
 }
 
+.filter-popover-sort-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  margin-bottom: 0.15rem;
+}
+
+.filter-popover-sort-segmented {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 0.35rem;
+  background: var(--bg-primary);
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+}
+
+.filter-popover-segmented-btn {
+  flex: 1;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: calc(var(--radius-sm) - 2px);
+  cursor: pointer;
+  text-align: center;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+
+.filter-popover-segmented-btn:hover {
+  color: var(--foreground);
+  background: var(--bg-elevated);
+}
+
+.filter-popover-segmented-btn.active {
+  color: var(--bg-primary);
+  background: var(--color-primary);
+  font-weight: 600;
+}
+
+.filter-popover-segmented-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
 .filter-sort-btn {
   display: flex;
   align-items: center;

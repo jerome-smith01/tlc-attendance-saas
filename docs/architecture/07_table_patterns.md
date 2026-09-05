@@ -87,7 +87,8 @@ All screens implementing full Excel-like filtering must manage state adhering to
 ```js
 // Sort State
 const [sortConfig, setSortConfig] = useState({
-  key: null,        // column key (e.g., 'event_name', 'event_date')
+  key: null,        // column key (e.g., 'event_name', 'name', 'event_date')
+  field: 'first',   // optional sub-field selector for compound columns (e.g. 'first' | 'last' for member name)
   direction: 'asc'  // 'asc' | 'desc'
 });
 
@@ -133,6 +134,7 @@ const canManage = isGlobalAdmin || currentUserRole === 'billing_admin' || curren
 - **Floating React Portal Overlay & Single-Row Height Independence**: Filter popovers MUST be rendered via React Portal (`createPortal(..., document.body)`) using `position: fixed` anchored to the target column header cell's viewport bounding rectangle (`getBoundingClientRect()`). Portaling to `document.body` ensures filter modals float on top of the entire table and page content, preventing popovers from being cut off or clipped by `.grid-table-scroll-wrapper`'s `overflow-x: auto` container bounds or shortened when the table contains only 1 row (or few rows).
 - **Viewport Boundary Adjustment**: Popover positioning logic MUST dynamically restrict `left` coordinates within screen boundaries and flip vertically above the header cell if the popover would extend past the bottom viewport edge.
 - **Distinct Top Sort Group**: When sorting is supported (`onSort`), render `Sort Ascending` and `Sort Descending` as a distinct, styled top group section (`filter-popover-sort-section`) inside the popover body, separated from filter options by a bottom border line. Provide custom contextual labels (e.g., "Sort A to Z", "Sort Oldest to Newest").
+- **Sub-field Sorting (Segmented Control)**: When a column supports multiple sort targets (e.g., `Member Name` sorting by First Name vs Last Initial), pass `sortFields={[{ key: 'first', label: 'First Name' }, { key: 'last', label: 'Last Initial' }]}` along with `activeSortField` and `onSortFieldChange`. Render a segmented toggle (`.filter-popover-sort-segmented` with `.filter-popover-segmented-btn`) directly above the sort direction buttons inside the sort group.
 - **Strictly Dynamic Multi-select Options**: Multi-select checkbox options (`type="multiselect"`) MUST be derived dynamically via `useMemo` **strictly from items present in the active dataset** (`events`). Never hardcode option arrays.
 
 ### Status Badge Design Token Synchronization
@@ -238,6 +240,12 @@ The Scanner attendance table (`Scanner.jsx`) replaces the legacy single combined
 
 ### Real-Time Scanner State Synchronization
 When new scans arrive real-time (`processPayload`, `handleResolveUnknown`, `handleManualAddAttendee`), state updates MUST construct all 6 properties immediately (`raw_sign_in_time`, `raw_sign_out_time`, `in_date`, `in_time`, `in_by`, `out_date`, `out_time`, `out_by`) so new scan rows render live without requiring a page refresh.
+
+### Member Name Dual-Mode Sorting (First Name vs Last Initial)
+The `Member Name` column (`Scanner.jsx` and `RosterList.jsx`) supports dual-mode sorting using the shared `compareMemberName` utility (`frontend/src/utils/nameSorter.js`):
+1. **First Name Mode (`field === 'first'`)**: Primary sort by `first_name` (case-insensitive), secondary tie-break by `last_initial`.
+2. **Last Initial Mode (`field === 'last'`)**: Primary sort by `last_initial` (case-insensitive), secondary tie-break by `first_name`.
+3. **Display Contract**: The attendee/roster row display remains `First L.` format consistently regardless of sort field. The column header displays `Member Name ↑` or `Member Name ↓` with full mode details conveyed via the `title` tooltip and `aria-label`.
 
 ---
 

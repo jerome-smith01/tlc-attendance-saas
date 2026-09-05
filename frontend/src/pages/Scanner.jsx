@@ -11,6 +11,7 @@ import { Modal } from '../components/common/Modal';
 import { FilterPopover } from '../components/common/FilterPopover';
 import { LastInitialTooltip } from '../components/common/Tooltip';
 import { formatAppDate } from '../utils/date';
+import { compareMemberName } from '../utils/nameSorter';
 
 export function Scanner() {
   const { eventId, troopNumber } = useParams();
@@ -103,7 +104,12 @@ export function Scanner() {
       const saved = localStorage.getItem(storageKey);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.sortConfig) return parsed.sortConfig;
+        if (parsed.sortConfig) {
+          if (parsed.sortConfig.key === 'name' && !parsed.sortConfig.field) {
+            return { ...parsed.sortConfig, field: 'first' };
+          }
+          return parsed.sortConfig;
+        }
       }
     } catch (e) {
       console.warn('Failed to load saved sort config', e);
@@ -1303,11 +1309,12 @@ export function Scanner() {
     // Sorting
     if (sortConfig.key) {
       result.sort((a, b) => {
-        let valA = '', valB = '';
         if (sortConfig.key === 'name') {
-          valA = a.member ? `${a.member.first_name} ${a.member.last_initial}`.trim() : 'Unknown';
-          valB = b.member ? `${b.member.first_name} ${b.member.last_initial}`.trim() : 'Unknown';
-        } else if (sortConfig.key === 'status') {
+          return compareMemberName(a, b, sortConfig.field || 'first', sortConfig.direction);
+        }
+
+        let valA = '', valB = '';
+        if (sortConfig.key === 'status') {
           valA = a.message || '';
           valB = b.message || '';
         } else if (sortConfig.key === 'in_date') {
@@ -1832,6 +1839,10 @@ export function Scanner() {
                         type="button"
                         className="column-header-btn"
                         onClick={() => setActivePopover(activePopover === 'name' ? null : 'name')}
+                        aria-sort={sortConfig.key === 'name' ? (sortConfig.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
+                        title={sortConfig.key === 'name'
+                          ? `Sorted by ${sortConfig.field === 'last' ? 'Last Initial' : 'First Name'} (${sortConfig.direction === 'asc' ? 'A to Z' : 'Z to A'}). Click to filter or change sort.`
+                          : 'Click to filter or sort'}
                       >
                         Member Name
                         {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? ' ↑' : ' ↓')}
@@ -1848,7 +1859,18 @@ export function Scanner() {
                           onClose={() => setActivePopover(null)}
                           sortConfig={sortConfig}
                           columnKey="name"
-                          onSort={(dir) => setSortConfig({ key: 'name', direction: dir })}
+                          sortFields={[
+                            { key: 'first', label: 'First Name' },
+                            { key: 'last', label: 'Last Initial' }
+                          ]}
+                          activeSortField={sortConfig.key === 'name' ? (sortConfig.field || 'first') : 'first'}
+                          onSortFieldChange={(field) => setSortConfig(prev => ({ ...prev, key: 'name', field }))}
+                          onSort={(dir) => setSortConfig(prev => ({
+                            ...prev,
+                            key: 'name',
+                            field: prev.key === 'name' ? (prev.field || 'first') : 'first',
+                            direction: dir
+                          }))}
                           sortAscLabel="Sort A to Z"
                           sortDescLabel="Sort Z to A"
                         />

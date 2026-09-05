@@ -17,6 +17,9 @@ import { createPortal } from 'react-dom';
  * - onSort: (direction: 'asc'|'desc') => void
  * - sortAscLabel: string
  * - sortDescLabel: string
+ * - sortFields: Array<{ key: string, label: string }>
+ * - activeSortField: string
+ * - onSortFieldChange: (fieldKey: string) => void
  */
 export function FilterPopover({
   isOpen,
@@ -30,7 +33,10 @@ export function FilterPopover({
   columnKey,
   onSort,
   sortAscLabel,
-  sortDescLabel
+  sortDescLabel,
+  sortFields,
+  activeSortField,
+  onSortFieldChange
 }) {
   const popoverRef = useRef(null);
   const anchorRef = useRef(null);
@@ -199,6 +205,27 @@ export function FilterPopover({
         {/* Sort Section */}
         {onSort && (
           <div className="filter-popover-sort-section">
+            {sortFields && sortFields.length > 0 && (
+              <>
+                <div className="filter-popover-sort-label">Sort by:</div>
+                <div className="filter-popover-sort-segmented" role="group" aria-label="Sort by field">
+                  {sortFields.map(field => {
+                    const isActive = activeSortField === field.key;
+                    return (
+                      <button
+                        key={field.key}
+                        type="button"
+                        className={`filter-popover-segmented-btn ${isActive ? 'active' : ''}`}
+                        onClick={() => onSortFieldChange && onSortFieldChange(field.key)}
+                        aria-pressed={isActive}
+                      >
+                        {field.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
             <button
               type="button"
               className={`filter-sort-btn ${isSortedAsc ? 'active' : ''}`}

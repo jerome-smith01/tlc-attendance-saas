@@ -12,6 +12,7 @@ import { useConfirm } from './common/ConfirmContext';
 import { SingleBadgeScannerModal } from './SingleBadgeScannerModal';
 import { BulkBadgeImportModal } from './BulkBadgeImportModal';
 import { useTroop } from '../context/TroopContext';
+import { compareMemberName } from '../utils/nameSorter';
 
 export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAdmin, activeTab, userId }) {
   const navigate = useNavigate();
@@ -172,7 +173,15 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
   const [sortConfig, setSortConfig] = useState(() => {
     try {
       const saved = localStorage.getItem(storageKey);
-      if (saved) { const p = JSON.parse(saved); if (p.sortConfig) return p.sortConfig; }
+      if (saved) {
+        const p = JSON.parse(saved);
+        if (p.sortConfig) {
+          if (p.sortConfig.key === 'name' && !p.sortConfig.field) {
+            return { ...p.sortConfig, field: 'first' };
+          }
+          return p.sortConfig;
+        }
+      }
     } catch (_) { }
     return defaultSort;
   });
@@ -347,9 +356,11 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
     let result = getFilteredRoster(null);
     if (sortConfig.key) {
       result.sort((a, b) => {
+        if (sortConfig.key === 'name') {
+          return compareMemberName(a, b, sortConfig.field || 'first', sortConfig.direction);
+        }
         let valA = '', valB = '';
-        if (sortConfig.key === 'name') { valA = getMemberName(a); valB = getMemberName(b); }
-        else if (sortConfig.key === 'role') { valA = getMemberRole(a); valB = getMemberRole(b); }
+        if (sortConfig.key === 'role') { valA = getMemberRole(a); valB = getMemberRole(b); }
         else if (sortConfig.key === 'badge') { valA = getBadgeLabel(a); valB = getBadgeLabel(b); }
         else { valA = a[sortConfig.key] || ''; valB = b[sortConfig.key] || ''; }
         valA = String(valA).toLowerCase();
@@ -724,7 +735,15 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
 
               {/* Name */}
               <div role="columnheader" className="column-header-cell" style={{ position: 'relative' }}>
-                <button type="button" className="column-header-btn" onClick={() => setActivePopover(activePopover === 'name' ? null : 'name')}>
+                <button
+                  type="button"
+                  className="column-header-btn"
+                  onClick={() => setActivePopover(activePopover === 'name' ? null : 'name')}
+                  aria-sort={sortConfig.key === 'name' ? (sortConfig.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
+                  title={sortConfig.key === 'name'
+                    ? `Sorted by ${sortConfig.field === 'last' ? 'Last Initial' : 'First Name'} (${sortConfig.direction === 'asc' ? 'A to Z' : 'Z to A'}). Click to filter or change sort.`
+                    : 'Click to filter or sort'}
+                >
                   Name
                   {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? ' ↑' : ' ↓')}
                   {columnFilters.name?.length > 0 && ' 🌪️'}
@@ -737,7 +756,18 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
                     onChange={val => setColumnFilters(p => ({ ...p, name: val }))}
                     onClose={() => setActivePopover(null)}
                     sortConfig={sortConfig} columnKey="name"
-                    onSort={dir => setSortConfig({ key: 'name', direction: dir })}
+                    sortFields={[
+                      { key: 'first', label: 'First Name' },
+                      { key: 'last', label: 'Last Initial' }
+                    ]}
+                    activeSortField={sortConfig.key === 'name' ? (sortConfig.field || 'first') : 'first'}
+                    onSortFieldChange={(field) => setSortConfig(prev => ({ ...prev, key: 'name', field }))}
+                    onSort={(dir) => setSortConfig(prev => ({
+                      ...prev,
+                      key: 'name',
+                      field: prev.key === 'name' ? (prev.field || 'first') : 'first',
+                      direction: dir
+                    }))}
                     sortAscLabel="Sort A to Z" sortDescLabel="Sort Z to A"
                   />
                 )}
