@@ -158,7 +158,7 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
     name: 2.0, role: 1.0, email: 1.5, member_id: 1.0, badge: 1.0, actions: 1.2
   }), []);
   const defaultColumnWidthsMembers = useMemo(() => ({
-    name: 3.0, member_id: 1.0, badge: 1.0, actions: 1.2
+    name: 2.5, member_id: 1.0, membership_exp: 1.2, badge: 1.0, actions: 1.2
   }), []);
 
   const defaultColumnWidths = activeTab === 'leaders' ? defaultColumnWidthsLeaders : defaultColumnWidthsMembers;
@@ -216,8 +216,8 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
         : ['name', 'role', 'email', 'member_id', 'badge'];
     }
     return canManageRoster
-      ? ['name', 'member_id', 'badge', 'actions']
-      : ['name', 'member_id', 'badge'];
+      ? ['name', 'member_id', 'membership_exp', 'badge', 'actions']
+      : ['name', 'member_id', 'membership_exp', 'badge'];
   }, [activeTab, canManageRoster]);
 
   const gridTemplateStyle = useMemo(() => {
@@ -468,7 +468,13 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
         throw new Error('No valid members found in file. Make sure it contains First Name, Last Name, and Member Number.');
       }
       const membersToInsert = parsedMembers.map(m => ({ ...m, troop_id: troopId }));
-      const { error } = await supabase.from('roster').upsert(membersToInsert, { onConflict: 'troop_id, member_id', ignoreDuplicates: true });
+      // Upsert keyed on (troop_id, member_id). Only first_name, last_initial, and
+      // membership_exp are updated on conflict — tlc_id and user_id are intentionally
+      // excluded from the payload so badge links and profile links are never overwritten.
+      const { error } = await supabase.from('roster').upsert(membersToInsert, {
+        onConflict: 'troop_id, member_id',
+        ignoreDuplicates: false
+      });
       if (error) throw error;
       fetchRoster();
       toast(`Successfully processed ${parsedMembers.length} members from file.`, 'success');
@@ -582,7 +588,7 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
                   To export the roster from TLC, go to <a href="https://www.traillifeconnect.com" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)', textDecoration: 'underline' }}>Trail Life Connect</a> → My Troop → <a href="https://www.traillifeconnect.com/user" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)', textDecoration: 'underline' }}>Troop Members</a> → Export filtered to CSV or Excel.
                 </li>
                 <li>
-                  The app only uses First Name, Last Name, Member Number, and Nickname (if present).
+                  The app uses First Name, Last Name, Member Number, Nickname (if present), and <strong>Membership Exp.</strong> Re-import anytime to update expiry dates — badge links are preserved.
                 </li>
               </ul>
               <input
@@ -842,10 +848,24 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
                     sortAscLabel="Sort A to Z" sortDescLabel="Sort Z to A"
                   />
                 )}
-                <div className="column-resizer" onMouseDown={e => handleStartResize(e, 'member_id', 'badge')} title="Drag to resize column" />
+                <div className="column-resizer" onMouseDown={e => handleStartResize(e, 'member_id', activeTab === 'leaders' ? 'badge' : 'membership_exp')} title="Drag to resize column" />
               </div>
 
+              {/* Membership Exp. (members tab only) */}
+              {activeTab === 'members' && (
+                <div role="columnheader" className="column-header-cell" style={{ position: 'relative' }}>
+                  <button type="button" className="column-header-btn" onClick={() => setActivePopover(null)}
+                    title="Membership expiration date imported from TLC roster CSV"
+                  >
+                    Mbr. Exp.
+                    {sortConfig.key === 'membership_exp' && (sortConfig.direction === 'asc' ? ' ↑' : ' ↓')}
+                  </button>
+                  <div className="column-resizer" onMouseDown={e => handleStartResize(e, 'membership_exp', 'badge')} title="Drag to resize column" />
+                </div>
+              )}
+
               {/* Profile */}
+
               <div role="columnheader" className="column-header-cell" style={{ position: 'relative' }}>
                 <button type="button" className="column-header-btn" onClick={() => setActivePopover(activePopover === 'badge' ? null : 'badge')}>
                   Profile
@@ -967,7 +987,60 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
                       <span style={{ fontSize: '0.875rem' }}>{member.member_id || '—'}</span>
                     </div>
 
+                    {/* Membership Exp. (members tab only) */}
+                    {activeTab === 'members' && (() => {
+                      const exp = member.membership_exp;
+                      let days = null;
+                      if (exp) {
+                        const [y, mo, d] = exp.split('-').map(Number);
+                        const expDate = new Date(y, mo - 1, d);
+                        const today = new Date(); today.setHours(0, 0, 0, 0);
+                        days = Math.floor((expDate - today) / 86400000);
+                      }
+                      const isExpired = days !== null && days < 0;
+                      const isExpiringSoon = days !== null && days >= 0 && days <= 30;
+                      const cellColor = isExpired
+                        ? 'var(--color-error, #dc2626)'
+                        : isExpiringSoon
+                          ? 'var(--color-warning, #d97706)'
+                          : 'var(--foreground)';
+                      const cellBg = isExpired
+                        ? 'var(--color-error-subtle, rgba(220,38,38,0.08))'
+                        : isExpiringSoon
+                          ? 'var(--color-warning-subtle, rgba(217,119,6,0.08))'
+                          : 'transparent';
+                      const displayDate = exp
+                        ? (() => {
+                            const [y, mo, d] = exp.split('-').map(Number);
+                            return new Date(y, mo - 1, d).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' });
+                          })()
+                        : '—';
+                      return (
+                        <div className="grid-table-cell" role="cell">
+                          <span className="grid-table-label">Mbr. Exp.</span>
+                          <span
+                            style={{
+                              fontSize: '0.875rem',
+                              color: cellColor,
+                              background: cellBg,
+                              borderRadius: '4px',
+                              padding: (isExpired || isExpiringSoon) ? '0.1rem 0.35rem' : undefined,
+                              fontWeight: (isExpired || isExpiringSoon) ? 600 : undefined,
+                            }}
+                            title={
+                              isExpired ? `Expired ${displayDate}` :
+                              isExpiringSoon ? `Expires in ${days} day${days === 1 ? '' : 's'}` :
+                              exp ? `Expires ${displayDate}` : 'No expiry date on file'
+                            }
+                          >
+                            {displayDate}
+                          </span>
+                        </div>
+                      );
+                    })()}
+
                     {/* Profile */}
+
                     <div className="grid-table-cell" role="cell">
                       <span className="grid-table-label">Profile</span>
                       {member.tlc_id ? (

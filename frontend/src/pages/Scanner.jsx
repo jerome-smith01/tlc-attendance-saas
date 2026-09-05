@@ -13,6 +13,7 @@ import { LastInitialTooltip } from '../components/common/Tooltip';
 import { formatAppDate } from '../utils/date';
 import { compareMemberName } from '../utils/nameSorter';
 import { getScannerDisplayData } from '../utils/scannerFeedback';
+import { MembershipExpiryModal } from '../components/MembershipExpiryModal';
 
 export function Scanner() {
   const { eventId, troopNumber } = useParams();
@@ -160,6 +161,11 @@ export function Scanner() {
   const [manualLastInitial, setManualLastInitial] = useState('');
   const [selectedRosterId, setSelectedRosterId] = useState('');
   const [isTableVisible, setIsTableVisible] = useState(true);
+
+  // Membership expiry modal — set to a roster member object after a successful scan
+  // when their membership_exp is expired or within 30 days.
+  const [membershipExpiryTarget, setMembershipExpiryTarget] = useState(null);
+
 
   // Sound toggle state (default to muted)
   const [isSoundEnabled, setIsSoundEnabled] = useState(() => {
@@ -782,10 +788,28 @@ export function Scanner() {
             setTimeout(() => {
               setShowCheckmark(false);
               setScanFeedback(getScannerDisplayData({ status: 'ready' }));
-              if (qrEngineRef.current?.getState() === 3 && result.status !== 'unknown' && !unknownPayload) {
+
+              // Check membership expiry — show blocking modal if expired or within 30 days.
+              // The scanner stays paused until the user dismisses the modal.
+              const member = result.member;
+              const exp = member?.membership_exp;
+              let shouldWarnExpiry = false;
+              if (exp) {
+                const [ey, em, ed] = exp.split('-').map(Number);
+                const expDate = new Date(ey, em - 1, ed);
+                const today = new Date(); today.setHours(0, 0, 0, 0);
+                const days = Math.floor((expDate - today) / 86400000);
+                shouldWarnExpiry = days <= 30;
+              }
+
+              if (shouldWarnExpiry) {
+                setMembershipExpiryTarget(member);
+                // Scanner remains paused until onDismiss resumes it
+              } else if (qrEngineRef.current?.getState() === 3 && result.status !== 'unknown' && !unknownPayload) {
                 qrEngineRef.current.resume();
               }
             }, 2000);
+
           } else if (result.status === 'duplicate') {
             playWarningSound();
             setShowWarning(true);
@@ -1411,7 +1435,20 @@ export function Scanner() {
 
   return (
     <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column', position: 'relative', flex: 1, width: '100%', maxWidth: '1400px', margin: '0 auto', boxSizing: 'border-box', padding: '2rem' }}>
+
+      {/* Membership expiry blocking modal — shown after successful scan when member exp is <= 30 days away */}
+      <MembershipExpiryModal
+        member={membershipExpiryTarget}
+        onDismiss={() => {
+          setMembershipExpiryTarget(null);
+          if (qrEngineRef.current?.getState() === 3) {
+            qrEngineRef.current.resume();
+          }
+        }}
+      />
+
       {/* Top Sticky Pinned Title Bar (Floating, No Card) */}
+
       <div className="scanner-sticky-title">
         <Link
           to={eventsBackPath}

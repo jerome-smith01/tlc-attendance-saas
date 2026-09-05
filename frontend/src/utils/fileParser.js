@@ -11,9 +11,25 @@ function toTitleCase(str) {
 }
 
 /**
- * Extracts strictly the allowed fields from parsed row objects
- * to prevent PII leakage into our database.
+ * Parses a membership expiry date string in MM/DD/YYYY format
+ * and returns an ISO date string (YYYY-MM-DD) suitable for DB storage,
+ * or null if the value is missing or unparseable.
  */
+function parseMembershipExp(raw) {
+  if (!raw) return null;
+  const str = String(raw).trim();
+  if (!str) return null;
+  // Expected format: MM/DD/YYYY
+  const parts = str.split('/');
+  if (parts.length === 3) {
+    const [month, day, year] = parts;
+    if (year.length === 4 && !isNaN(Number(month)) && !isNaN(Number(day)) && !isNaN(Number(year))) {
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+  }
+  return null;
+}
+
 function processRows(rows) {
   const parsedMembers = [];
 
@@ -54,12 +70,16 @@ function processRows(rows) {
     // 3. member_id
     const memberId = rawMemberId;
 
+    // 4. membership_exp — parse MM/DD/YYYY → ISO YYYY-MM-DD
+    const membershipExp = parseMembershipExp(row['Membership Exp.']);
+
     parsedMembers.push({
       first_name: finalFirstName,
       last_initial: lastInitial,
       member_id: memberId,
       // tlc_id is populated later upon first scan
-      tlc_id: null
+      tlc_id: null,
+      membership_exp: membershipExp
     });
   }
 
