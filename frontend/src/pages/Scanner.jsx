@@ -1575,33 +1575,29 @@ export function Scanner() {
                       {/* Single Pass Scan Line */}
                       <div key={isScanning ? 'scanning' : 'idle'} className={`scanner-scan-line ${isScanning ? 'scan-line-active' : ''}`}></div>
                       
-                      {/* Success/Warning Overlays */}
+                      {/* Success/Warning Overlays (Centered Icon inside square) */}
                       {showCheckmark && (
                         <div className="scanner-feedback-overlay scanner-feedback-success">
-                          <div className="scanner-feedback-badge">
-                            <div className="scanner-feedback-icon-wrapper">
-                              <img src="/logo.png" alt="Success" className="scanner-feedback-icon-img" />
-                            </div>
-                            <span className="scanner-feedback-name">
-                              {scanFeedback.displayText || 'Member'}
-                            </span>
-                          </div>
+                          <img src="/logo.png" alt="Success" className="scanner-feedback-icon-solo" />
                         </div>
                       )}
                       {showWarning && (
                         <div className="scanner-feedback-overlay scanner-feedback-warning">
-                          <div className="scanner-feedback-badge">
-                            <div className="scanner-feedback-icon-wrapper">
-                              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--color-warning)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                <circle cx="12" cy="12" r="10" stroke="var(--color-warning)" strokeWidth="2" fill="none" />
-                                <line x1="12" y1="8" x2="12" y2="12"></line>
-                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                              </svg>
-                            </div>
-                            <span className="scanner-feedback-name">
-                              {scanFeedback.displayText || 'Warning'}
-                            </span>
+                          <div className="scanner-feedback-warning-circle">
+                            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--color-warning)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                              <line x1="12" y1="8" x2="12" y2="12"></line>
+                              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
                           </div>
+                        </div>
+                      )}
+
+                      {/* Member Name Banner directly below square */}
+                      {(showCheckmark || showWarning) && scanFeedback.displayText && (
+                        <div className="scanner-feedback-sub-banner">
+                          <span className="scanner-feedback-name">
+                            {scanFeedback.displayText}
+                          </span>
                         </div>
                       )}
                     </div>

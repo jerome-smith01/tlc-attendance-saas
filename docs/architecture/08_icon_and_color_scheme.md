@@ -193,17 +193,24 @@ After 2 seconds, corners automatically revert to `.scanner-corner-ready` (White)
 
 ### 4.2 Feedback Overlay Layout & Typography
 
-Instead of showing an isolated icon, scan feedback renders a high-contrast pill container horizontally pairing the status icon with the member's identity:
+Scan feedback is decoupled between the 200px square viewfinder and the area immediately beneath it to prevent truncation on mobile viewports:
 
 ```
-+-------------------------------------------------------------+
-|  [ Icon ]   <First Name> <Last Initial>.                    |
-+-------------------------------------------------------------+
+        +-------------------------+
+        |                         |
+        |         [ Icon ]        |   <-- Icon centered alone inside 200px square
+        |                         |
+        +-------------------------+
+                     |
+  +-------------------------------------+
+  |     <First Name> <Last Initial>.    |   <-- Name banner centered directly below square
+  +-------------------------------------+
 ```
 
-1. **Horizontal Arrangement**: The status icon (TLC logo for success, circular exclamation mark for warning/duplicate) is positioned strictly to the left of the text.
-2. **Typography**: Text renders in bold 1.5rem (`.scanner-feedback-name`) with high contrast white text over a dark translucent backdrop (`rgba(15, 23, 42, 0.9)`) and frosted glass blur. This guarantees readability on mobile devices in 2 seconds without squinting.
-3. **Format**: Scanned member identities are formatted as `[First Name] [Last Initial].` (e.g., `John D.`).
-4. **Unknown Scans**: If a QR badge does not match any registered roster record, the display shows `Member not found`.
-5. **Accessibility**: All status changes trigger polite ARIA live region announcements (`[Name] scanned in`, `[Name] scanned out`, `Duplicate scan: [Name]`, `Member not found`).
+1. **Centered Icon Inside Viewfinder**: The status icon is positioned alone in the center of the 200px square viewfinder (TLC logo for success, circular warning badge with exclamation mark for duplicate/warning).
+2. **Member Name Banner Below Viewfinder**: The scanned member's name renders in a dedicated frosted-glass pill (`.scanner-feedback-sub-banner`) anchored directly beneath the square (`top: calc(100% + 14px)`).
+3. **Typography**: Text renders in bold 1.2rem (`.scanner-feedback-name`) with high-contrast white text over a dark translucent backdrop (`rgba(15, 23, 42, 0.92)`). Having the banner outside the 200px square gives it the full width of the mobile viewport, preventing truncation.
+4. **Format**: Scanned member identities are formatted as `[First Name] [Last Initial].` (e.g., `Zuri W.`).
+5. **Unknown Scans**: If a QR badge does not match any registered roster record, the sub-banner shows `Member not found`.
+6. **Accessibility**: All status changes trigger polite ARIA live region announcements (`[Name] scanned in`, `[Name] scanned out`, `Duplicate scan: [Name]`, `Member not found`).
 
