@@ -33,6 +33,7 @@ graph LR
 - The dedicated Supabase project (`tlc-attendance`) is fully isolated from the `goodplusfast.com` project.
 - `global_admins` is a system-level bypass table for platform owner access (not a troop-level role).
 - **URL Routing for Tabs & Views**: Every distinct view state, tab, or screen must have its own unique URL (e.g., `/roster/members`, `/roster/leaders`, `/roster/:memberId/edit`) so browser history and back/forward buttons work as expected.
+- **Dynamic Domain Awareness for Transactional Emails**: Transactional emails (such as leader invites) dynamically resolve their target application URLs from the originating client domain (`window.location.origin` or `Origin`/`Referer` headers) against a least-privilege allowlist (`*.goodplusfast.com` and `localhost`). This ensures invitation links automatically follow domain changes (e.g. `tlc.goodplusfast.com` to `something_else.goodplusfast.com` or local dev `localhost:5173`) without hardcoded secrets.
 
 ## Frontend Architecture
 

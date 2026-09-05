@@ -178,7 +178,12 @@ export function InviteUser({ troopId, onInviteSent, onDuplicateInvite }) {
     const results = await Promise.allSettled(
       validRows.map(async row => {
         const { data, error } = await supabase.functions.invoke('invite-user', {
-          body: { email: row.email.trim(), role: row.role, troop_id: troopId }
+          body: {
+            email: row.email.trim(),
+            role: row.role,
+            troop_id: troopId,
+            site_url: window.location.origin
+          }
         });
 
         if (error) {

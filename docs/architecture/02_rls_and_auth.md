@@ -5,6 +5,18 @@ Supabase authentication supports both email/password credentials and Google OAut
 
 For invitation flows, a `sessionStorage` token bridge (`pending_invite_token`) preserves the invitation token across OAuth redirects. Dual-provider password linking allows OAuth users to optionally add a password to their account from their Profile settings page.
 
+### Invitation Flow & Dynamic Domain Resolution
+When an administrator sends a leader invitation via the `InviteUser` component:
+1. **Client Payload**: The frontend includes `site_url: window.location.origin` in the `invite-user` Edge Function invocation.
+2. **Dynamic URL Resolution & Cascade**: The Edge Function resolves the base URL by checking:
+   - Client body payload `site_url`
+   - Request `Origin` HTTP header (standard browser CORS header)
+   - Request `Referer` HTTP header
+   - `APP_SITE_URL` environment secret
+   - Local development fallback (`http://localhost:5173`)
+3. **Least-Privilege Origin Allowlist**: Each candidate URL is parsed via `new URL()` and validated against an allowlist: hostnames ending in `.goodplusfast.com` or `localhost` (and `127.0.0.1`). Disallowed origins are rejected to prevent transactional email phishing or open redirects.
+4. **Accessible Email Links**: The generated email contains both a high-contrast action button and a plain-text fallback URL link (`${appUrl}/#/accept-invite?token=${inviteToken}`) for text-only email clients and assistive screen readers.
+
 ---
 
 ## Role System Overview

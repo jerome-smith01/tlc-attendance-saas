@@ -6,6 +6,49 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+function isAllowedOrigin(hostname: string): boolean {
+  if (!hostname) return false;
+  const lower = hostname.toLowerCase();
+  return (
+    lower === 'localhost' ||
+    lower === '127.0.0.1' ||
+    lower === 'goodplusfast.com' ||
+    lower.endsWith('.goodplusfast.com')
+  );
+}
+
+function resolveAppUrl(
+  siteUrl?: string,
+  req?: Request,
+  envAppSiteUrl?: string,
+  defaultFallback = 'http://localhost:5173'
+): string {
+  const candidates = [
+    siteUrl,
+    req?.headers.get('origin') ?? undefined,
+    req?.headers.get('referer') ?? undefined,
+    envAppSiteUrl
+  ];
+
+  for (const candidate of candidates) {
+    if (!candidate || typeof candidate !== 'string' || candidate === 'null') continue;
+    try {
+      const parsed = new URL(candidate);
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        continue;
+      }
+      if (!isAllowedOrigin(parsed.hostname)) {
+        continue;
+      }
+      return parsed.origin;
+    } catch (_) {
+      // ignore invalid URL candidate
+    }
+  }
+
+  return defaultFallback;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -31,7 +74,7 @@ serve(async (req) => {
       })
     }
 
-    const { email, role, troop_id } = await req.json()
+    const { email, role, troop_id, site_url } = await req.json()
 
     if (!email || !role || !troop_id) {
       return new Response(JSON.stringify({ error: 'Missing required parameters' }), {
@@ -76,7 +119,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const appUrl = Deno.env.get('APP_SITE_URL') ?? 'http://localhost:5173'
+    const appUrl = resolveAppUrl(site_url, req, Deno.env.get('APP_SITE_URL'))
     const normalizedEmail = email.trim().toLowerCase()
 
     // 1. Check if user already exists in auth.users using secure RPC
@@ -174,6 +217,10 @@ serve(async (req) => {
             <div style="margin: 30px 0;">
               <a href="${acceptUrl}" style="background-color: #0284c7; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Accept Invitation</a>
             </div>
+            <p style="color: #4b5563; font-size: 13px; line-height: 1.5; margin-top: 20px;">
+              If the button above does not work, copy and paste this link into your browser:<br/>
+              <a href="${acceptUrl}" style="color: #0284c7; word-break: break-all;">${acceptUrl}</a>
+            </p>
             <p style="color: #666; font-size: 14px;">If you didn't expect this invitation, you can ignore this email.</p>
           </div>
         `
