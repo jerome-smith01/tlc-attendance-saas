@@ -68,8 +68,8 @@ Public routes (`/` for Landing Page, `/login`, `/accept-invite`) do not require 
 3. Otherwise renders `<SidebarLayout>` with `<Outlet/>` for page content.
 
 ### URL Routing & Browser Back Button Standard
-Every distinct view state, tab, or screen MUST have its own unique URL (e.g., `/troop/:troopNumber/dashboard`, `/troop/:troopNumber/roster/members`, `/troop/:troopNumber/events`, `/troop/:troopNumber/events/:eventId`, `/troop/:troopNumber/billing`, `/profile`).
-- **Troop-Scoped URLs**: All primary app routes encode the user-friendly troop identifier (`troop_number` such as `DEMO-001` or `SC-0110`) in the path hierarchy (e.g. `/troop/DEMO-001/dashboard`, `/troop/DEMO-001/events`, `/troop/DEMO-001/billing`).
+Every distinct view state, tab, or screen MUST have its own unique URL (e.g., `/troop/:troopNumber/dashboard`, `/troop/:troopNumber/roster/members`, `/troop/:troopNumber/roster/import-badges`, `/troop/:troopNumber/events`, `/troop/:troopNumber/events/:eventId`, `/troop/:troopNumber/billing`, `/profile`).
+- **Troop-Scoped URLs**: All primary app routes encode the user-friendly troop identifier (`troop_number` such as `DEMO-001` or `SC-0110`) in the path hierarchy (e.g. `/troop/DEMO-001/dashboard`, `/troop/DEMO-001/roster/import-badges`, `/troop/DEMO-001/events`, `/troop/DEMO-001/billing`).
 - **Two-Way URL & Context Sync**: Route parameters (`:troopNumber`) automatically synchronize with `TroopContext.selectedTroopId` via `selectTroopByNumberOrId`.
 - **Navigation History**: Section and tab transitions add distinct history entries so browser Back and Forward buttons navigate seamlessly across all app sections.
 - **Legacy Route Compatibility**: Generic paths (e.g. `/dashboard`, `/roster`, `/events`, `/billing`) automatically redirect to their troop-scoped equivalents based on the user's active troop.

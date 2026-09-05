@@ -10,7 +10,6 @@ import { InviteStatusList } from './InviteStatusList';
 import { useToast } from './common/ToastContext';
 import { useConfirm } from './common/ConfirmContext';
 import { SingleBadgeScannerModal } from './SingleBadgeScannerModal';
-import { BulkBadgeImportModal } from './BulkBadgeImportModal';
 import { useTroop } from '../context/TroopContext';
 import { compareMemberName } from '../utils/nameSorter';
 
@@ -73,9 +72,6 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
   // ── Single Badge Scanner modal state ──────────────────────────────────────────
   const [scanningMember, setScanningMember] = useState(null);
   const [recentlyScannedIds, setRecentlyScannedIds] = useState(new Set());
-
-  // ── Bulk Badge Import modal state ─────────────────────────────────────────────
-  const [isBulkBadgeModalOpen, setIsBulkBadgeModalOpen] = useState(false);
 
   const triggerRowHighlight = (id) => {
     setRecentlyScannedIds(prev => new Set(prev).add(id));
@@ -646,7 +642,12 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
               type="button"
               className="btn btn-secondary btn-compact"
               style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-              onClick={() => setIsBulkBadgeModalOpen(true)}
+              onClick={() => {
+                const importPath = selectedTroopIdentifier
+                  ? `/troop/${selectedTroopIdentifier}/roster/import-badges`
+                  : '/roster/import-badges';
+                navigate(importPath);
+              }}
               title="Bulk import badge PDFs and link them to roster members"
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1186,23 +1187,6 @@ export function RosterList({ troopId, currentUserRole, currentUserId, isGlobalAd
         onClose={() => setScanningMember(null)}
         onScan={handleScanSingleBadge}
         memberName={scanningMember?.name}
-      />
-
-      {/* ── Bulk Badge Import Modal ────────────────────────────────────────── */}
-      <BulkBadgeImportModal
-        isOpen={isBulkBadgeModalOpen}
-        onClose={() => setIsBulkBadgeModalOpen(false)}
-        roster={roster}
-        troopId={troopId}
-        onDone={({ linked, errors }) => {
-          fetchRoster();
-          if (linked > 0) {
-            addToast(`Successfully linked ${linked} badge${linked !== 1 ? 's' : ''}!`, 'success');
-          }
-          if (errors > 0) {
-            addToast(`Failed to link ${errors} badge${errors !== 1 ? 's' : ''}.`, 'error');
-          }
-        }}
       />
     </div>
   );

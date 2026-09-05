@@ -14,6 +14,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Scanner } from './pages/Scanner';
 import { Roster } from './pages/Roster';
 import { EditMember } from './pages/EditMember';
+import { BulkBadgeImportPage } from './pages/BulkBadgeImportPage';
 import { Events } from './pages/Events';
 import { Billing } from './pages/Billing';
 import { Extension } from './pages/Extension';
@@ -76,6 +77,14 @@ export default function App() {
                     element={<Navigate to="/roster/members" replace />} 
                   />
                   <Route 
+                    path="/roster/import-badges" 
+                    element={
+                      <ProtectedRoute allowedRoles={['roster_manager', 'troop_admin', 'global_admin']}>
+                        <BulkBadgeImportPage />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
                     path="/roster/:tab" 
                     element={
                       <ProtectedRoute allowedRoles={['roster_manager', 'troop_admin', 'global_admin']}>
@@ -88,6 +97,14 @@ export default function App() {
                     element={
                       <ProtectedRoute allowedRoles={['roster_manager', 'troop_admin', 'global_admin']}>
                         <EditMember />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/troop/:troopNumber/roster/import-badges" 
+                    element={
+                      <ProtectedRoute allowedRoles={['roster_manager', 'troop_admin', 'global_admin']}>
+                        <BulkBadgeImportPage />
                       </ProtectedRoute>
                     } 
                   />
