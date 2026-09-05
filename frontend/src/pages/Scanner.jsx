@@ -694,17 +694,38 @@ export function Scanner() {
       setScannerStatus('Starting camera...');
       await qrEngineRef.current.start(
         { facingMode: 'environment' },
-        { fps: 15, disableFlip: false },
+        { fps: 15, disableFlip: false, qrbox: { width: 250, height: 250 } },
         onScanSuccess
       );
       setIsScanning(true);
       setScannerStatus('Camera Active - Ready to scan');
+      applyFocusHint('qr-reader');
     } catch (err) {
       console.error(err);
       setIsScanning(false);
       setScannerStatus('Failed to start camera');
     }
   };
+
+  /**
+   * Requests continuous autofocus from the device camera after the scanner
+   * has started. Uses the MediaTrackConstraints API — supported on Chrome/Android,
+   * silently ignored on Safari/iOS which manages focus internally.
+   */
+  function applyFocusHint(elementId) {
+    try {
+      const video = document.querySelector(`#${elementId} video`);
+      const track = video?.srcObject?.getVideoTracks?.()?.[0];
+      if (!track) return;
+      const caps = track.getCapabilities?.() ?? {};
+      if (Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')) {
+        track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] })
+          .catch(e => console.warn('[FocusHint] applyConstraints failed:', e));
+      }
+    } catch (e) {
+      console.warn('[FocusHint] Could not apply focus hint:', e);
+    }
+  }
 
   const stopScanner = async () => {
     if (qrEngineRef.current) {

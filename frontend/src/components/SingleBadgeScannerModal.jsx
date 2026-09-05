@@ -95,9 +95,30 @@ export function SingleBadgeScannerModal({ isOpen, onClose, onScan, memberName })
           // Ignore routine frame processing errors
         }
       );
+      applyFocusHint('single-badge-reader');
     } catch (err) {
       console.error('Error starting scanner', err);
       setError('Could not access camera. Please ensure camera permissions are granted.');
+    }
+  }
+
+  /**
+   * Requests continuous autofocus from the device camera after the scanner
+   * has started. Uses the MediaTrackConstraints API — supported on Chrome/Android,
+   * silently ignored on Safari/iOS which manages focus internally.
+   */
+  function applyFocusHint(elementId) {
+    try {
+      const video = document.querySelector(`#${elementId} video`);
+      const track = video?.srcObject?.getVideoTracks?.()?.[0];
+      if (!track) return;
+      const caps = track.getCapabilities?.() ?? {};
+      if (Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')) {
+        track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] })
+          .catch(e => console.warn('[FocusHint] applyConstraints failed:', e));
+      }
+    } catch (e) {
+      console.warn('[FocusHint] Could not apply focus hint:', e);
     }
   }
 
