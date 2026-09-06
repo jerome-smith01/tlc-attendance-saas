@@ -13,7 +13,7 @@ import { LastInitialTooltip } from '../components/common/Tooltip';
 import { formatAppDate } from '../utils/date';
 import { compareMemberName } from '../utils/nameSorter';
 import { getScannerDisplayData } from '../utils/scannerFeedback';
-import { MembershipExpiryModal } from '../components/MembershipExpiryModal';
+import { MembershipExpiryModal, daysUntilExpiry } from '../components/MembershipExpiryModal';
 
 export function Scanner() {
   const { eventId, troopNumber } = useParams();
@@ -792,15 +792,8 @@ export function Scanner() {
               // Check membership expiry — show blocking modal if expired or within 30 days.
               // The scanner stays paused until the user dismisses the modal.
               const member = result.member;
-              const exp = member?.membership_exp;
-              let shouldWarnExpiry = false;
-              if (exp) {
-                const [ey, em, ed] = exp.split('-').map(Number);
-                const expDate = new Date(ey, em - 1, ed);
-                const today = new Date(); today.setHours(0, 0, 0, 0);
-                const days = Math.floor((expDate - today) / 86400000);
-                shouldWarnExpiry = days <= 30;
-              }
+              const days = daysUntilExpiry(member?.membership_exp);
+              const shouldWarnExpiry = days !== null && days <= 30;
 
               if (shouldWarnExpiry) {
                 setMembershipExpiryTarget(member);
@@ -821,7 +814,16 @@ export function Scanner() {
             setTimeout(() => {
               setShowWarning(false);
               setScanFeedback(getScannerDisplayData({ status: 'ready' }));
-              if (qrEngineRef.current?.getState() === 3 && result.status !== 'unknown' && !unknownPayload) {
+
+              // Check membership expiry on duplicate scan as well
+              const member = result.member;
+              const days = daysUntilExpiry(member?.membership_exp);
+              const shouldWarnExpiry = days !== null && days <= 30;
+
+              if (shouldWarnExpiry) {
+                setMembershipExpiryTarget(member);
+                // Scanner remains paused until onDismiss resumes it
+              } else if (qrEngineRef.current?.getState() === 3 && result.status !== 'unknown' && !unknownPayload) {
                 qrEngineRef.current.resume();
               }
             }, 2000);

@@ -5,7 +5,7 @@ import { Modal } from './common/Modal';
  * Returns the number of whole days between today (local midnight) and a given ISO date string.
  * Negative values mean the date is in the past.
  */
-function daysUntilExpiry(isoDateStr) {
+export function daysUntilExpiry(isoDateStr) {
   if (!isoDateStr) return null;
   // Parse as local date (YYYY-MM-DD) to avoid UTC midnight-shift issues
   const [year, month, day] = isoDateStr.split('-').map(Number);
