@@ -29,20 +29,31 @@ const BUCKET_LABEL = {
  * Scales 3× so small QR codes have enough pixels.
  */
 async function renderPdfToCanvas(file) {
+  console.log(`%c[BulkBadgeImport] 📄 Starting PDF render: ${file.name} (${file.size} bytes)`, 'color: #3b82f6; font-weight: bold;');
   const pdfjsLib = window.pdfjsLib;
-  if (!pdfjsLib) throw new Error('PDF.js not loaded');
+  if (!pdfjsLib) {
+    console.error('[BulkBadgeImport] ❌ window.pdfjsLib is undefined! PDF.js failed to load.');
+    throw new Error('PDF.js not loaded');
+  }
 
-  const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-  const page = await pdf.getPage(1);
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    console.log(`[BulkBadgeImport] PDF loaded successfully: ${pdf.numPages} page(s)`);
+    const page = await pdf.getPage(1);
 
-  const scale    = 3;
-  const viewport = page.getViewport({ scale });
-  const canvas   = document.createElement('canvas');
-  canvas.width   = viewport.width;
-  canvas.height  = viewport.height;
-  await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-  return canvas;
+    const scale    = 3;
+    const viewport = page.getViewport({ scale });
+    const canvas   = document.createElement('canvas');
+    canvas.width   = viewport.width;
+    canvas.height  = viewport.height;
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+    console.log(`[BulkBadgeImport] ✅ Canvas rendered: ${canvas.width}x${canvas.height}px (scale=${scale})`);
+    return canvas;
+  } catch (err) {
+    console.error(`[BulkBadgeImport] ❌ Failed to render PDF page to canvas:`, err);
+    throw err;
+  }
 }
 
 /**
@@ -60,22 +71,56 @@ function cropCanvas(sourceCanvas, { sx, sy, sw, sh }) {
 }
 
 /**
+ * Applies a threshold filter to a canvas to remove light watermarks.
+ * Converts to grayscale and sets pixels lighter than a threshold to white, darker to black.
+ */
+function binarizeCanvas(canvas, threshold = 200) {
+  const ctx = canvas.getContext('2d');
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i];
+    const g = data[i+1];
+    const b = data[i+2];
+    
+    // Calculate luminance
+    const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    
+    // Thresholding: darker than threshold = black, lighter = white
+    const val = luminance < threshold ? 0 : 255;
+    
+    data[i] = val;
+    data[i+1] = val;
+    data[i+2] = val;
+    data[i+3] = 255;
+  }
+  
+  ctx.putImageData(imageData, 0, 0);
+  return canvas;
+}
+
+/**
  * Decode a QR code from a canvas element via html5-qrcode's scanFile API.
  */
 async function decodeQrFromCanvas(canvas) {
   return new Promise((resolve, reject) => {
     canvas.toBlob(async (blob) => {
-      if (!blob) { reject(new Error('Canvas toBlob failed')); return; }
+      if (!blob) { 
+        console.error('[BulkBadgeImport] canvas.toBlob returned null');
+        reject(new Error('Canvas toBlob failed')); 
+        return; 
+      }
 
       const file        = new File([blob], 'badge.png', { type: 'image/png' });
-      const containerId = `__bulk_qr_${Date.now()}`;
+      const containerId = `__bulk_qr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
       const container   = document.createElement('div');
       container.id      = containerId;
       container.style.display = 'none';
       document.body.appendChild(container);
 
       try {
-        const scanner = new Html5Qrcode(containerId, { verbose: false });
+        const scanner = new Html5Qrcode(containerId, { verbose: false, experimentalFeatures: { useBarCodeDetectorIfSupported: true } });
         const result  = await scanner.scanFile(file, false);
         document.body.removeChild(container);
         resolve(result);
@@ -95,19 +140,42 @@ async function decodeQrFromCanvas(canvas) {
  */
 async function scanBadgeWithFallbacks(canvas) {
   const regions = getCropRegions(canvas.width, canvas.height);
+  console.log(`[BulkBadgeImport] 🔍 Starting multi-region QR scan on canvas ${canvas.width}x${canvas.height}`);
 
   // Attempt 1: Bottom-right quadrant
   try {
+    console.log('[BulkBadgeImport] Attempt 1: Scanning bottom-right quadrant...', regions.bottomRightQuadrant);
     const brCanvas = cropCanvas(canvas, regions.bottomRightQuadrant);
-    return await decodeQrFromCanvas(brCanvas);
+    binarizeCanvas(brCanvas, 200);
+    const result = await decodeQrFromCanvas(brCanvas);
+    console.log(`%c[BulkBadgeImport] 🎉 Success in Tier 1 (bottom-right quadrant): "${result}"`, 'color: #10b981; font-weight: bold;');
+    return result;
   } catch (errBR) {
+    console.warn('[BulkBadgeImport] Tier 1 (bottom-right quadrant) failed to decode QR:', errBR.message || errBR);
+    
     // Attempt 2: Bottom half
     try {
+      console.log('[BulkBadgeImport] Attempt 2: Scanning bottom half...', regions.bottomHalf);
       const bottomCanvas = cropCanvas(canvas, regions.bottomHalf);
-      return await decodeQrFromCanvas(bottomCanvas);
+      binarizeCanvas(bottomCanvas, 200);
+      const result = await decodeQrFromCanvas(bottomCanvas);
+      console.log(`%c[BulkBadgeImport] 🎉 Success in Tier 2 (bottom half): "${result}"`, 'color: #10b981; font-weight: bold;');
+      return result;
     } catch (errBH) {
+      console.warn('[BulkBadgeImport] Tier 2 (bottom half) failed to decode QR:', errBH.message || errBH);
+      
       // Attempt 3: Full canvas fallback
-      return await decodeQrFromCanvas(canvas);
+      try {
+        console.log('[BulkBadgeImport] Attempt 3: Scanning full canvas fallback...', regions.full);
+        const fullCanvas = cropCanvas(canvas, regions.full);
+        binarizeCanvas(fullCanvas, 200);
+        const result = await decodeQrFromCanvas(fullCanvas);
+        console.log(`%c[BulkBadgeImport] 🎉 Success in Tier 3 (full canvas): "${result}"`, 'color: #10b981; font-weight: bold;');
+        return result;
+      } catch (errFull) {
+        console.error('[BulkBadgeImport] ❌ All 3 tiers failed. Full canvas error:', errFull.message || errFull);
+        throw new Error(`QR scan failed in all 3 regions (BR: ${errBR?.message || errBR}, BH: ${errBH?.message || errBH}, Full: ${errFull?.message || errFull})`);
+      }
     }
   }
 }
@@ -218,10 +286,14 @@ export function BulkBadgeImportPage() {
       let bucket, member, memberId = null, tlcId = null;
 
       try {
+        console.log(`%c[BulkBadgeImport] Processing file ${i + 1}/${files.length}: ${file.name}`, 'font-weight: bold;');
         const canvas = await renderPdfToCanvas(file);
         const raw    = await scanBadgeWithFallbacks(canvas);
+        console.log(`[BulkBadgeImport] Decoded raw payload: "${raw}"`);
         ({ memberId, tlcId } = parseQrPayload(raw));
+        console.log(`[BulkBadgeImport] Parsed: memberId=${memberId}, tlcId=${tlcId}`);
         member = findRosterMatch(roster, memberId, tlcId);
+        console.log(`[BulkBadgeImport] Roster match:`, member ? `${member.first_name} ${member.last_initial}. (ID: ${member.id})` : 'None');
 
         if (!member) {
           bucket = BUCKET.NO_MATCH;
@@ -232,7 +304,8 @@ export function BulkBadgeImportPage() {
           // Not linked yet, or has a different tlc_id → overwrite
           bucket = BUCKET.READY;
         }
-      } catch {
+      } catch (err) {
+        console.error(`%c[BulkBadgeImport] ❌ Unreadable error for ${file.name}:`, 'color: #ef4444; font-weight: bold;', err);
         bucket = BUCKET.UNREADABLE;
         member = null;
       }
