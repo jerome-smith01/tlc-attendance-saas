@@ -1476,7 +1476,7 @@ export function Scanner() {
             <div className="scanner-actions-panel">
               <div className="scanner-action-card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                  <span className="header-card-label">SCANNER ACTIONS</span>
+                  <h3 className="scanner-card-title" style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>Scanner Actions</h3>
                   <button
                     type="button"
                     onClick={handleToggleSound}
@@ -1583,22 +1583,6 @@ export function Scanner() {
                     </div>
                   </button>
                 </div>
-
-                {/* Delete Event Button inside Scanner Action Card */}
-                {isAdminOrLeader && (
-                  <button
-                    type="button"
-                    onClick={handleDeleteSession}
-                    className="scanner-btn-delete"
-                    aria-label="Delete Event"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" style={{ width: '1.25rem', height: '1.25rem' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="3 6 5 6 21 6" />
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                    </svg>
-                    <span>DELETE EVENT</span>
-                  </button>
-                )}
               </div>
             </div>
 
@@ -1707,6 +1691,8 @@ export function Scanner() {
 
         {/* Right Column: Header Card */}
         <div className="scanner-header-card">
+          <h3 className="scanner-card-title" style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>Event Info</h3>
+
           {/* Status Row */}
           <div ref={statusMenuRef} style={{ position: 'relative' }}>
             <div
@@ -1829,6 +1815,22 @@ export function Scanner() {
               </>
             );
           })()}
+
+          {/* Delete Event Button inside Scanner Header Card (aligned right) */}
+          {isAdminOrLeader && (
+            <button
+              type="button"
+              onClick={handleDeleteSession}
+              className="scanner-btn-delete"
+              aria-label="Delete Event"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" style={{ width: '1.25rem', height: '1.25rem' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              </svg>
+              <span>DELETE EVENT</span>
+            </button>
+          )}
 
         </div>
       </div>

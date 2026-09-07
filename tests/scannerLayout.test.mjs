@@ -15,13 +15,21 @@ describe('Scanner Layout & Action Card Configuration', () => {
   const globalCss = fs.readFileSync(globalCssPath, 'utf8');
   const scannerJsx = fs.readFileSync(scannerJsxPath, 'utf8');
 
-  describe('CSS Settings (.scanner-btn-delete & .scanner-hero-section)', () => {
-    test('defines .scanner-btn-delete in global.css', () => {
+  describe('CSS Settings (.scanner-btn-delete, .scanner-card-title, & .scanner-hero-section)', () => {
+    test('defines .scanner-btn-delete in global.css with right-alignment and states', () => {
       assert.ok(globalCss.includes('.scanner-btn-delete {'), 'global.css should define .scanner-btn-delete');
+      assert.ok(globalCss.includes('align-self: flex-end;'), 'should align self to flex-end (right aligned)');
       assert.ok(globalCss.includes('var(--color-error, #dc2626)'), 'global.css should use error color variable');
       assert.ok(globalCss.includes('.scanner-btn-delete:hover:not(:disabled)'), 'should define hover state');
       assert.ok(globalCss.includes('.scanner-btn-delete:focus-visible'), 'should define focus-visible state');
       assert.ok(globalCss.includes('.scanner-btn-delete:disabled'), 'should define disabled state');
+    });
+
+    test('defines .scanner-card-title in global.css matching Attendance header style', () => {
+      assert.ok(globalCss.includes('.scanner-card-title {'), 'global.css should define .scanner-card-title');
+      assert.ok(globalCss.includes('font-size: 1.1rem;'), 'should have 1.1rem font size');
+      assert.ok(globalCss.includes('font-weight: 700;'), 'should have bold 700 font weight');
+      assert.ok(globalCss.includes('margin: 0;'), 'should have margin 0');
     });
 
     test('defines 3-column layout classes for .scanner-hero-section', () => {
@@ -31,7 +39,7 @@ describe('Scanner Layout & Action Card Configuration', () => {
     });
   });
 
-  describe('Scanner.jsx Layout Order', () => {
+  describe('Scanner.jsx Layout Order & Semantic Headings', () => {
     test('positions scanner-actions-panel on the left before scanner-feed-container and scanner-header-card', () => {
       const heroSectionIdx = scannerJsx.indexOf('className="scanner-hero-section"');
       const attendanceHeaderIdx = scannerJsx.indexOf('className="attendance-section-header"');
@@ -59,23 +67,57 @@ describe('Scanner Layout & Action Card Configuration', () => {
       );
     });
 
-    test('nests .scanner-btn-delete inside .scanner-action-card', () => {
+    test('renders Scanner Actions as an h3 heading with .scanner-card-title', () => {
       const actionCardStart = scannerJsx.indexOf('className="scanner-action-card"');
-      assert.ok(actionCardStart !== -1, 'scanner-action-card should exist');
+      const feedContainerStart = scannerJsx.indexOf('className="scanner-feed-container"');
+      const actionCardContent = scannerJsx.slice(actionCardStart, feedContainerStart);
 
-      // Find the end of scanner-action-card
-      const afterActionCard = scannerJsx.slice(actionCardStart);
-      const deleteBtnIdx = afterActionCard.indexOf('className="scanner-btn-delete"');
-      const feedContainerIdx = afterActionCard.indexOf('className="scanner-feed-container"');
-
-      assert.ok(deleteBtnIdx !== -1, 'scanner-btn-delete should exist');
       assert.ok(
-        deleteBtnIdx < feedContainerIdx,
-        'scanner-btn-delete should be located inside action panel before feed container'
+        actionCardContent.includes('<h3 className="scanner-card-title"'),
+        'scanner-action-card should render an h3 with scanner-card-title'
       );
       assert.ok(
-        afterActionCard.slice(0, deleteBtnIdx).includes('scanner-secondary-actions-box'),
-        'scanner-btn-delete should be placed after secondary actions box'
+        actionCardContent.includes('Scanner Actions</h3>'),
+        'scanner-action-card should display "Scanner Actions" title'
+      );
+    });
+
+    test('renders Event Info as an h3 heading with .scanner-card-title in scanner-header-card', () => {
+      const headerCardStart = scannerJsx.indexOf('className="scanner-header-card"');
+      const attendanceHeaderStart = scannerJsx.indexOf('className="attendance-section-header"');
+      const headerCardContent = scannerJsx.slice(headerCardStart, attendanceHeaderStart);
+
+      assert.ok(
+        headerCardContent.includes('<h3 className="scanner-card-title"'),
+        'scanner-header-card should render an h3 with scanner-card-title'
+      );
+      assert.ok(
+        headerCardContent.includes('Event Info</h3>'),
+        'scanner-header-card should display "Event Info" title'
+      );
+    });
+
+    test('nests .scanner-btn-delete inside .scanner-header-card and not inside .scanner-action-card', () => {
+      const actionCardStart = scannerJsx.indexOf('className="scanner-action-card"');
+      const feedContainerStart = scannerJsx.indexOf('className="scanner-feed-container"');
+      const headerCardStart = scannerJsx.indexOf('className="scanner-header-card"');
+      const attendanceHeaderStart = scannerJsx.indexOf('className="attendance-section-header"');
+
+      assert.ok(actionCardStart !== -1, 'scanner-action-card should exist');
+      assert.ok(headerCardStart !== -1, 'scanner-header-card should exist');
+
+      // Verify NOT in scanner-action-card
+      const actionCardContent = scannerJsx.slice(actionCardStart, feedContainerStart);
+      assert.ok(
+        !actionCardContent.includes('className="scanner-btn-delete"'),
+        'scanner-action-card should not contain .scanner-btn-delete'
+      );
+
+      // Verify IN scanner-header-card
+      const headerCardContent = scannerJsx.slice(headerCardStart, attendanceHeaderStart);
+      assert.ok(
+        headerCardContent.includes('className="scanner-btn-delete"'),
+        'scanner-header-card should contain .scanner-btn-delete'
       );
     });
   });
