@@ -81,7 +81,7 @@ Before a session is ended, an authorized user (`isGlobalAdmin`, `troop_admin`, `
   - `SIGNED OUT`: Online scan, signed out (Blue `#3b82f6`).
   - `SIGNED IN - OFFLINE`: Scan saved offline, active sign-in (Yellow `#eab308`).
   - `SIGNED OUT - OFFLINE`: Scan saved offline, signed out (Yellow `#eab308`).
-- **Real-time Event Counters**: The top `.scanner-header-card` computes real-time session metrics rendered as plain text:
+- **Real-time Event Counters**: The `.scanner-header-card` (positioned on the right side of the scanner on desktop) computes real-time session metrics rendered as plain text:
   - `SCANNED IN`: Count of members currently active / signed in (`!raw_sign_out_time`).
   - `SCANNED OUT`: Count of members currently signed out (`!!raw_sign_out_time`).
   - `SCANNED TOTAL`: Total unique scans recorded (`[scanned in] + [scanned out]`).
@@ -95,7 +95,7 @@ This provides full operational flexibility for handling incorrect scans (e.g., a
 | **End Session / Close Event** | Session is open (`ended_at IS NULL`) | Sets `ended_at`; bulk-approves all `pending` scans |
 | **Reenable Session / Reopen Event** | Session ended, not yet synced | Clears `ended_at`; allows new scans again |
 | **Reset Sync** | Session is synced (`synced_at IS NOT NULL`) | Clears `synced_at`, `synced_by`, `purge_after`; allows re-sync |
-| **Delete Session / Delete Event** | Any state | Permanently deletes session and all child scans (cascades). Available in header status menu and as a dedicated red `DELETE EVENT` button below Scanner Actions. |
+| **Delete Session / Delete Event** | Any state | Permanently deletes session and all child scans (cascades). Available in header status menu and as a dedicated red `DELETE EVENT` button nested inside the Scanner Actions card. |
 
 ### Future Consideration
 

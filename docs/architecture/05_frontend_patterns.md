@@ -332,13 +332,17 @@ Before invoking `supabase.auth.updateUser({ password })`, the application verifi
 The event scanner layout pairs live camera QR recognition with high-visibility action controls and event session metadata.
 
 ### 13.1 Layout Architecture
-- **Header Card (`.scanner-header-card`)**: Positioned at the top or side of the scanner layout, presenting Event Date, Session Status (Open/Closed/Synced), and real-time metric counters (`SCANNED IN`, `SCANNED OUT`, `SCANNED TOTAL`) rendered as plain text.
-- **Top Camera Feed (`.scanner-feed-container`)**: Contains the live camera container (`#qr-reader`) set inside a glass card.
+- **Desktop 3-Column Arrangement (`.scanner-hero-section`)**:
+  - **Left - Action Panel (`.scanner-actions-panel`)**: Width 320px. Contains the single consolidated action card (`.scanner-action-card`) with sound toggle, primary scan controls, secondary action options, and the nested `DELETE EVENT` button.
+  - **Center - Camera Feed (`.scanner-feed-container`)**: Flexible width (`flex: 1`, min-width `0`). Houses the live camera container (`#qr-reader`) set inside a glass card.
+  - **Right - Header Card (`.scanner-header-card`)**: Width 300px. Presents Event Status (Open/Closed/Synced popover), Event Date, and real-time metric counters (`SCANNED IN`, `SCANNED OUT`, `SCANNED TOTAL`) rendered as plain text.
+- **Mobile Stacking Order**: Stacks vertically in priority order: (1) Action Card, (2) Camera Feed / Viewfinder, (3) Header Card.
+- **Top Camera Feed Details (`.scanner-feed-container`)**:
   - **Dynamic Mode Badge (`.scanner-live-badge`)**: Rendered at the top-right of the active camera view, displaying **`SCANNING IN`** (green dot `#10b981`, `.badge-success`) or **`SCANNING OUT`** (blue dot `#3b82f6`, `.badge-info`).
   - **Strict Square Viewfinder (`.scanner-strict-square`)**: Features a centered 1:1 aspect-ratio viewport with corner bracket accents (`.scanner-corner-in` green or `.scanner-corner-out` blue) and backdrop dimming overlay. The inner viewfinder mode tag has been removed for a clean video feed.
   - **Single-Pass Scan Line (`.scan-line-active`)**: A custom CSS `@keyframes scan-single` animation that sweeps top-to-bottom across the viewfinder once per scan cycle.
   - **Idle Overlay (`.scanner-idle-overlay`)**: Pauses camera rendering when idle or scrolled out of view to optimize battery consumption.
-- **Action Panel Side Cards (`.scanner-actions-panel`)**: Positioned directly to the right of the camera feed on desktop (or stacked below on mobile):
+- **Action Panel Side Cards (`.scanner-actions-panel`)**:
   - **Single Consolidated Action Card (`.scanner-action-card`)**: Renders `SCANNER ACTIONS` header label with an optional sound toggle switch (`.scanner-toggle-switch`):
     - **Header Right Sound Toggle**: Switches scanner sound effects on/off. Muted state displays a grey mute icon (`#94a3b8`); active state displays a green sound-wave icon (`#10b981`).
     - **Default & Persistence**: Defaults to muted (`false`), persisting user setting across browser sessions in `localStorage` under key `'scanner_sound_enabled'`.
@@ -351,7 +355,7 @@ The event scanner layout pairs live camera QR recognition with high-visibility a
   - **Secondary Actions Box (`.scanner-secondary-actions-box`)**: An inner container box placed directly below the primary buttons row. Features a green vertical left accent bar (`border-left: 3.5px solid #10b981`), light background (`var(--bg-tertiary, #f8fafc)`), rounded corners (`12px`), and border (`1px solid #e2e8f0`).
     - **Check in from Photos**: Photo icon in a white square badge box (`.scanner-action-icon-box`), title `Check in from Photos`, subtitle `Upload badge photos to scan` (triggers file upload).
     - **Check in from Roster**: User-plus icon in a white square badge box (`.scanner-action-icon-box`), title `Check in from Roster`, subtitle `Select trailmen from a list` (opens manual roster entry modal).
-  - **Delete Event Button (`.scanner-btn-delete`)**: Placed below `scanner-action-card` in `.scanner-actions-panel`, aligned right-flush (`alignSelf: 'flex-end'`). Renders with red background (`var(--color-error)`), trash SVG icon, uppercase label `DELETE EVENT`, and auto width (`width: auto`).
+  - **Delete Event Button (`.scanner-btn-delete`)**: Nested directly at the bottom inside `.scanner-action-card`, aligned right-flush (`alignSelf: 'flex-end'`). Renders with red background (`var(--color-error)`), trash SVG icon, uppercase label `DELETE EVENT`, auto width (`width: auto`), and centralized CSS rules in `global.css`.
 
 ### 13.2 Manual Attendance Status Toggle & Confirmation Pattern
 When an authorized user (`isGlobalAdmin`, `troop_admin`, `billing_admin`, `admin`, `leader`) toggles a member's attendance status in the scanner attendance grid (`handleToggleScanStatus`):

@@ -1459,6 +1459,50 @@ button:active, .btn-primary:active, .btn-action:active {
   border-color: var(--color-primary);
 }
 
+/* Scanner Delete Event Button */
+.scanner-btn-delete {
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #ffffff;
+  background-color: var(--color-error, #dc2626);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  width: auto;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
+  margin-top: 0.25rem;
+}
+
+.scanner-btn-delete:hover:not(:disabled) {
+  background-color: #b91c1c;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(220, 38, 38, 0.25);
+}
+
+.scanner-btn-delete:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.scanner-btn-delete:focus-visible {
+  outline: 2px solid var(--color-error, #dc2626);
+  outline-offset: 2px;
+}
+
+.scanner-btn-delete:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .scanner-sticky-title {
   position: sticky;
   top: 0;
@@ -1485,6 +1529,18 @@ button:active, .btn-primary:active, .btn-action:active {
     flex-direction: row;
     align-items: flex-start;
     gap: 1.5rem;
+  }
+
+  .scanner-hero-section .scanner-actions-panel {
+    flex: 0 0 320px;
+    width: 320px;
+    margin: 0;
+  }
+
+  .scanner-hero-section .scanner-feed-container {
+    flex: 1;
+    min-width: 0;
+    height: 420px;
   }
 
   .scanner-hero-section .scanner-header-card {
